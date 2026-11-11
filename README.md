@@ -43,3 +43,18 @@ npm run build
 ## License
 
 GPL-3.0-or-later. See [LICENSE](LICENSE).
+
+## Download
+
+Installers for Windows, macOS and Linux are on the [Releases](https://github.com/yaroslavyushchenko/inkboard/releases) page.
+
+## Building installers
+
+```bash
+npm run dist:linux   # AppImage + .deb
+npm run dist:win     # Windows NSIS installer (best built on Windows / CI)
+npm run dist:mac     # macOS .dmg (must be built on a Mac / CI)
+```
+
+Releases are built by GitHub Actions: push a tag like `v0.1.0` and the
+[Release workflow](.github/workflows/release.yml) builds every platform and publishes a release.

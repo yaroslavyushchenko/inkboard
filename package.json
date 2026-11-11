@@ -4,6 +4,16 @@
   "version": "0.1.0",
   "description": "Free infinite whiteboard for pen tablets",
   "license": "GPL-3.0-or-later",
+  "author": {
+    "name": "Yaroslav Yushchenko",
+    "email": "contact@yaroslavyushchenko.com"
+  },
+  "homepage": "https://github.com/yaroslavyushchenko/inkboard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yaroslavyushchenko/inkboard.git"
+  },
+  "desktopName": "inkboard.desktop",
   "main": "./out/main/index.js",
   "private": true,
   "scripts": {
@@ -11,7 +21,21 @@
     "dev:x11": "electron-vite dev -- --ozone-platform=x11",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dist": "npm run build && electron-builder",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac"
+  },
+  "allowScripts": {
+    "electron@45.3.0": true,
+    "electron-winstaller": false
+  },
+  "dependencies": {
+    "perfect-freehand": "^1.2.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
@@ -19,14 +43,9 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
     "electron": "^45.3.0",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.8"
-  },
-  "dependencies": {
-    "perfect-freehand": "^1.2.3",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "zustand": "^5.1.0"
   }
 }

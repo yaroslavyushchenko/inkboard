@@ -1,0 +1,48 @@
+appId: app.inkboard.desktop
+productName: Inkboard
+copyright: Copyright © 2026 Yaroslav Yushchenko and contributors
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**
+  - package.json
+asar: true
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+fileAssociations:
+  - ext: inkboard
+    name: Inkboard board
+    description: Inkboard whiteboard
+    mimeType: application/x-inkboard
+    role: Editor
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  artifactName: ${productName}-Setup-${version}-${arch}.${ext}
+
+mac:
+  category: public.app-category.education
+  target:
+    - target: dmg
+      arch: [universal]
+  # No Apple Developer certificate yet: ad-hoc signature so Apple Silicon Macs can run it.
+  identity: '-'
+  hardenedRuntime: false
+  gatekeeperAssess: false
+
+linux:
+  target: [AppImage, deb]
+  syncDesktopName: true
+  category: Education
+  maintainer: Yaroslav Yushchenko <contact@yaroslavyushchenko.com>
+  synopsis: Infinite whiteboard for pen tablets
+
+publish: null
