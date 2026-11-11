@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react'
 import type { BackgroundKind } from '../engine/types'
+import { editor } from '../editor'
 import { LANGUAGES, useT, type Lang, type MessageKey } from '../i18n'
+import { platform } from '../platform'
 import { useUI } from '../store'
 import { PaperIcon } from './icons'
 import { Popover } from './Popover'
@@ -33,6 +35,7 @@ function Preview({ kind }: { kind: BackgroundKind }) {
 /** Top-right board settings: paper background and UI language. */
 export function BackgroundPicker() {
   const { background, lang, setBackground, setLang } = useUI()
+  const backupDir = useUI((s) => s.library.backupDir)
   const t = useT()
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
@@ -64,6 +67,25 @@ export function BackgroundPicker() {
               </button>
             ))}
           </div>
+          {platform.capabilities.backup && (
+            <>
+              <div className="popover-title section">{t('settings.backup')}</div>
+              <p className="settings-hint">{t('settings.backupHint')}</p>
+              <div className="backup-row">
+                <span className="backup-path" title={backupDir ?? undefined}>
+                  {backupDir ?? t('settings.backupOff')}
+                </span>
+                <button className="text-btn outline" onClick={() => void editor.chooseBackupDir()}>
+                  {t(backupDir ? 'settings.backupChange' : 'settings.backupChoose')}
+                </button>
+                {backupDir && (
+                  <button className="text-btn" onClick={() => void editor.disableBackup()}>
+                    {t('settings.backupDisable')}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </Popover>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { LibraryState } from '../../shared/library'
 import type { BackgroundKind, Camera } from './engine/types'
 import { detectLanguage, type Lang } from './i18n'
 
@@ -34,9 +35,13 @@ interface UIState {
   canUndo: boolean
   canRedo: boolean
   selectedIds: string[]
-  /** File name of the open board, or null for an unsaved one. */
-  fileName: string | null
-  dirty: boolean
+  /** Which screen is shown: the board or the home screen with all boards. */
+  view: 'board' | 'home'
+  /** The open board. */
+  board: { id: string; title: string; kind: 'draft' | 'file'; filePath?: string } | null
+  saveStatus: 'saved' | 'pending' | 'saving' | 'error'
+  library: LibraryState
+  historyOpen: boolean
   setTool: (tool: Tool) => void
   selectPen: (index: number) => void
   updatePen: (index: number, patch: Partial<InkSlot>) => void
@@ -64,8 +69,11 @@ export const useUI = create<UIState>()(
       canUndo: false,
       canRedo: false,
       selectedIds: [],
-      fileName: null,
-      dirty: false,
+      view: 'board',
+      board: null,
+      saveStatus: 'saved',
+      library: { boards: [], tags: [], lastOpenedId: null, backupDir: null },
+      historyOpen: false,
       setTool: (tool) => set({ tool }),
       selectPen: (index) => set({ tool: 'pen', activePen: index }),
       updatePen: (index, patch) =>

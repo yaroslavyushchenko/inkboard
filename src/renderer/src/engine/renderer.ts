@@ -89,24 +89,7 @@ export class BoardRenderer {
     this.applyCamera(ctx, cam)
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
-    const view = viewportBBox(cam, this.width, this.height)
-    for (const item of items) {
-      const moving = preview?.ids.has(item.id) ? preview.t : null
-      if (!bboxIntersects(moving ? xformBBox(item.bbox, moving) : item.bbox, view)) continue
-      if (moving) {
-        ctx.save()
-        ctx.translate(moving.ax + moving.dx, moving.ay + moving.dy)
-        ctx.scale(moving.s, moving.s)
-        ctx.translate(-moving.ax, -moving.ay)
-      }
-      if (item.type === 'stroke') {
-        fillInk(ctx, strokePath(item), item.color, item.tool)
-      } else {
-        const img = getImage(item.src)
-        if (img.complete && img.naturalWidth > 0) ctx.drawImage(img, item.x, item.y, item.w, item.h)
-      }
-      if (moving) ctx.restore()
-    }
+    drawItems(ctx, items, viewportBBox(cam, this.width, this.height), preview)
   }
 
   renderOverlay(live: LiveStroke | null, cursor: CursorState | null, cam: Camera, sel: SelectionOverlay): void {
@@ -191,6 +174,36 @@ export class BoardRenderer {
         ctx.stroke()
       }
     }
+  }
+}
+
+/**
+ * Draw board items (in world coordinates; the caller sets the camera transform) that intersect `view`.
+ * Shared by the live board, thumbnails and PNG export.
+ */
+export function drawItems(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  items: readonly Item[],
+  view: BBox,
+  preview: Preview | null = null
+): void {
+  const c = ctx as CanvasRenderingContext2D
+  for (const item of items) {
+    const moving = preview?.ids.has(item.id) ? preview.t : null
+    if (!bboxIntersects(moving ? xformBBox(item.bbox, moving) : item.bbox, view)) continue
+    if (moving) {
+      c.save()
+      c.translate(moving.ax + moving.dx, moving.ay + moving.dy)
+      c.scale(moving.s, moving.s)
+      c.translate(-moving.ax, -moving.ay)
+    }
+    if (item.type === 'stroke') {
+      fillInk(c, strokePath(item), item.color, item.tool)
+    } else {
+      const img = getImage(item.src)
+      if (img.complete && img.naturalWidth > 0) c.drawImage(img, item.x, item.y, item.w, item.h)
+    }
+    if (moving) c.restore()
   }
 }
 

@@ -1,51 +1,129 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { editor } from '../editor'
 import { useT } from '../i18n'
+import { platform } from '../platform'
 import { useUI } from '../store'
-import { MenuIcon } from './icons'
+import { AlertIcon, CheckIcon, HomeIcon, MenuIcon } from './icons'
 import { Popover } from './Popover'
 
-/** Top-left: menu button with file actions, plus the board name. */
+/** Inline-editable board title. */
+function BoardTitle() {
+  const t = useT()
+  const board = useUI((s) => s.board)
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState('')
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (editing) input.current?.select()
+  }, [editing])
+  if (!board) return null
+  const commit = (): void => {
+    setEditing(false)
+    if (value.trim() && value.trim() !== board.title) void editor.renameBoard(board.id, value.trim())
+  }
+  return editing ? (
+    <input
+      ref={input}
+      className="board-name-input"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commit()
+        if (e.key === 'Escape') setEditing(false)
+      }}
+    />
+  ) : (
+    <button
+      className="board-name"
+      title={t('menu.rename')}
+      onClick={() => {
+        setValue(board.title)
+        setEditing(true)
+      }}
+    >
+      {board.title}
+    </button>
+  )
+}
+
+function SaveStatus() {
+  const t = useT()
+  const status = useUI((s) => s.saveStatus)
+  const board = useUI((s) => s.board)
+  if (!board) return null
+  const where = board.kind === 'file' && board.filePath ? t('save.inFile', { path: board.filePath }) : t('save.inApp')
+  if (status === 'error') {
+    return (
+      <span className="save-status error" title={t('save.error')}>
+        <AlertIcon width={16} height={16} />
+      </span>
+    )
+  }
+  const busy = status === 'saving' || status === 'pending'
+  return (
+    <span className={`save-status ${busy ? 'busy' : ''}`} title={`${busy ? t('save.saving') : t('save.saved')} — ${where}`}>
+      {busy ? <span className="save-spinner" /> : <CheckIcon width={16} height={16} />}
+    </span>
+  )
+}
+
+/** Top-left: all-boards button, menu, editable board name and save status. */
 export function MainMenu() {
   const t = useT()
-  const fileName = useUI((s) => s.fileName)
-  const dirty = useUI((s) => s.dirty)
+  const board = useUI((s) => s.board)
+  const hasSelection = useUI((s) => s.selectedIds.length > 0)
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const run = (fn: () => unknown) => () => {
     setOpen(false)
     void fn()
   }
-  const name = (fileName ?? t('file.untitled')).replace(/\.inkboard$/i, '')
   return (
     <div className="main-menu">
       <div className="panel main-menu-bar">
+        <button className="icon-btn" title={`${t('menu.home')} (Ctrl+H)`} onClick={() => void editor.goHome()}>
+          <HomeIcon />
+        </button>
         <button data-popover-anchor className="icon-btn" title={t('menu.title')} onClick={() => setOpen((o) => !o)}>
           <MenuIcon />
         </button>
-        <span className="board-name" title={dirty ? t('file.unsaved') : undefined}>
-          {name}
-          {dirty && <span className="dirty-dot" />}
-        </span>
+        <BoardTitle />
+        <SaveStatus />
       </div>
       {open && (
         <Popover onClose={close} className="menu-popover">
           <button className="menu-item" onClick={run(() => editor.newBoard())}>
-            <span>{t('file.new')}</span>
+            <span>{t('menu.newBoard')}</span>
             <kbd>Ctrl+N</kbd>
           </button>
-          <button className="menu-item" onClick={run(() => editor.open())}>
-            <span>{t('file.open')}</span>
+          <button className="menu-item" onClick={run(() => editor.goHome())}>
+            <span>{t('menu.home')}</span>
+            <kbd>Ctrl+H</kbd>
+          </button>
+          <button className="menu-item" onClick={run(() => editor.openFile())}>
+            <span>{t('menu.openFile')}</span>
             <kbd>Ctrl+O</kbd>
           </button>
           <div className="menu-sep" />
-          <button className="menu-item" onClick={run(() => editor.save())}>
-            <span>{t('file.save')}</span>
-            <kbd>Ctrl+S</kbd>
-          </button>
-          <button className="menu-item" onClick={run(() => editor.save(true))}>
-            <span>{t('file.saveAs')}</span>
+          <button className="menu-item" onClick={run(() => editor.saveAsFile())}>
+            <span>{t('menu.saveAsFile')}</span>
             <kbd>Ctrl+Shift+S</kbd>
+          </button>
+          {board?.kind === 'file' && platform.capabilities.showInFolder && (
+            <button className="menu-item" onClick={run(() => platform.library.showInFolder(board.id))}>
+              <span>{t('menu.showInFolder')}</span>
+            </button>
+          )}
+          <button className="menu-item" onClick={run(() => useUI.setState({ historyOpen: true }))}>
+            <span>{t('menu.history')}</span>
+          </button>
+          <div className="menu-sep" />
+          <button className="menu-item" onClick={run(() => editor.exportBoard('png'))}>
+            <span>{t(hasSelection ? 'menu.exportSelPng' : 'menu.exportPng')}</span>
+          </button>
+          <button className="menu-item" onClick={run(() => editor.exportBoard('pdf'))}>
+            <span>{t(hasSelection ? 'menu.exportSelPdf' : 'menu.exportPdf')}</span>
           </button>
         </Popover>
       )}

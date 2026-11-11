@@ -1,16 +1,30 @@
+import type { BoardEntry } from '../../shared/library'
 import { clampZoom, screenToWorld, zoomAt } from './engine/camera'
+import { renderPng, renderSvg, renderThumbnail } from './engine/export'
 import { newId } from './engine/geometry'
 import { loadImage, readFileAsDataURL } from './engine/images'
 import { Scene } from './engine/scene'
-import { decodeBoard, encodeBoard, serializeBoard, deserializeBoard, type BoardFile } from './engine/serialize'
+import {
+  decodeBoard,
+  deserializeBoard,
+  encodeBoard,
+  serializeBoard,
+  type BoardData,
+  type BoardFile
+} from './engine/serialize'
 import { applyXform, unionBBox, type Xform } from './engine/transform'
 import type { BBox, Camera, ImageItem, Item } from './engine/types'
-import { translate } from './i18n'
+import { translate, type MessageKey } from './i18n'
 import { platform } from './platform'
 import { useUI } from './store'
 
 const CLIPBOARD_MIME = 'application/x-inkboard'
-const AUTOSAVE_DELAY_MS = 1500
+/** Autosave: wait for a 1 s pause in editing, but never longer than 5 s after the first unsaved change. */
+const SAVE_DEBOUNCE_MS = 1000
+const SAVE_MAX_WAIT_MS = 5000
+/** Thumbnails are re-rendered at most this often while editing (always on leaving a board). */
+const THUMB_INTERVAL_MS = 10_000
+const DEFAULT_CAMERA: Camera = { x: -80, y: -80, zoom: 1 }
 
 /**
  * Glue between the imperative board engine and the React UI.
@@ -18,17 +32,22 @@ const AUTOSAVE_DELAY_MS = 1500
  */
 class Editor {
   readonly scene = new Scene()
-  camera: Camera = { x: -80, y: -80, zoom: 1 }
+  camera: Camera = { ...DEFAULT_CAMERA }
   viewport = { width: 0, height: 0 }
   /** Live move/scale of the selection, drawn without touching the scene until committed. */
   preview: { ids: ReadonlySet<string>; t: Xform } | null = null
 
   private invalidate: (base?: boolean) => void = () => {}
-  private filePath: string | null = null
-  private savedVersion = 0
-  private backgroundDirty = false
-  private autosaveTimer: ReturnType<typeof setTimeout> | null = null
+  /** False while a board is being loaded, so loading doesn't count as an edit. */
   private ready = false
+  // Change tracking for autosave.
+  private metaVersion = 0
+  private saved = { version: -1, meta: -1, camera: DEFAULT_CAMERA }
+  private thumbVersion = -1
+  private lastThumbAt = 0
+  private firstPendingAt: number | null = null
+  private saveTimer: ReturnType<typeof setTimeout> | null = null
+  private saving: Promise<void> | null = null
 
   constructor() {
     this.scene.subscribe(() => {
@@ -45,15 +64,14 @@ class Editor {
     })
     useUI.subscribe((s, prev) => {
       if (s.background !== prev.background) {
-        this.backgroundDirty = true
+        this.metaVersion++
         this.markChanged()
         this.invalidate(true)
       } else if (s.selectedIds !== prev.selectedIds || s.tool !== prev.tool) {
         this.invalidate(false)
       }
-      if (s.lang !== prev.lang || s.fileName !== prev.fileName || s.dirty !== prev.dirty) this.updateTitle()
+      if (s.lang !== prev.lang || s.board !== prev.board || s.view !== prev.view) this.updateTitle()
     })
-    platform.onBeforeClose(() => this.writeRecovery())
   }
 
   attach(invalidate: (base?: boolean) => void): () => void {
@@ -67,7 +85,7 @@ class Editor {
     this.invalidate(base)
   }
 
-  t(key: Parameters<typeof translate>[1]): string {
+  t(key: MessageKey): string {
     return translate(useUI.getState().lang, key)
   }
 
@@ -264,115 +282,280 @@ class Editor {
     }
   }
 
-  // ---------------------------------------------------------------- files
+  // ---------------------------------------------------------------- autosave
 
-  private boardData(): { items: Item[]; background: ReturnType<typeof useUI.getState>['background']; camera: Camera } {
+  private boardData(): BoardData {
     return { items: [...this.scene.getItems()], background: useUI.getState().background, camera: this.camera }
   }
 
-  private isDirty(): boolean {
-    return this.scene.version !== this.savedVersion || this.backgroundDirty
+  private hasChanges(): boolean {
+    return this.scene.version !== this.saved.version || this.metaVersion !== this.saved.meta
+  }
+
+  private cameraChanged(): boolean {
+    const a = this.camera
+    const b = this.saved.camera
+    return a.x !== b.x || a.y !== b.y || a.zoom !== b.zoom
   }
 
   private markChanged(): void {
-    if (!this.ready) return
-    const dirty = this.isDirty()
-    if (useUI.getState().dirty !== dirty) useUI.setState({ dirty })
-    if (this.autosaveTimer) clearTimeout(this.autosaveTimer)
-    this.autosaveTimer = setTimeout(() => void this.writeRecovery(), AUTOSAVE_DELAY_MS)
+    if (!this.ready || !useUI.getState().board || !this.hasChanges()) return
+    if (useUI.getState().saveStatus !== 'saving') useUI.setState({ saveStatus: 'pending' })
+    this.scheduleSave()
   }
 
-  private markSaved(path: string | null, name: string | null): void {
-    this.filePath = path
-    this.savedVersion = this.scene.version
-    this.backgroundDirty = false
-    useUI.setState({ fileName: name, dirty: false })
+  private scheduleSave(): void {
+    const now = Date.now()
+    if (this.firstPendingAt === null) this.firstPendingAt = now
+    if (this.saveTimer) clearTimeout(this.saveTimer)
+    const wait = Math.max(0, Math.min(SAVE_DEBOUNCE_MS, this.firstPendingAt + SAVE_MAX_WAIT_MS - now))
+    this.saveTimer = setTimeout(() => void this.flush(), wait)
+  }
+
+  /**
+   * Write the open board now. `final` = leaving the board (switch, home, close, sleep):
+   * also refresh the thumbnail and remember the view position.
+   */
+  async flush(final = false): Promise<void> {
+    if (this.saveTimer) clearTimeout(this.saveTimer)
+    this.saveTimer = null
+    this.firstPendingAt = null
+    while (this.saving) await this.saving
+    const board = useUI.getState().board
+    if (!board || !this.ready) return
+    const thumbStale = this.scene.version !== this.thumbVersion || this.metaVersion !== this.saved.meta
+    const needed = this.hasChanges() || (final && (this.cameraChanged() || thumbStale))
+    if (!needed) {
+      if (useUI.getState().saveStatus === 'pending') useUI.setState({ saveStatus: 'saved' })
+      return
+    }
+    const version = this.scene.version
+    const meta = this.metaVersion
+    const camera = this.camera
+    const data = this.boardData()
+    useUI.setState({ saveStatus: 'saving' })
+    this.saving = (async () => {
+      try {
+        const bytes = await encodeBoard(data)
+        const wantThumb = thumbStale && (final || Date.now() - this.lastThumbAt > THUMB_INTERVAL_MS)
+        const thumb = wantThumb ? await renderThumbnail(data.items, data.background) : null
+        const r = await platform.library.save(board.id, bytes, thumb)
+        this.saved = { version, meta, camera }
+        if (thumb) {
+          this.thumbVersion = version
+          this.lastThumbAt = Date.now()
+        }
+        if (useUI.getState().board?.id === board.id) {
+          useUI.setState({ saveStatus: r.ok ? 'saved' : 'error' })
+        }
+      } catch (err) {
+        console.error('Autosave failed', err)
+        useUI.setState({ saveStatus: 'error' })
+      }
+    })()
+    await this.saving
+    this.saving = null
+    // Edits made while writing get their own save.
+    if (this.hasChanges()) this.markChanged()
   }
 
   private updateTitle(): void {
-    const { fileName, dirty } = useUI.getState()
-    const name = fileName ?? this.t('file.untitled')
-    platform.setTitle(`${dirty ? '• ' : ''}${name} — Inkboard`)
+    const { board, view } = useUI.getState()
+    const name = view === 'home' || !board ? this.t('home.title') : board.title
+    platform.setTitle(`${name} — Inkboard`)
   }
 
-  /** Autosave the current board so the app reopens exactly where it was left (like Whiteboard). */
-  async writeRecovery(): Promise<void> {
-    if (this.autosaveTimer) clearTimeout(this.autosaveTimer)
-    this.autosaveTimer = null
-    if (!this.ready) return
-    const bytes = await encodeBoard(this.boardData())
-    const { fileName, dirty } = useUI.getState()
-    await platform.writeRecovery(bytes, { filePath: this.filePath, fileName, dirty })
+  // ---------------------------------------------------------------- boards
+
+  async refreshLibrary(): Promise<void> {
+    useUI.setState({ library: await platform.library.list() })
   }
 
-  private loadBoard(data: Awaited<ReturnType<typeof decodeBoard>>): void {
+  /** Called once on startup: open the board the app was launched with, or the last one. */
+  private started = false
+  async start(): Promise<void> {
+    // Guard against double start (React StrictMode runs effects twice in development).
+    if (this.started) return
+    this.started = true
+    platform.onOpenBoard((id) => void this.refreshLibrary().then(() => this.openBoard(id)))
+    platform.onFlushRequest(() => this.flush(true))
+    platform.onBeforeClose(() => this.flush(true))
+    await this.refreshLibrary()
+    const lib = useUI.getState().library
+    const live = lib.boards.filter((b) => !b.deletedAt)
+    const pending = await platform.library.takePendingOpen()
+    if (pending) await this.refreshLibrary()
+    const last = live.find((b) => b.id === lib.lastOpenedId)
+    const recent = [...live].sort((a, b) => b.openedAt - a.openedAt)[0]
+    const target = pending ?? last?.id ?? recent?.id
+    if (target && (await this.openBoard(target))) return
+    await this.newBoard()
+  }
+
+  private loadData(data: BoardData): void {
     this.preview = null
     useUI.setState({ selectedIds: [], background: data.background })
     this.scene.load(data.items)
     this.setCamera(data.camera)
   }
 
-  /** Restore the autosaved board on startup. */
-  async restore(): Promise<void> {
-    try {
-      const rec = await platform.readRecovery()
-      if (rec) {
-        this.loadBoard(await decodeBoard(rec.bytes))
-        this.markSaved(rec.meta.filePath, rec.meta.fileName)
-        // Keep the "unsaved" marker if the board had unsaved edits when the app was closed.
-        if (rec.meta.dirty) this.backgroundDirty = true
-      }
-    } catch (err) {
-      console.error('Could not restore the last board', err)
+  /** Open a board from the library. Returns false if it couldn't be loaded. */
+  async openBoard(id: string): Promise<boolean> {
+    await this.flush(true)
+    let entry = useUI.getState().library.boards.find((b) => b.id === id)
+    if (!entry) {
+      await this.refreshLibrary()
+      entry = useUI.getState().library.boards.find((b) => b.id === id)
+      if (!entry) return false
     }
+    let data: BoardData
+    try {
+      data = await decodeBoard(await platform.library.load(id))
+    } catch (err) {
+      console.error('Could not open board', err)
+      window.alert(`${this.t('file.openError')}\n${entry.title}`)
+      return false
+    }
+    this.ready = false
+    this.loadData(data)
+    this.saved = { version: this.scene.version, meta: this.metaVersion, camera: this.camera }
+    this.thumbVersion = this.scene.version
+    this.lastThumbAt = 0
+    useUI.setState({
+      board: { id: entry.id, title: entry.title, kind: entry.kind, filePath: entry.filePath },
+      view: 'board',
+      saveStatus: 'saved',
+      historyOpen: false
+    })
     this.ready = true
-    useUI.setState({ dirty: this.isDirty() })
-    this.updateTitle()
+    await platform.library.setLastOpened(id)
+    void this.refreshLibrary()
+    return true
   }
 
-  /** If there are unsaved edits, ask Save / Don't save / Cancel. Returns false if cancelled. */
-  private async confirmLoseChanges(): Promise<boolean> {
-    if (!this.isDirty() || this.scene.getItems().length === 0) return true
-    const answer = await platform.confirmDiscard({
-      message: this.t('file.unsavedPrompt'),
-      save: this.t('file.save'),
-      dontSave: this.t('file.dontSave'),
-      cancel: this.t('file.cancel')
+  /** "Board — 11 Nov 2026, 18:30" in the UI language. */
+  private newBoardTitle(): string {
+    const lang = useUI.getState().lang
+    const when = new Date().toLocaleString(lang === 'uk' ? 'uk-UA' : 'en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     })
-    if (answer === 'cancel') return false
-    if (answer === 'save') return this.save()
-    return true
+    return `${this.t('board.defaultName')} — ${when}`
   }
 
   async newBoard(): Promise<void> {
-    if (!(await this.confirmLoseChanges())) return
-    this.loadBoard({ items: [], background: useUI.getState().background, camera: { x: -80, y: -80, zoom: 1 } })
-    this.markSaved(null, null)
-    void this.writeRecovery()
+    await this.flush(true)
+    const bytes = await encodeBoard({ items: [], background: useUI.getState().background, camera: DEFAULT_CAMERA })
+    const entry = await platform.library.create(this.newBoardTitle(), bytes)
+    await this.refreshLibrary()
+    await this.openBoard(entry.id)
   }
 
-  async open(): Promise<void> {
-    if (!(await this.confirmLoseChanges())) return
-    const file = await platform.openFile()
-    if (!file) return
+  async goHome(): Promise<void> {
+    this.clearSelection()
+    await this.flush(true)
+    await this.refreshLibrary()
+    useUI.setState({ view: 'home', historyOpen: false })
+  }
+
+  async renameBoard(id: string, title: string): Promise<void> {
+    const entry = await platform.library.rename(id, title)
+    const b = useUI.getState().board
+    if (b?.id === id) useUI.setState({ board: { ...b, title: entry.title, filePath: entry.filePath } })
+    await this.refreshLibrary()
+  }
+
+  async deleteBoard(id: string): Promise<void> {
+    const wasOpen = useUI.getState().board?.id === id
+    if (wasOpen) await this.flush(true)
+    await platform.library.remove(id)
+    if (wasOpen) useUI.setState({ board: null })
+    await this.refreshLibrary()
+  }
+
+  /** Ctrl+S: drafts get a "Save as file" dialog; file-backed boards are written immediately. */
+  async save(): Promise<void> {
+    const b = useUI.getState().board
+    if (!b) return
+    if (b.kind === 'draft') await this.saveAsFile()
+    else await this.flush(true)
+  }
+
+  async saveAsFile(): Promise<void> {
+    const b = useUI.getState().board
+    if (!b) return
+    await this.flush(true)
+    const entry = await platform.library.saveAsFile(b.id, await encodeBoard(this.boardData()), b.title)
+    if (!entry) return
+    useUI.setState({ board: { id: entry.id, title: entry.title, kind: entry.kind, filePath: entry.filePath } })
+    await this.refreshLibrary()
+  }
+
+  async openFile(): Promise<void> {
+    const entry = await platform.library.importFile()
+    if (!entry) return
+    await this.refreshLibrary()
+    await this.openBoard(entry.id)
+  }
+
+  /** Restore a version-history snapshot. The current state is snapshotted first and Ctrl+Z undoes it. */
+  async restoreVersion(ts: number): Promise<void> {
+    const b = useUI.getState().board
+    if (!b) return
+    await this.flush(true)
+    await platform.library.snapshot(b.id, await encodeBoard(this.boardData()))
+    const data = await decodeBoard(await platform.library.loadVersion(b.id, ts))
+    this.clearSelection()
+    this.scene.replace([...this.scene.getItems()], data.items)
+    useUI.setState({ background: data.background })
+  }
+
+  // ---------------------------------------------------------------- export & backup
+
+  /** Export the selection if there is one, otherwise the whole board. */
+  async exportBoard(kind: 'png' | 'pdf'): Promise<void> {
+    const sel = this.selectedItems()
+    const items = sel.length ? sel : [...this.scene.getItems()]
+    const bg = useUI.getState().background
+    const title = useUI.getState().board?.title ?? 'Inkboard'
     try {
-      this.loadBoard(await decodeBoard(file.bytes))
-      this.markSaved(file.path, file.name)
-      void this.writeRecovery()
+      if (kind === 'png') {
+        const png = await renderPng(items, bg)
+        await platform.exportFile('png', png.bytes, title, png.width, png.height)
+      } else {
+        const { svg, width, height } = renderSvg(items, bg)
+        await platform.exportFile('pdf', svg, title, width, height)
+      }
     } catch (err) {
-      window.alert(`${this.t('file.openError')}\n${(err as Error).message}`)
+      console.error('Export failed', err)
+      window.alert(this.t('export.error'))
     }
   }
 
-  /** Save to the current file (or ask for a path). Returns true if saved. */
-  async save(saveAs = false): Promise<boolean> {
-    const bytes = await encodeBoard(this.boardData())
-    const suggested = useUI.getState().fileName ?? `${this.t('file.untitled')}.inkboard`
-    const result = await platform.saveFile(bytes, saveAs ? null : this.filePath, suggested)
-    if (!result) return false
-    this.markSaved(result.path, result.name)
-    void this.writeRecovery()
-    return true
+  async chooseBackupDir(): Promise<void> {
+    await this.flush(true)
+    await platform.chooseBackupDir()
+    await this.refreshLibrary()
+  }
+
+  async disableBackup(): Promise<void> {
+    await platform.disableBackup()
+    await this.refreshLibrary()
+  }
+
+  /** Thumbnail bytes → object URL, cached per board + modification time. */
+  private thumbUrls = new Map<string, { key: number; url: string | null }>()
+  async thumbUrl(entry: BoardEntry): Promise<string | null> {
+    const cached = this.thumbUrls.get(entry.id)
+    if (cached && cached.key === entry.updatedAt) return cached.url
+    const bytes = await platform.library.thumb(entry.id)
+    if (cached?.url) URL.revokeObjectURL(cached.url)
+    const url = bytes ? URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/webp' })) : null
+    this.thumbUrls.set(entry.id, { key: entry.updatedAt, url })
+    return url
   }
 }
 

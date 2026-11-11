@@ -1,78 +1,163 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron'
-import { readFile, rename, rm, writeFile } from 'node:fs/promises'
-import { basename, join } from 'node:path'
+import { app, BrowserWindow, dialog, ipcMain, Menu, powerMonitor, shell } from 'electron'
+import { existsSync } from 'node:fs'
+import { rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import type { ExportKind } from '../shared/library'
+import { safeFileName, writeDurable } from './fsutil'
+import { Library } from './library'
 
 const FILE_FILTERS = [{ name: 'Inkboard', extensions: ['inkboard'] }]
-const recoveryFile = (): string => join(app.getPath('userData'), 'recovery.inkboard')
-const recoveryMetaFile = (): string => join(app.getPath('userData'), 'recovery.json')
 
-/** Write via a temp file + rename so a crash mid-write never corrupts an existing board. */
-async function writeAtomic(path: string, data: Uint8Array | string): Promise<void> {
-  const tmp = `${path}.tmp-${process.pid}`
-  await writeFile(tmp, data)
-  await rename(tmp, path)
+// Separate profile for automated tests / portable setups.
+if (process.env['INKBOARD_USER_DATA']) app.setPath('userData', process.env['INKBOARD_USER_DATA'])
+
+let mainWindow: BrowserWindow | null = null
+let library: Library
+/** Board files passed on the command line / via "Open with" before the window was ready. */
+const pendingPaths: string[] = []
+
+const boardArg = (argv: string[]): string | undefined =>
+  argv.find((a) => a.toLowerCase().endsWith('.inkboard') && existsSync(a))
+
+// One app instance: opening a .inkboard file while Inkboard runs focuses the existing window.
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+} else {
+  app.on('second-instance', (_e, argv) => {
+    const path = boardArg(argv)
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+    if (path) void openPathInApp(path)
+  })
+}
+
+// macOS delivers files via an event (also before `ready`).
+app.on('open-file', (e, path) => {
+  e.preventDefault()
+  if (mainWindow && library) void openPathInApp(path)
+  else pendingPaths.push(path)
+})
+
+async function openPathInApp(path: string): Promise<void> {
+  try {
+    const entry = await library.importFile(path)
+    mainWindow?.webContents.send('library:open', entry.id)
+  } catch (err) {
+    dialog.showErrorBox('Inkboard', `Could not open ${path}\n${(err as Error).message}`)
+  }
+}
+
+function winOf(e: Electron.IpcMainInvokeEvent): BrowserWindow {
+  return BrowserWindow.fromWebContents(e.sender)!
+}
+
+async function askSavePath(e: Electron.IpcMainInvokeEvent, suggestedName: string, ext: string, filterName: string): Promise<string | null> {
+  const r = await dialog.showSaveDialog(winOf(e), {
+    defaultPath: join(app.getPath('documents'), `${safeFileName(suggestedName)}.${ext}`),
+    filters: [{ name: filterName, extensions: [ext] }]
+  })
+  if (r.canceled || !r.filePath) return null
+  return r.filePath.toLowerCase().endsWith(`.${ext}`) ? r.filePath : `${r.filePath}.${ext}`
+}
+
+/** Vector PDF: print the board's SVG from a hidden window at exactly the drawing's size. */
+async function svgToPdf(svg: string, width: number, height: number): Promise<Uint8Array> {
+  const html = `<!doctype html><meta charset="utf-8"><style>@page{size:${width}px ${height}px;margin:0}html,body{margin:0;padding:0}svg{display:block}</style>${svg}`
+  const tmp = join(tmpdir(), `inkboard-export-${process.pid}-${Date.now()}.html`)
+  await writeFile(tmp, html)
+  const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } })
+  try {
+    await win.loadFile(tmp)
+    const pdf = await win.webContents.printToPDF({
+      pageSize: { width: width / 96, height: height / 96 },
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+      printBackground: true,
+      preferCSSPageSize: true
+    })
+    return new Uint8Array(pdf)
+  } finally {
+    win.destroy()
+    await rm(tmp, { force: true })
+  }
 }
 
 function registerIpc(): void {
-  ipcMain.handle('file:save', async (e, bytes: Uint8Array, path: string | null, suggestedName: string) => {
-    let target = path
-    if (!target) {
-      const win = BrowserWindow.fromWebContents(e.sender)!
-      const r = await dialog.showSaveDialog(win, {
-        defaultPath: join(app.getPath('documents'), suggestedName),
-        filters: FILE_FILTERS
-      })
-      if (r.canceled || !r.filePath) return null
-      target = r.filePath.toLowerCase().endsWith('.inkboard') ? r.filePath : `${r.filePath}.inkboard`
-    }
-    await writeAtomic(target, bytes)
-    app.addRecentDocument(target)
-    return { path: target, name: basename(target) }
-  })
+  const h = ipcMain.handle.bind(ipcMain)
 
-  ipcMain.handle('file:open', async (e) => {
-    const win = BrowserWindow.fromWebContents(e.sender)!
-    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: FILE_FILTERS })
-    if (r.canceled || !r.filePaths[0]) return null
-    const path = r.filePaths[0]
+  h('library:list', () => library.list())
+  h('library:thumb', (_e, id: string) => library.thumb(id))
+  h('library:create', (_e, title: string, bytes: Uint8Array) => library.create(title, bytes))
+  h('library:load', (_e, id: string) => library.load(id))
+  h('library:save', (_e, id: string, bytes: Uint8Array, thumb: Uint8Array | null) => library.save(id, bytes, thumb))
+  h('library:set-last-opened', (_e, id: string) => library.setLastOpened(id))
+  h('library:rename', (_e, id: string, title: string) => library.rename(id, title))
+  h('library:duplicate', (_e, id: string) => library.duplicate(id))
+  h('library:pin', (_e, id: string, on: boolean) => library.pin(id, on))
+  h('library:set-tags', (_e, id: string, tagIds: string[]) => library.setTags(id, tagIds))
+  h('library:create-tag', (_e, name: string, color: string) => library.createTag(name, color))
+  h('library:update-tag', (_e, id: string, patch: { name?: string; color?: string }) => library.updateTag(id, patch))
+  h('library:delete-tag', (_e, id: string) => library.deleteTag(id))
+  h('library:remove', (_e, id: string) => library.remove(id))
+  h('library:restore', (_e, id: string) => library.restore(id))
+  h('library:purge', (_e, id: string) => library.purge(id))
+  h('library:list-versions', (_e, id: string) => library.listVersions(id))
+  h('library:load-version', (_e, id: string, ts: number) => library.loadVersion(id, ts))
+  h('library:snapshot', (_e, id: string, bytes: Uint8Array) => library.snapshotNow(id, bytes))
+
+  h('library:save-as-file', async (e, id: string, bytes: Uint8Array, suggestedName: string) => {
+    const path = await askSavePath(e, suggestedName, 'inkboard', 'Inkboard')
+    if (!path) return null
+    const entry = await library.saveAsFile(id, path, bytes)
     app.addRecentDocument(path)
-    return { path, name: basename(path), bytes: new Uint8Array(await readFile(path)) }
+    return entry
   })
 
-  ipcMain.handle('recovery:read', async () => {
+  h('library:import-file', async (e) => {
+    const r = await dialog.showOpenDialog(winOf(e), { properties: ['openFile'], filters: FILE_FILTERS })
+    if (r.canceled || !r.filePaths[0]) return null
+    app.addRecentDocument(r.filePaths[0])
+    return library.importFile(r.filePaths[0])
+  })
+
+  h('library:locate', async (e, id: string) => {
+    const r = await dialog.showOpenDialog(winOf(e), { properties: ['openFile'], filters: FILE_FILTERS })
+    if (r.canceled || !r.filePaths[0]) return null
+    return library.locate(id, r.filePaths[0])
+  })
+
+  h('library:show-in-folder', (_e, id: string) => {
+    const p = library.filePath(id)
+    if (p) shell.showItemInFolder(p)
+  })
+
+  h('library:take-pending-open', async () => {
+    const path = pendingPaths.shift()
+    if (!path) return null
     try {
-      const [bytes, meta] = await Promise.all([readFile(recoveryFile()), readFile(recoveryMetaFile(), 'utf8')])
-      return { bytes: new Uint8Array(bytes), meta: JSON.parse(meta) }
+      return (await library.importFile(path)).id
     } catch {
       return null
     }
   })
 
-  ipcMain.handle('recovery:write', async (_e, bytes: Uint8Array, meta: unknown) => {
-    await writeAtomic(recoveryFile(), bytes)
-    await writeAtomic(recoveryMetaFile(), JSON.stringify(meta))
+  h('backup:choose', async (e) => {
+    const r = await dialog.showOpenDialog(winOf(e), { properties: ['openDirectory', 'createDirectory'] })
+    if (r.canceled || !r.filePaths[0]) return library.backupDir
+    await library.setBackupDir(r.filePaths[0])
+    return r.filePaths[0]
   })
+  h('backup:disable', () => library.setBackupDir(null))
 
-  ipcMain.handle('recovery:clear', async () => {
-    await rm(recoveryFile(), { force: true })
-    await rm(recoveryMetaFile(), { force: true })
+  h('export:save', async (e, kind: ExportKind, data: Uint8Array | string, suggestedName: string, width: number, height: number) => {
+    const path = await askSavePath(e, suggestedName, kind, kind.toUpperCase())
+    if (!path) return null
+    const bytes = kind === 'pdf' ? await svgToPdf(data as string, width, height) : (data as Uint8Array)
+    await writeDurable(path, bytes)
+    return path
   })
-
-  ipcMain.handle(
-    'dialog:confirm-discard',
-    async (e, p: { message: string; save: string; dontSave: string; cancel: string }) => {
-      const win = BrowserWindow.fromWebContents(e.sender)!
-      const r = await dialog.showMessageBox(win, {
-        type: 'warning',
-        message: p.message,
-        buttons: [p.save, p.dontSave, p.cancel],
-        defaultId: 0,
-        cancelId: 2,
-        noLink: true
-      })
-      return (['save', 'discard', 'cancel'] as const)[r.response]
-    }
-  )
 
   ipcMain.on('window:title', (e, title: string) => {
     BrowserWindow.fromWebContents(e.sender)?.setTitle(title)
@@ -94,6 +179,10 @@ function createWindow(): void {
       contextIsolation: true,
       sandbox: true
     }
+  })
+  mainWindow = win
+  win.on('closed', () => {
+    if (mainWindow === win) mainWindow = null
   })
 
   win.once('ready-to-show', () => win.show())
@@ -121,8 +210,11 @@ function createWindow(): void {
     }
     ipcMain.on('app:flushed', onFlushed)
     win.webContents.send('app:before-close')
-    setTimeout(done, 3000)
+    setTimeout(done, 4000)
   })
+
+  // Windows logoff/shutdown: save immediately.
+  win.on('session-end', () => win.webContents.send('app:flush'))
 
   // Links open in the system browser, never inside the app.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -139,10 +231,24 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   Menu.setApplicationMenu(null)
+  const userData = app.getPath('userData')
+  const snapshotMs = Number(process.env['INKBOARD_SNAPSHOT_MS']) || undefined
+  library = new Library(join(userData, 'Library'), snapshotMs)
+  await library.init({ bytes: join(userData, 'recovery.inkboard'), meta: join(userData, 'recovery.json') })
+
+  const argPath = boardArg(process.argv)
+  if (argPath) pendingPaths.push(argPath)
+
   registerIpc()
   createWindow()
+
+  // Sleep / shutdown: flush the autosave right away.
+  const flush = (): void => mainWindow?.webContents.send('app:flush')
+  powerMonitor.on('suspend', flush)
+  powerMonitor.on('shutdown', flush)
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

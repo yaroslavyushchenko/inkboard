@@ -67,11 +67,19 @@ in progress and the pen cursor (so drawing never forces a full board redraw).
 - [ ] Settings menu (wheel behaviour, shape-snap delay)
 - [x] Pens, colours, language and background remembered between launches
 
-### Stage 3 — files
+### Stage 3 — files & library (v0.2)
 - [x] Save / open a board (`.inkboard` — gzip JSON, images stored once as assets)
-- [x] Autosave: the app reopens the last board exactly as it was left (like Whiteboard)
-- [ ] Recent boards on a start screen
-- [ ] Export to PNG / SVG / PDF (selection or whole board)
+- [x] Board library with thumbnails: home screen ("All boards"), search, pinned boards, colour tags
+- [x] Drafts live in the app's hidden library folder; explicitly saved files are tracked and
+      **autosaved into the file itself**
+- [x] Power-loss-safe autosave: fsync + atomic rename + `.bak`, saves within ≤5 s even while drawing,
+      flush on close / sleep / shutdown; corrupt file → automatic fallback to `.bak`
+- [x] Version history: snapshot every 10 min of editing (last 20), restore is undoable (Ctrl+Z)
+- [x] Recently deleted (30 days, one-click restore)
+- [x] Open `.inkboard` from the OS (double-click / "Open with"), single app instance
+- [x] Export PNG and vector PDF (whole board or selection)
+- [x] Optional backup folder (USB stick / cloud-synced folder), mirrored automatically
+- [x] Migration of the 0.1 autosave into the library
 
 ### Stage 4 — content
 - [ ] **Hold-to-snap shapes** (like Procreate's QuickShape): draw and keep the pen down ~0.7 s

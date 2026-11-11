@@ -9,6 +9,10 @@ Built for teachers who write and draw with a stylus.
 - Pen hover indicator, palm rejection
 - Paper backgrounds: blank, dots, grid, lines
 - Images: paste, drag & drop, or insert from file
+- Lasso selection: move, scale, duplicate, copy/paste
+- **Never lose work:** every board autosaves within seconds (power-cut safe), with version history
+- Board library with thumbnails, search, pins and colour tags; Recently deleted
+- Export to PNG or vector PDF; optional automatic backup folder
 - English and Ukrainian UI
 
 Status: early development. See [docs/PLAN.md](docs/PLAN.md) for the roadmap.
@@ -39,6 +43,19 @@ npm run build
 | Tools | 1 / 2 / 3 pens, H highlighter, E eraser |
 | Undo / Redo | Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) |
 | Insert image | Ctrl+V, drag a file in, or the toolbar button |
+| Lasso select | V; Del deletes, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy & paste |
+| All boards | Ctrl+H |
+| New board / Open file | Ctrl+N / Ctrl+O |
+| Save as file | Ctrl+S (draft) or Ctrl+Shift+S |
+
+## Where boards are stored
+
+- Boards you never saved as a file live in the app's data folder
+  (`%APPDATA%/Inkboard/Library` on Windows, `~/.config/Inkboard/Library` on Linux,
+  `~/Library/Application Support/Inkboard/Library` on macOS).
+- "Save as file…" turns a board into a normal `.inkboard` file anywhere you like; it keeps
+  autosaving into that file.
+- Every write is crash-safe (temp file + fsync + atomic rename, previous version kept as `.bak`).
 
 ## License
 

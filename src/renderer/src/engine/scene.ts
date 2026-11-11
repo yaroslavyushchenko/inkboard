@@ -107,6 +107,7 @@ export class Scene {
 
   private insert(items: Item[]): void {
     this.items = this.items.concat(items).sort((a, b) => a.z - b.z)
+    for (const i of items) if (i.z >= this.nextZ) this.nextZ = i.z + 1
   }
 
   private delete(items: Item[]): void {

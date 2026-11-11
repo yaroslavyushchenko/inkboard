@@ -430,6 +430,12 @@ export function Board() {
       const ui = useUI.getState()
       const mod = e.ctrlKey || e.metaKey
       const key = e.key.toLowerCase()
+      // App-wide shortcuts (also on the home screen).
+      if (mod && key === 'n') return e.preventDefault(), void editor.newBoard()
+      if (mod && key === 'o') return e.preventDefault(), void editor.openFile()
+      if (ui.view !== 'board') return
+      if (mod && key === 'h') return e.preventDefault(), void editor.goHome()
+      if (mod && key === 's') return e.preventDefault(), void (e.shiftKey ? editor.saveAsFile() : editor.save())
       if (e.code === 'Space') {
         e.preventDefault()
         if (!spaceDown) {
@@ -444,9 +450,6 @@ export function Board() {
       if (mod && (key === '=' || key === '+')) return e.preventDefault(), editor.zoomStep(1)
       if (mod && key === '-') return e.preventDefault(), editor.zoomStep(-1)
       if (mod && key === '0') return e.preventDefault(), editor.resetZoom()
-      if (mod && key === 's') return e.preventDefault(), void editor.save(e.shiftKey)
-      if (mod && key === 'o') return e.preventDefault(), void editor.open()
-      if (mod && key === 'n') return e.preventDefault(), void editor.newBoard()
       if (mod && key === 'a') return e.preventDefault(), editor.selectAll()
       if (mod && key === 'd') return e.preventDefault(), editor.duplicateSelection()
       if (mod) return
@@ -469,7 +472,7 @@ export function Board() {
 
     // ---------- images: paste & drag-and-drop ----------
     const onPaste = (e: ClipboardEvent): void => {
-      if (isTyping(e.target)) return
+      if (isTyping(e.target) || useUI.getState().view !== 'board') return
       if (editor.pasteFromClipboard(e)) e.preventDefault()
     }
     const onCopy = (e: ClipboardEvent): void => {
@@ -486,7 +489,7 @@ export function Board() {
       // Always prevent default, otherwise Electron navigates to the dropped file.
       e.preventDefault()
       const files = [...(e.dataTransfer?.files ?? [])]
-      if (!files.length) return
+      if (!files.length || useUI.getState().view !== 'board') return
       const p = local(e)
       void editor.insertImages(files, p.x, p.y)
     }

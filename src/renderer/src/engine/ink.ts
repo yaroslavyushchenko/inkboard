@@ -44,6 +44,25 @@ function outlineToPath(outline: number[][]): Path2D {
   return path
 }
 
+/** SVG path data of a stroke's filled outline (same geometry as on screen) — for vector export. */
+export function inkOutlineSvg(s: StrokeItem): string {
+  const o = getStroke(s.points as Point[], optionsFor(s, true))
+  const n = o.length
+  if (n === 0) return ''
+  const f = (v: number): string => (Math.round(v * 100) / 100).toString()
+  if (n < 3) {
+    const r = Math.max(s.size / 2, 0.5)
+    return `M${f(o[0][0] - r)},${f(o[0][1])}a${f(r)},${f(r)} 0 1,0 ${f(2 * r)},0a${f(r)},${f(r)} 0 1,0 ${f(-2 * r)},0Z`
+  }
+  let d = `M${f(o[0][0])},${f(o[0][1])}`
+  for (let i = 1; i < n; i++) {
+    const a = o[i]
+    const b = o[(i + 1) % n]
+    d += `Q${f(a[0])},${f(a[1])} ${f((a[0] + b[0]) / 2)},${f((a[1] + b[1]) / 2)}`
+  }
+  return `${d}Z`
+}
+
 export function buildInkPath(points: readonly Point[], style: InkStyle, last: boolean): Path2D {
   return outlineToPath(getStroke(points as Point[], optionsFor(style, last)))
 }

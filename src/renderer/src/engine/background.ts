@@ -2,7 +2,7 @@ import type { BackgroundKind, Camera } from './types'
 
 export const PAPER_COLOR = '#ffffff'
 
-const STYLE = {
+export const BACKGROUND_STYLE = {
   dots: { step: 24, color: '#c4c6cc' },
   grid: { step: 24, color: '#e6e8ee' },
   lines: { step: 32, color: '#dde2ea' }
@@ -31,7 +31,7 @@ export function drawBackground(
   ctx.fillRect(0, 0, width * dpr, height * dpr)
   if (kind === 'blank') return
 
-  const style = STYLE[kind]
+  const style = BACKGROUND_STYLE[kind]
   const step = adaptiveStep(style.step, cam.zoom, kind === 'dots' ? 12 : 10)
   const stepPx = step * cam.zoom * dpr
   // Screen position (device px) of the first pattern line at or before the left/top edge.
