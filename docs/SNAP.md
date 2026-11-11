@@ -45,8 +45,19 @@ also published as a snap.
 
    Then delete the file: `rm snapcraft-credentials.txt`.
 
-5. **Fill in the store listing** at <https://snapcraft.io/inkboard/listing>. electron-builder can not
-   put these into the snap, so they live only on the store page:
+5. **First upload**: either push the next release tag (the workflow uploads it), or upload a local
+   build right away:
+
+   ```bash
+   snapcraft upload --release=stable dist/Inkboard-*-linux-amd64.snap
+   ```
+
+   The first upload of a strictly confined snap is usually published within minutes. If the store
+   holds it for manual review, answer on <https://forum.snapcraft.io> in the thread it links to.
+
+6. **Fill in the store listing** at <https://snapcraft.io/inkboard/listing>. The page exists only
+   after the first upload; until then the name only shows under *Registered snap names*.
+   electron-builder can not put these fields into the snap, so they live only on the store page:
    - **Screenshots**: upload `docs/images/hero.png`, `docs/images/home.png` and
      `docs/images/text-format.png` (up to 5 images).
    - **License**: `GPL-3.0-or-later`.
@@ -57,16 +68,6 @@ also published as a snap.
    - Summary, title, description and the icon come from the snap itself on every upload.
 
    Click *Save*.
-
-6. **First upload**: either push the next release tag (the workflow uploads it), or upload a local
-   build right away:
-
-   ```bash
-   snapcraft upload --release=stable dist/Inkboard-*-linux-amd64.snap
-   ```
-
-   The first upload of a strictly confined snap is usually published within minutes. If the store
-   holds it for manual review, answer on <https://forum.snapcraft.io> in the thread it links to.
 
 After that every `vX.Y.Z` tag publishes to the store, and App Center shows the update date of the
 latest stable upload.
