@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inkboard — безкоштовна дошка для графічного планшета</title>
+<meta name="description" content="Безкоштовна нескінченна дошка для вчителів і графічних планшетів: перо з натиском, транспортир, фігури, координати, текст. Зберігає все саме, навіть коли зникає світло. Windows, macOS, Linux.">
+<meta property="og:title" content="Inkboard — free whiteboard for pen tablets">
+<meta property="og:description" content="Infinite canvas, pressure-sensitive ink, protractor, shapes, coordinates and text. Free and open source for Windows, macOS and Linux.">
+<meta property="og:image" content="https://yaroslavyushchenko.github.io/inkboard/img/board-en.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="img/icon.png">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f6f7fb;
+    --text: #1d2030;
+    --muted: #5d6275;
+    --line: #e4e6ee;
+    --accent: #4f6bed;
+    --accent-ink: #3550d4;
+    --accent-soft: #eef1ff;
+    --dot: #d5d8e3;
+    --card: #ffffff;
+    --shadow: 0 1px 2px rgba(20, 24, 40, .06), 0 12px 40px rgba(20, 24, 40, .10);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12141b;
+      --bg-soft: #181b24;
+      --text: #eceef5;
+      --muted: #a2a7ba;
+      --line: #2a2e3b;
+      --accent: #7b90ff;
+      --accent-ink: #9aaaff;
+      --accent-soft: #1f2540;
+      --dot: #2b2f3d;
+      --card: #1b1e28;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 40px rgba(0, 0, 0, .35);
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-ink); }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+
+  /* header */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .bar { display: flex; align-items: center; gap: 20px; height: 62px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 19px; color: var(--text); text-decoration: none; }
+  .brand img { width: 32px; height: 32px; border-radius: 8px; }
+  nav { margin-left: auto; display: flex; align-items: center; gap: 22px; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
+  nav a:hover { color: var(--text); }
+  .lang { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .lang button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; padding: 5px 11px; cursor: pointer; }
+  .lang button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+
+  /* hero */
+  .hero {
+    padding: 72px 0 40px;
+    background-image: radial-gradient(var(--dot) 1.3px, transparent 1.4px);
+    background-size: 24px 24px;
+    background-position: -12px -12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .hero h1 { font-size: clamp(34px, 5.2vw, 58px); line-height: 1.08; letter-spacing: -.02em; margin: 0 0 18px; max-width: 15em; }
+  .hero h1 em { font-style: normal; color: var(--accent-ink); }
+  .hero p.lead { font-size: clamp(18px, 2vw, 21px); color: var(--muted); max-width: 40em; margin: 0 0 30px; }
+  .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 14px 24px; border-radius: 12px;
+    background: var(--accent); color: #fff; text-decoration: none; font-weight: 650; font-size: 17px;
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .btn:hover { background: var(--accent-ink); }
+  .btn svg { width: 20px; height: 20px; }
+  .btn small { font-weight: 500; opacity: .85; font-size: 13px; }
+  .other { color: var(--muted); font-size: 15px; }
+  .badges { margin-top: 18px; color: var(--muted); font-size: 14px; display: flex; gap: 18px; flex-wrap: wrap; }
+  .badges span::before { content: "✓ "; color: var(--accent); font-weight: 700; }
+
+  .shot {
+    margin: 48px auto 0; max-width: 1100px;
+    border-radius: 14px; overflow: hidden;
+    border: 1px solid var(--line); box-shadow: var(--shadow); background: #fff;
+  }
+  .shot .chrome { height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 12px; background: #eef0f5; border-bottom: 1px solid #e1e4ec; }
+  .shot .chrome i { width: 11px; height: 11px; border-radius: 50%; background: #d3d6df; }
+  .shot img { display: block; width: 100%; height: auto; }
+
+  /* sections */
+  section { padding: 76px 0; }
+  section.soft { background: var(--bg-soft); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  h2 { font-size: clamp(27px, 3.4vw, 38px); letter-spacing: -.015em; margin: 0 0 10px; }
+  .sub { color: var(--muted); margin: 0 0 40px; max-width: 42em; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  @media (max-width: 980px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+  .card h3 { margin: 12px 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+  .ico { width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-ink); }
+  .ico svg { width: 23px; height: 23px; }
+
+  .safe { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; }
+  .safe ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+  .safe li { padding-left: 34px; position: relative; color: var(--muted); }
+  .safe li b { color: var(--text); }
+  .safe li::before { content: ""; position: absolute; left: 0; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f6bed' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center/14px no-repeat; }
+  .power svg { width: 64px; height: 64px; color: var(--accent); }
+  .power { line-height: 1; text-align: center; padding: 40px 20px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
+  .power p { font-size: 16px; color: var(--muted); margin: 16px 0 0; }
+
+  /* downloads */
+  .dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+  .os { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+  .os.mine { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .os h3 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 19px; }
+  .os h3 svg { width: 24px; height: 24px; }
+  .os .files { display: grid; gap: 8px; }
+  .os a.file {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-ink);
+    text-decoration: none; font-weight: 600; font-size: 15px;
+  }
+  .os a.file:hover { filter: brightness(.96); }
+  .os a.file span { font-weight: 500; font-size: 13px; opacity: .8; white-space: nowrap; }
+  .os .note { font-size: 14px; color: var(--muted); margin: 0; }
+  .os code { font-size: 12.5px; background: var(--bg-soft); border: 1px solid var(--line); padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
+  .os code.cmd { display: block; width: fit-content; max-width: 100%; overflow-x: auto; margin-top: 6px; }
+  .ver { margin-top: 18px; color: var(--muted); font-size: 14px; }
+
+  footer { padding: 34px 0 46px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: center; }
+  footer .right { margin-left: auto; }
+
+  @media (max-width: 760px) {
+    nav a.hide-sm { display: none; }
+    .safe { grid-template-columns: 1fr; }
+    .hero { padding-top: 44px; }
+    section { padding: 56px 0; }
+    .shot .chrome { display: none; }
+    .btn { width: 100%; justify-content: center; flex-wrap: wrap; row-gap: 2px; }
+    .btn small { flex-basis: 100%; text-align: center; }
+  }
+  /* Language-specific screenshots (beats .shot img's display: block). */
+  .shot img[data-only="en"], html[lang="en"] .shot img[data-only="uk"] { display: none; }
+  html[lang="en"] .shot img[data-only="en"] { display: block; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap bar">
+    <a class="brand" href="#top"><img src="img/icon.png" alt="">Inkboard</a>
+    <nav>
+      <a class="hide-sm" href="#features" data-i18n="nav.features">Можливості</a>
+      <a class="hide-sm" href="#download" data-i18n="nav.download">Завантажити</a>
+      <a href="https://github.com/yaroslavyushchenko/inkboard">GitHub</a>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="uk" aria-pressed="true">УКР</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="hero">
+    <div class="wrap">
+      <h1 data-i18n-html="hero.title">Нескінченна дошка для <em>графічного планшета</em></h1>
+      <p class="lead" data-i18n="hero.lead">Пишіть пером як на папері, кресліть із транспортиром, будуйте фігури й координати. Для вчителів і всіх, хто думає рукою. Безкоштовно, без акаунта й без інтернету — і жоден рядок не загубиться, навіть коли зникне світло.</p>
+      <div class="cta">
+        <a class="btn" id="primary" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
+          <span id="primary-label" data-i18n="hero.download">Завантажити</span>
+          <small id="primary-meta"></small>
+        </a>
+        <a class="other" href="#download" data-i18n="hero.other">Інші системи</a>
+      </div>
+      <div class="badges">
+        <span data-i18n="badge.free">Безкоштовно назавжди</span>
+        <span data-i18n="badge.open">Відкритий код (GPL-3.0)</span>
+        <span>Windows · macOS · Linux</span>
+        <span data-i18n="badge.lang">Українською та англійською</span>
+      </div>
+      <div class="shot">
+        <div class="chrome"><i></i><i></i><i></i></div>
+        <img data-only="uk" src="img/board-uk.png" width="2880" height="1800" alt="Inkboard: дошка з транспортиром, пірамідою та просторовими осями">
+        <img data-only="en" src="img/board-en.png" width="2880" height="1800" alt="Inkboard: a board with a protractor, a pyramid and 3D axes" loading="lazy">
+      </div>
+    </div>
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <h2 data-i18n="f.title">Усе для уроку на одній дошці</h2>
+      <p class="sub" data-i18n="f.sub">Зроблено для вчительки з планшетом Wacom, якій бракувало Microsoft Whiteboard. Тепер — для всіх.</p>
+      <div class="grid">
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l3.5-1 10-10-2.5-2.5-10 10z"/><path d="M13.5 6.5l2.5 2.5"/></svg></div>
+          <h3 data-i18n="f.ink.t">Перо з натиском</h3>
+          <p data-i18n="f.ink.d">Векторні лінії не розмиваються при збільшенні. Видно, де зависло перо, долоня не малює.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18"/><path d="M5 18a7 7 0 0 1 14 0"/><path d="M12 18l4-5"/></svg></div>
+          <h3 data-i18n="f.prot.t">Транспортир і креслення</h3>
+          <p data-i18n="f.prot.d">Дуги вздовж краю, промені під точним кутом, прямі з Shift. Кінці ліній можна тягнути, кут показується в градусах.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 15H4z"/><path d="M12 3l1.5 15" /><path d="M4 18l9.5 0" stroke-dasharray="2 2"/></svg></div>
+          <h3 data-i18n="f.shapes.t">Фігури та 3D-тіла</h3>
+          <p data-i18n="f.shapes.d">Куб, призма, піраміда, циліндр, конус, куля — з пунктирними невидимими ребрами. Основу піраміди можна обрати й змінити потім.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v12h12"/><path d="M9 15l-6 6"/></svg></div>
+          <h3 data-i18n="f.coord.t">Координати</h3>
+          <p data-i18n="f.coord.d">Координатна пряма, площина і просторові осі x, y, z — готові шаблони або свої межі й масштаб.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.5V4.5h14v2M12 4.5v15M9 19.5h6"/></svg></div>
+          <h3 data-i18n="f.text.t">Текст і зображення</h3>
+          <p data-i18n="f.text.d">Друкуйте прямо на дошці, вставляйте картинки й скриншоти через Ctrl+V або перетягуванням.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 13v7M13 16.5h7"/></svg></div>
+          <h3 data-i18n="f.lib.t">Бібліотека дошок</h3>
+          <p data-i18n="f.lib.d">Усі дошки з прев'ю, пошук, кольорові теги (наприклад «5-А», «Геометрія»), закріплені дошки, кошик на 30 днів.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8 8h8M8 12h5M8 16h3"/></svg></div>
+          <h3 data-i18n="f.tpl.t">Шаблони</h3>
+          <p data-i18n="f.tpl.d">Збережіть «Дано / Знайти / Розв'язання» чи будь-що інше раз — і вставляйте в будь-яку дошку.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg></div>
+          <h3 data-i18n="f.select.t">Виділення, групи, замок</h3>
+          <p data-i18n="f.select.d">Ласо або «пензель» для виділення, групування, а замок захищає важливе від випадкового стирання.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></div>
+          <h3 data-i18n="f.wacom.t">Для Wacom та інших планшетів</h3>
+          <p data-i18n="f.wacom.d">Гумка на зворотному кінці пера, налаштування бічних кнопок, гарячі клавіші для ExpressKeys, що працюють на будь-якій розкладці.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="soft">
+    <div class="wrap safe">
+      <div>
+        <h2 data-i18n="s.title">Світло зникло — дошка лишилась</h2>
+        <p class="sub" data-i18n="s.sub">Кнопки «Зберегти» не треба: Inkboard зберігає кожну дошку сам, кожні кілька секунд.</p>
+        <ul>
+          <li data-i18n-html="s.1"><b>Автозбереження на диск</b> щонайпізніше через 5 секунд, навіть поки ви малюєте.</li>
+          <li data-i18n-html="s.2"><b>Безпечний запис:</b> файл ніколи не лишається напівзаписаним, попередня версія завжди поруч.</li>
+          <li data-i18n-html="s.3"><b>Історія версій</b> кожні 10 хвилин — можна повернутися до будь-якої.</li>
+          <li data-i18n-html="s.4"><b>Резервна папка</b> на флешці чи в Google Drive / OneDrive — копія оновлюється сама.</li>
+          <li data-i18n-html="s.5"><b>Експорт у PNG і PDF</b> — роздати учням або надрукувати.</li>
+        </ul>
+      </div>
+      <div class="power">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 2 4.5 13.5h6L9.5 22l9-11.5h-6z"/></svg>
+        <p data-i18n="s.power">Перевірено «висмикуванням з розетки»: після примусового вимкнення дошка відкривається з усіма лініями.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="download">
+    <div class="wrap">
+      <h2 data-i18n="d.title">Завантажити Inkboard</h2>
+      <p class="sub" data-i18n="d.sub">Встановіть один раз — далі на Windows і Linux (AppImage) нові версії встановлюються самі.</p>
+      <div class="dl">
+        <div class="os" data-os="win">
+          <h3><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5l7.5-1v7H3zM11.5 4.4L21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.4z"/></svg>Windows</h3>
+          <div class="files"><a class="file" data-asset="exe" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><b data-i18n="d.installer">Інсталятор</b><span>.exe</span></a></div>
+          <p class="note" data-i18n-html="d.win">Windows 10 / 11. Програма ще не підписана, тож з'явиться «Windows захистив ваш ПК» — натисніть <b>Докладніше</b> → <b>Усе одно запустити</b>.</p>
+        </div>
+        <div class="os" data-os="mac">
+          <h3><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.7.9-.8 0-2-.9-3.2-.9-1.7 0-3.2 1-4.1 2.4-1.8 3.1-.5 7.6 1.3 10.1.8 1.2 1.8 2.6 3.1 2.5 1.2-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.6-1-2.7-4.1zM14 5.3c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg>macOS</h3>
+          <div class="files"><a class="file" data-asset="dmg" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><b>Intel + Apple Silicon</b><span>.dmg</span></a></div>
+          <p class="note" data-i18n-html="d.mac">Перетягніть у «Програми», потім <b>правий клік → Відкрити</b>. Якщо macOS пише, що програма пошкоджена: <code class="cmd">xattr -cr /Applications/Inkboard.app</code></p>
+        </div>
+        <div class="os" data-os="linux">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-2.2 0-3.5 1.8-3.5 4.5 0 1.6.4 2.6-.8 4.4C6.4 13.8 5 15.6 5.5 18c.4 1.8 2.6 2.6 6.5 2.6s6.1-.8 6.5-2.6c.5-2.4-.9-4.2-2.2-6.1-1.2-1.8-.8-2.8-.8-4.4C15.5 4.8 14.2 3 12 3z"/><path d="M10.3 8h.01M13.7 8h.01M11 10.2l1 .8 1-.8"/></svg>Linux</h3>
+          <div class="files">
+            <a class="file" data-asset="appimage" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><b data-i18n="d.appimage">AppImage (оновлюється сама)</b><span>.AppImage</span></a>
+            <a class="file" data-asset="deb" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><b>Ubuntu / Debian</b><span>.deb</span></a>
+          </div>
+          <p class="note" data-i18n-html="d.linux">Для AppImage на Ubuntu 24.04+: <code class="cmd">sudo apt install libfuse2t64</code> потім <code>chmod +x</code> і запуск.</p>
+        </div>
+      </div>
+      <p class="ver" id="ver"></p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Inkboard · <span data-i18n="foot.license">вільна програма під ліцензією GPL-3.0</span></span>
+    <a href="https://github.com/yaroslavyushchenko/inkboard" data-i18n="foot.code">Вихідний код</a>
+    <a href="https://github.com/yaroslavyushchenko/inkboard/issues" data-i18n="foot.issues">Повідомити про помилку</a>
+    <a href="https://github.com/yaroslavyushchenko/inkboard/releases" data-i18n="foot.releases">Усі версії</a>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const REPO = 'yaroslavyushchenko/inkboard'
+  const EN = {
+    'nav.features': 'Features',
+    'nav.download': 'Download',
+    'hero.title': 'An infinite whiteboard for your <em>pen tablet</em>',
+    'hero.lead': 'Write with a pen like on paper, draw with a protractor, build shapes and coordinate systems. For teachers and everyone who thinks by hand. Free, no account, no internet needed — and not a single line is lost, even when the power goes out.',
+    'hero.download': 'Download',
+    'hero.other': 'Other systems',
+    'badge.free': 'Free forever',
+    'badge.open': 'Open source (GPL-3.0)',
+    'badge.lang': 'English and Ukrainian',
+    'f.title': 'Everything for a lesson on one board',
+    'f.sub': 'Made for a teacher with a Wacom tablet who missed Microsoft Whiteboard. Now for everyone.',
+    'f.ink.t': 'Pressure-sensitive pen',
+    'f.ink.d': 'Vector lines stay sharp at any zoom. See where the pen hovers; your palm doesn’t draw.',
+    'f.prot.t': 'Protractor and drawing aids',
+    'f.prot.d': 'Arcs along the edge, rays at an exact angle, straight lines with Shift. Drag a line’s ends — the angle is shown in degrees.',
+    'f.shapes.t': 'Shapes and 3D solids',
+    'f.shapes.d': 'Cube, prism, pyramid, cylinder, cone, sphere — hidden edges dashed. Pick a pyramid’s base and change it later.',
+    'f.coord.t': 'Coordinates',
+    'f.coord.d': 'Number line, coordinate plane and 3D axes x, y, z — ready presets or your own ranges and scale.',
+    'f.text.t': 'Text and images',
+    'f.text.d': 'Type right on the board; paste pictures and screenshots with Ctrl+V or drag them in.',
+    'f.lib.t': 'Board library',
+    'f.lib.d': 'All boards with previews, search, colour tags (e.g. “5A”, “Geometry”), pinned boards, a 30-day bin.',
+    'f.tpl.t': 'Templates',
+    'f.tpl.d': 'Save “Given / Find / Solution” or anything else once — insert it into any board.',
+    'f.select.t': 'Select, group, lock',
+    'f.select.d': 'Lasso or brush to select, grouping, and a lock that protects what matters from accidental erasing.',
+    'f.wacom.t': 'For Wacom and other tablets',
+    'f.wacom.d': 'Eraser on the back of the pen, side-button settings, shortcuts for ExpressKeys that work on any keyboard layout.',
+    's.title': 'Power cut? The board is still there',
+    's.sub': 'No Save button needed: Inkboard saves every board by itself, every few seconds.',
+    's.1': '<b>Autosaved to disk</b> within 5 seconds at most, even while you draw.',
+    's.2': '<b>Safe writes:</b> a file is never left half-written; the previous version is always kept.',
+    's.3': '<b>Version history</b> every 10 minutes — go back to any of them.',
+    's.4': '<b>Backup folder</b> on a USB stick or in Google Drive / OneDrive, updated automatically.',
+    's.5': '<b>Export to PNG and PDF</b> — share with students or print.',
+    's.power': 'Tested by “pulling the plug”: after a forced shutdown the board opens with every line.',
+    'd.title': 'Download Inkboard',
+    'd.sub': 'Install once — after that, new versions install themselves on Windows and Linux (AppImage).',
+    'd.installer': 'Installer',
+    'd.win': 'Windows 10 / 11. The app isn’t code-signed yet, so you’ll see “Windows protected your PC” — click <b>More info</b> → <b>Run anyway</b>.',
+    'd.mac': 'Drag it to Applications, then <b>right-click → Open</b>. If macOS says the app is damaged: <code class="cmd">xattr -cr /Applications/Inkboard.app</code>',
+    'd.appimage': 'AppImage (updates itself)',
+    'd.linux': 'For the AppImage on Ubuntu 24.04+: <code class="cmd">sudo apt install libfuse2t64</code> then <code>chmod +x</code> and run it.',
+    'foot.license': 'free software under the GPL-3.0',
+    'foot.code': 'Source code',
+    'foot.issues': 'Report a problem',
+    'foot.releases': 'All versions'
+  }
+  // Ukrainian lives in the HTML itself; remember it so switching back works.
+  const UK = {}
+  document.querySelectorAll('[data-i18n]').forEach((el) => (UK[el.dataset.i18n] = el.textContent))
+  document.querySelectorAll('[data-i18n-html]').forEach((el) => (UK[el.dataset.i18nHtml] = el.innerHTML))
+  const META = {
+    uk: { title: document.title, win: 'для Windows', mac: 'для macOS', linux: 'для Linux', latest: 'Остання версія', released: 'від' },
+    en: { title: 'Inkboard — free whiteboard for pen tablets', win: 'for Windows', mac: 'for macOS', linux: 'for Linux', latest: 'Latest version', released: 'released' }
+  }
+
+  const os = (() => {
+    const p = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent).toLowerCase()
+    if (p.includes('win')) return 'win'
+    if (p.includes('mac')) return 'mac'
+    if (p.includes('linux') && !/android/i.test(navigator.userAgent)) return 'linux'
+    return null
+  })()
+  let release = null
+  let lang = 'uk'
+
+  const store = {
+    get() { try { return localStorage.getItem('inkboard-site-lang') } catch { return null } },
+    set(v) { try { localStorage.setItem('inkboard-site-lang', v) } catch {} }
+  }
+
+  function mb(bytes) { return Math.round(bytes / 1048576) + ' MB' }
+
+  function render() {
+    const dict = lang === 'en' ? EN : UK
+    document.documentElement.lang = lang
+    document.title = META[lang].title
+    document.querySelectorAll('[data-i18n]').forEach((el) => { const v = dict[el.dataset.i18n]; if (v != null) el.textContent = v })
+    document.querySelectorAll('[data-i18n-html]').forEach((el) => { const v = dict[el.dataset.i18nHtml]; if (v != null) el.innerHTML = v })
+    document.querySelectorAll('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)))
+    // Primary button: the visitor's own system.
+    const label = document.getElementById('primary-label')
+    const meta = document.getElementById('primary-meta')
+    const primary = document.getElementById('primary')
+    label.textContent = dict['hero.download'] + (os ? ' ' + META[lang][os] : '')
+    const main = os && release && release[os === 'win' ? 'exe' : os === 'mac' ? 'dmg' : 'appimage']
+    if (main) primary.href = main.url
+    meta.textContent = release ? release.version + (main ? ' · ' + mb(main.size) : '') : ''
+    document.querySelectorAll('.os').forEach((c) => c.classList.toggle('mine', c.dataset.os === os))
+    const ver = document.getElementById('ver')
+    if (release) {
+      const d = new Date(release.date).toLocaleDateString(lang === 'en' ? 'en-GB' : 'uk-UA', { day: 'numeric', month: 'long', year: 'numeric' })
+      ver.innerHTML = ''
+      const a = document.createElement('a')
+      a.href = release.page
+      a.textContent = META[lang].latest + ': ' + release.version
+      ver.append(a, ' · ' + META[lang].released + ' ' + d)
+    }
+  }
+
+  document.querySelectorAll('.lang button').forEach((b) =>
+    b.addEventListener('click', () => { lang = b.dataset.lang; store.set(lang); render() })
+  )
+
+  const saved = store.get()
+  const prefersUk = (navigator.languages || [navigator.language]).some((l) => /^uk\b/i.test(l || ''))
+  lang = saved === 'uk' || saved === 'en' ? saved : prefersUk ? 'uk' : 'en'
+  render()
+
+  // Direct links to the newest files (falls back to the Releases page if GitHub can't be reached).
+  fetch('https://api.github.com/repos/' + REPO + '/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+    .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+    .then((j) => {
+      const find = (re) => { const a = (j.assets || []).find((x) => re.test(x.name)); return a ? { url: a.browser_download_url, size: a.size } : null }
+      release = {
+        version: j.tag_name, date: j.published_at, page: j.html_url,
+        exe: find(/Setup.*\.exe$/i), dmg: find(/\.dmg$/i), appimage: find(/\.AppImage$/i), deb: find(/\.deb$/i)
+      }
+      document.querySelectorAll('a.file[data-asset]').forEach((a) => {
+        const f = release[a.dataset.asset]
+        if (!f) return
+        a.href = f.url
+        a.querySelector('span').textContent = a.querySelector('span').textContent.split(' · ')[0] + ' · ' + mb(f.size)
+      })
+      render()
+    })
+    .catch(() => {})
+})()
+</script>
+</body>
+</html>

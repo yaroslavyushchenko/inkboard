@@ -902,4 +902,8 @@ class Editor {
 export const editor = new Editor()
 
 // Dev builds only: lets UI tests in the browser inspect the board state.
-if (import.meta.env.DEV) (window as unknown as { __inkboard: Editor }).__inkboard = editor
+if (import.meta.env.DEV) {
+  const w = window as unknown as { __inkboard: Editor; __inkboardUI: typeof useUI }
+  w.__inkboard = editor
+  w.__inkboardUI = useUI
+}

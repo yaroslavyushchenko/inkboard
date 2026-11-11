@@ -1,5 +1,7 @@
 # Inkboard
 
+**Website & downloads:** https://yaroslavyushchenko.github.io/inkboard/
+
 A free, open-source infinite whiteboard for pen tablets — inspired by the feel of Microsoft Whiteboard.
 Built for teachers who write and draw with a stylus.
 
