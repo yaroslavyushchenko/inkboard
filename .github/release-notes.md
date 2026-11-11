@@ -40,8 +40,8 @@ The builds are not code-signed yet, so the system will warn you once:
 
 - **Windows:** "Windows protected your PC" → click **More info** → **Run anyway**.
 - **macOS:** open the `.dmg`, drag Inkboard to Applications and open it. macOS says it can't verify the app:
-  click **Done**, open **System Settings → Privacy & Security** and click **Open Anyway** at the bottom (once).
-  If macOS says the app is damaged, run `xattr -cr /Applications/Inkboard.app` in Terminal.
+  click **Done**, open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
+  You only do this once.
 - **Linux AppImage:** allow it to run (file Properties → *Executable as Program*, or `chmod +x Inkboard-*.AppImage`) and open it.
 
 Feedback and bug reports: open an issue in this repository.

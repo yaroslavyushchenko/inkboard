@@ -37,6 +37,17 @@ mac:
   identity: '-'
   hardenedRuntime: false
   gatekeeperAssess: false
+dmg:
+  # Window background with first-launch steps: build/background.png (+ @2x), made from
+  # build/dmg-background.html. Icon positions match the drawing.
+  iconSize: 96
+  contents:
+    - x: 170
+      y: 170
+    - x: 490
+      y: 170
+      type: link
+      path: /Applications
 
 linux:
   target: [AppImage, deb]
