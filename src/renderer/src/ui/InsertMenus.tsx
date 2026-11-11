@@ -62,7 +62,7 @@ export function ShapePreview({ kind, base }: { kind: ShapeKind; base?: number })
   )
 }
 
-/** "Base: △ □ ⬠ ⬡ [n]" — number of sides of a pyramid's / prism's base; any n can be typed. */
+/** "Base: △ □ ⬠ ⬡ [n]": number of sides of a pyramid's / prism's base; any n can be typed. */
 export function BaseRow({ kind, value, onChange }: { kind: ShapeKind; value: number; onChange: (n: number) => void }) {
   const t = useT()
   const [draft, setDraft] = useState<string | null>(null)

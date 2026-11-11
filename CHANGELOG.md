@@ -3,7 +3,18 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
-## [0.5.0] — 2026-11-11
+## Unreleased
+
+### Changed
+- Version history saves a snapshot every 5 minutes of editing (the last 36 are kept).
+- After restoring a version, the view moves to show the whole board.
+- New boards are named like "Board of 11 Nov 2026, 18:30".
+
+### Fixed
+- The AppImage starts on Ubuntu 24.04 and newer without installing libfuse2.
+- A fuller description of the `.deb` package in Ubuntu App Center.
+
+## [0.5.0] (2026-11-11)
 
 ### Added
 - **Compass (K):** drag ↔ to set the radius (shown in paper cells), then drag the pencil around the
@@ -23,7 +34,7 @@ All notable changes to Inkboard. Downloads for every version are on the
 
 Boards saved by 0.5 can't be opened by older versions.
 
-## [0.4.0] — 2026-11-11
+## [0.4.0] (2026-11-11)
 
 ### Added
 - Text tool; pasting text puts it on the board.
@@ -39,7 +50,7 @@ Boards saved by 0.5 can't be opened by older versions.
 - The pen could get "stuck" moving the board after being lifted outside the window.
 - Resizing in the Move tool; the eraser removes a whole shape.
 
-## [0.3.1] — 2026-11-11
+## [0.3.1] (2026-11-11)
 
 ### Added
 - Protractor (T), 3D shapes with dashed hidden edges, line styles and line ends.
@@ -47,7 +58,7 @@ Boards saved by 0.5 can't be opened by older versions.
 - Keyboard shortcuts work on any keyboard layout.
 - App version in the menu; "Updated to …" notice.
 
-## [0.3.0] — 2026-11-11
+## [0.3.0] (2026-11-11)
 
 ### Added
 - Straight lines with Shift; a Shapes menu.
@@ -55,7 +66,7 @@ Boards saved by 0.5 can't be opened by older versions.
 - Templates; group / ungroup (Ctrl+G / Ctrl+Shift+G).
 - Automatic updates on Windows and Linux AppImage.
 
-## [0.2.0] — 2026-11-11
+## [0.2.0] (2026-11-11)
 
 ### Added
 - Power-cut safe autosave of every board.
@@ -64,7 +75,7 @@ Boards saved by 0.5 can't be opened by older versions.
 - Save as file, export to PNG / PDF, backup folder.
 - Opening `.inkboard` files from the file manager.
 
-## [0.1.0] — 2026-11-11
+## [0.1.0] (2026-11-11)
 
 First test build: infinite board, pressure-sensitive vector ink, eraser, paper backgrounds, images,
 lasso selection.

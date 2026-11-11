@@ -32,7 +32,7 @@ Infinite board, pressure-sensitive vector ink, a protractor and a compass, shape
 ## Why Inkboard
 
 Microsoft Whiteboard was the go-to board for many teachers with a pen tablet, and it's being retired.
-Inkboard aims to feel just as simple — open it and write — while adding the tools a maths or science
+Inkboard aims to feel just as simple (open it and write) while adding the tools a maths or science
 lesson needs. It works fully offline, needs no account, and your boards stay on your computer.
 
 ## Features
@@ -40,14 +40,14 @@ lesson needs. It works fully offline, needs no account, and your boards stay on 
 **Writing and drawing**
 - Infinite board: pan and zoom in any direction
 - Pressure-sensitive **vector** ink that stays sharp at any zoom
-- Pens, highlighter, stroke eraser — the pen's eraser end and barrel button work too
+- Pens, highlighter, stroke eraser; the pen's eraser end and barrel button work too
 - Pen hover indicator and palm rejection
 - Paper: blank, dots, grid or lines
 
 **For maths lessons**
-- **Protractor** — draw an angle from its centre or an arc along its edge; the degrees are written next to the arc
-- **Compass** — set the radius (shown in paper cells) and draw arcs or full circles
-- Shapes: lines, polygons, circles, and pyramids / prisms with **any number of sides** for the base — still editable after drawing
+- **Protractor:** draw an angle from its centre or an arc along its edge; the degrees are written next to the arc
+- **Compass:** set the radius (shown in paper cells) and draw arcs or full circles
+- Shapes: lines, polygons, circles, and pyramids / prisms with **any number of sides** for the base, still editable after drawing
 - Number lines, coordinate planes and 3D axes
 - Shift for straight lines; drag a line's end to change its length and angle (whole degrees on the protractor)
 - Arrows and dots on line ends, including freehand lines
@@ -66,7 +66,7 @@ lesson needs. It works fully offline, needs no account, and your boards stay on 
 <p align="center"><img src="docs/images/home.png" alt="The All boards screen: board previews with pins and colour tags" width="900"></p>
 
 **Never lose work**
-- Every board saves itself within seconds — safe even if the power goes out
+- Every board saves itself within seconds, so nothing is lost even if the power goes out
 - Version history, and *Recently deleted* for 30 days
 - Optional backup folder (a USB stick or a Google Drive / OneDrive folder)
 - Export to PNG or vector PDF; save a board as an `.inkboard` file to share it
@@ -84,7 +84,7 @@ Get the latest version from the **[Releases page](https://github.com/yaroslavyus
 |---|---|---|
 | Windows 10 / 11 | `Inkboard-Setup-…-x64.exe` | Windows may warn about an unknown publisher (the app isn't code-signed yet): **More info → Run anyway** |
 | macOS (Intel and Apple silicon) | `Inkboard-…-mac-universal.dmg` | Not notarized by Apple yet: if macOS blocks the first launch, open **System Settings → Privacy & Security → Open Anyway** |
-| Linux | `Inkboard-…-x86_64.AppImage` or `.deb` | AppImage on Ubuntu 24.04+ needs `sudo apt install libfuse2t64` once |
+| Linux | `Inkboard-…-x86_64.AppImage` or `.deb` | AppImage: allow it to run (file Properties → *Executable as Program*, or `chmod +x`), then open it |
 
 After that Inkboard updates itself on Windows and with the AppImage; on macOS and with the `.deb` it tells you when a new version is out.
 
@@ -123,7 +123,7 @@ The full list is in [docs/SHORTCUTS.md](docs/SHORTCUTS.md) and in the app (Setti
   then choose what each does in Inkboard (Settings → Pen buttons: eraser, lasso, or the current tool).
   To move the board with a pen button, give it the *Space* keystroke instead (hold = move).
   The settings panel has a tester that shows which button Inkboard receives.
-- **ExpressKeys** on the tablet are configured in Wacom Center as *Keystroke…* — e.g. Ctrl+Z, X, V, M, Space.
+- **ExpressKeys** on the tablet are configured in Wacom Center as *Keystroke…*, for example Ctrl+Z, X, V, M, Space.
   Settings → *Keyboard shortcuts & Wacom ExpressKeys* lists every shortcut.
 
 ## Where boards are stored
@@ -138,7 +138,7 @@ The full list is in [docs/SHORTCUTS.md](docs/SHORTCUTS.md) and in the app (Setti
 ## Feedback
 
 Found a bug or missing something for your lessons?
-[Open an issue](https://github.com/yaroslavyushchenko/inkboard/issues/new/choose) — in English or Ukrainian.
+[Open an issue](https://github.com/yaroslavyushchenko/inkboard/issues/new/choose) in English or Ukrainian.
 See [CONTRIBUTING.md](CONTRIBUTING.md) if you'd like to help with code or translations.
 The roadmap is in [docs/PLAN.md](docs/PLAN.md).
 

@@ -12,7 +12,7 @@ export interface GraphPreset {
 const line = (xMin: number, xMax: number, unit = 36, labelStep = 1): GraphParams => ({
   kind: 'line', xMin, xMax, yMin: 0, yMax: 0, unit, labelStep, grid: false
 })
-// Axes only — the board's own paper (dots / grid) is the grid.
+// Axes only; the board's own paper (dots / grid) is the grid.
 const plane = (xMin: number, xMax: number, yMin: number, yMax: number, unit = 24, labelStep = 1): GraphParams => ({
   kind: 'plane', xMin, xMax, yMin, yMax, unit, labelStep, grid: false
 })

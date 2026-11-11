@@ -62,7 +62,7 @@ function SaveStatus() {
   }
   const busy = status === 'saving' || status === 'pending'
   return (
-    <span className={`save-status ${busy ? 'busy' : ''}`} title={`${busy ? t('save.saving') : t('save.saved')} — ${where}`}>
+    <span className={`save-status ${busy ? 'busy' : ''}`} title={`${busy ? t('save.saving') : t('save.saved')}. ${where}`}>
       {busy ? <span className="save-spinner" /> : <CheckIcon width={16} height={16} />}
     </span>
   )

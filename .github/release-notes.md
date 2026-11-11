@@ -1,4 +1,4 @@
-**Inkboard** — a free infinite whiteboard for pen tablets.
+**Inkboard** is a free infinite whiteboard for pen tablets.
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
@@ -6,7 +6,7 @@
 
 ### New
 - **Compass (K):** drag ↔ to set the radius (shown in paper cells), then drag the pencil around the
-  needle — an arc, or a full circle. It draws with the current pen.
+  needle for an arc or a full circle. It draws with the current pen.
 - **Protractor arcs get their angle written next to them** ("50°"). A short tip at the bottom explains
   how to use the protractor and the compass (click "Got it" to hide it).
 - **Formatted text:** select words (or right-click) → colour, size, **bold**, *italic*, underline.
@@ -18,7 +18,7 @@
 - The hand (move the board) sits next to the selection tools; the Move tool has the usual four-arrow icon.
 - Fix: on the "All boards" screen several card menus could be open at once.
 
-Boards saved by 0.5 can't be opened by older versions — update every computer you use.
+Boards saved by 0.5 can't be opened by older versions, so update every computer you use.
 
 ## Also in 0.4
 

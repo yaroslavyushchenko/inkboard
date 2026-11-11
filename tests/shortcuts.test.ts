@@ -59,7 +59,7 @@ test('every promised shortcut triggers its action', () => {
 })
 
 test('works on any keyboard layout (matches the physical key, ignores the typed character)', () => {
-  // On a Ukrainian layout Ctrl+Z types "я" — the event still has code "KeyZ".
+  // On a Ukrainian layout Ctrl+Z types "я", but the event still has code "KeyZ".
   const ukrainian = { ...ctrl('KeyZ'), key: 'я' } as KeyLike
   assert.equal(matchShortcut(ukrainian, 'board')?.id, 'undo')
   const source = readFileSync(new URL('../src/renderer/src/shortcuts.ts', import.meta.url), 'utf8')

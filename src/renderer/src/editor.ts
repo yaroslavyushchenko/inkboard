@@ -116,6 +116,24 @@ class Editor {
     this.invalidate(true)
   }
 
+  /** Show every item: centre the board's content and zoom out if needed (never above 100%). */
+  fitToContent(): void {
+    const box = unionBBox([...this.scene.getItems()])
+    if (!box) return
+    const { width, height } = this.view()
+    // Leave room for the toolbar at the top and a margin around the content.
+    const top = 110
+    const margin = 60
+    const availW = Math.max(1, width - margin * 2)
+    const availH = Math.max(1, height - top - margin)
+    const bw = Math.max(1, box.maxX - box.minX)
+    const bh = Math.max(1, box.maxY - box.minY)
+    const zoom = clampZoom(Math.min(1, availW / bw, availH / bh))
+    const cx = (box.minX + box.maxX) / 2
+    const cy = (box.minY + box.maxY) / 2
+    this.setCamera({ x: cx - width / 2 / zoom, y: cy - (top + availH / 2) / zoom, zoom })
+  }
+
   zoomBy(factor: number): void {
     const { width, height } = this.view()
     this.setCamera(zoomAt(this.camera, width / 2, height / 2, this.camera.zoom * factor))
@@ -697,7 +715,7 @@ class Editor {
   private updateTitle(): void {
     const { board, view } = useUI.getState()
     const name = view === 'home' || !board ? this.t('home.title') : board.title
-    platform.setTitle(`${name} — Inkboard`)
+    platform.setTitle(`${name} · Inkboard`)
   }
 
   /** Remember the running version; if it changed since last launch, show "Updated to X". */
@@ -782,7 +800,7 @@ class Editor {
     return true
   }
 
-  /** "Board — 11 Nov 2026, 18:30" in the UI language. */
+  /** "Board of 11 Nov 2026, 18:30" in the UI language. */
   private newBoardTitle(): string {
     const lang = useUI.getState().lang
     const when = new Date().toLocaleString(lang === 'uk' ? 'uk-UA' : 'en-GB', {
@@ -792,7 +810,7 @@ class Editor {
       hour: '2-digit',
       minute: '2-digit'
     })
-    return `${this.t('board.defaultName')} — ${when}`
+    return translate(lang, 'board.defaultName', { when })
   }
 
   async newBoard(): Promise<void> {
@@ -873,6 +891,7 @@ class Editor {
     this.clearSelection()
     this.scene.replace([...this.scene.getItems()], data.items)
     useUI.setState({ background: data.background })
+    this.fitToContent()
   }
 
   // ---------------------------------------------------------------- export & backup

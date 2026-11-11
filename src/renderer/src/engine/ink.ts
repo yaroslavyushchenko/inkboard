@@ -44,7 +44,7 @@ function outlineToPath(outline: number[][]): Path2D {
   return path
 }
 
-/** SVG path data of a stroke's filled outline (same geometry as on screen) — for vector export. */
+/** SVG path data of a stroke's filled outline (same geometry as on screen), for vector export. */
 export function inkOutlineSvg(s: StrokeItem): string {
   const o = getStroke(s.points as Point[], optionsFor(s, true))
   const n = o.length

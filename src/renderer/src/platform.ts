@@ -11,7 +11,7 @@ import {
 
 /**
  * Bridge to the board library and the file system. In Electron it goes through the preload API
- * (src/preload/index.ts → src/main/library.ts). In a plain browser — used for quick UI testing — a
+ * (src/preload/index.ts → src/main/library.ts). In a plain browser (used for quick UI testing) a
  * localStorage-backed fallback with the same behaviour is used.
  */
 export interface LibraryApi {

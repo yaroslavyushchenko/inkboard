@@ -7,7 +7,7 @@
  * - Match on the PHYSICAL key (`KeyboardEvent.code`), never on the typed character (`key`), so every
  *   shortcut works on any keyboard layout (Ukrainian, German, …). Ctrl+Z is Ctrl+Z even when the key
  *   types "я".
- * - Don't change or remove an existing shortcut without the user's OK — people (and Wacom
+ * - Don't change or remove an existing shortcut without the user's OK: people (and Wacom
  *   ExpressKeys) rely on them. Add new ones here, in docs/SHORTCUTS.md and in the test.
  *
  * This file must stay free of runtime imports so the Node test runner can load it directly.

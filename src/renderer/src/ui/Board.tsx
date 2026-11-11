@@ -181,7 +181,7 @@ export function Board() {
       try {
         overlay.setPointerCapture(id)
       } catch {
-        // Pointer already gone (or a synthetic event) — capture is best-effort.
+        // Pointer already gone (or a synthetic event); capture is best-effort.
       }
     }
     const local = (e: { clientX: number; clientY: number }): { x: number; y: number } => {

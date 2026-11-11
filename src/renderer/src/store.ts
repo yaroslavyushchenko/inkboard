@@ -30,9 +30,9 @@ export type PenAction = 'eraser' | 'select' | 'tool'
 const PEN_ACTIONS: readonly PenAction[] = ['eraser', 'select', 'tool']
 
 export interface PenButtons {
-  /** Lower side switch — arrives as the right button (button 2). */
+  /** Lower side switch; arrives as the right button (button 2). */
   lower: PenAction
-  /** Upper side switch — arrives as the middle button (button 1) when set to "Middle click" in the driver. */
+  /** Upper side switch; arrives as the middle button (button 1) when set to "Middle click" in the driver. */
   upper: PenAction
   /** Eraser end of the pen (button 5). */
   eraserEnd: PenAction

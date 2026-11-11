@@ -7,7 +7,7 @@ The in-app dialog (Settings → *Keyboard shortcuts & Wacom ExpressKeys*) is gen
 Shortcuts match the **physical key**, so they work on any keyboard layout (Ukrainian, German, …).
 On macOS, Ctrl = ⌘.
 
-**Never change or remove an existing shortcut without asking** — teachers and Wacom ExpressKeys
+**Never change or remove an existing shortcut without asking.** Teachers and Wacom ExpressKeys
 depend on them. New shortcuts: add to `shortcuts.ts`, this file, the test and both translations.
 
 ## Tools
@@ -68,7 +68,7 @@ depend on them. New shortcuts: add to `shortcuts.ts`, this file, the test and bo
 
 ## While typing text
 
-Text tool: **T** button in the toolbar (no keyboard shortcut — T is the protractor).
+Text tool: **T** button in the toolbar (no keyboard shortcut, because T is the protractor).
 
 | Keys | Action |
 |---|---|

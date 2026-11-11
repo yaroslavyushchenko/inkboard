@@ -32,7 +32,7 @@ npm run typecheck && npm test && npm run build   # run before every commit
 
 ## Translations
 
-Better wording for the Ukrainian or English interface is welcome — edit `src/renderer/src/i18n.ts`
+Better wording for the Ukrainian or English interface is welcome: edit `src/renderer/src/i18n.ts`
 and open a pull request, or just describe the change in an issue.
 
 ## License

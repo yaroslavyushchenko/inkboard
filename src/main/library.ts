@@ -481,7 +481,7 @@ export class Library {
     try {
       await writeDurable(join(dir, this.backupName(b)), bytes)
     } catch (err) {
-      // USB stick unplugged etc. — never let the backup break normal saving.
+      // USB stick unplugged etc.: never let the backup break normal saving.
       console.error('Backup mirror failed', err)
     }
   }
