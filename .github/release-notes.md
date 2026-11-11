@@ -2,7 +2,11 @@
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
-## What's new in 0.5.1
+## What's new in 0.5.2
+
+- **macOS:** the `.dmg` window now shows how to install Inkboard and how to open it the first time.
+
+## Also in 0.5.1
 
 - **The Linux AppImage starts on Ubuntu 24.04 and newer** without installing anything extra
   (it used to need libfuse2).

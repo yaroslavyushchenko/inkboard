@@ -3,6 +3,12 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
+## [0.5.2] (2026-11-11)
+
+### Changed
+- The macOS `.dmg` window shows how to install Inkboard and how to open it the first time
+  (System Settings → Privacy & Security → Open Anyway).
+
 ## [0.5.1] (2026-11-11)
 
 ### Changed
@@ -80,6 +86,7 @@ Boards saved by 0.5 can't be opened by older versions.
 First test build: infinite board, pressure-sensitive vector ink, eraser, paper backgrounds, images,
 lasso selection.
 
+[0.5.2]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.5.2
 [0.5.1]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.5.1
 [0.5.0]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.5.0
 [0.4.0]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.4.0
