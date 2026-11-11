@@ -2,4 +2,6 @@ node_modules/
 out/
 dist/
 *.log
+# Snap Store login exported for CI (docs/SNAP.md); never commit it.
+snapcraft-credentials.txt
 .DS_Store

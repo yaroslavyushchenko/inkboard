@@ -15,6 +15,8 @@
 [![Завантажити для macOS](https://img.shields.io/badge/Завантажити-macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/yaroslavyushchenko/inkboard/releases/latest)
 [![Завантажити для Linux](https://img.shields.io/badge/Завантажити-Linux-E95420?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/yaroslavyushchenko/inkboard/releases/latest)
 
+[![Завантажте з Snap Store](https://snapcraft.io/uk/dark/install.svg)](https://snapcraft.io/inkboard)
+
 **[Сайт](https://yaroslavyushchenko.github.io/inkboard/)** ·
 **[Завантажити](https://github.com/yaroslavyushchenko/inkboard/releases/latest)** ·
 **[Гарячі клавіші](docs/SHORTCUTS.md)** ·
@@ -58,9 +60,10 @@ Inkboard такий самий простий (відкрив і пишеш), а
 |---|---|---|
 | Windows 10 / 11 | `Inkboard-Setup-…-x64.exe` | Windows може попередити про невідомого видавця: **Докладніше → Усе одно запустити** |
 | macOS | `Inkboard-…-mac-universal.dmg` | Програма ще не нотаризована Apple: якщо macOS не дає запустити, відкрийте **Системні параметри → Приватність і безпека → Усе одно відкрити** |
+| Ubuntu та інші Linux зі snap | [Snap Store](https://snapcraft.io/inkboard) | Встановіть із Центру застосунків (пошук Inkboard) або командою `sudo snap install inkboard` |
 | Linux | `Inkboard-…-x86_64.AppImage` або `.deb` | AppImage: у властивостях файлу дозвольте запуск як програми (або `chmod +x`) і відкрийте |
 
-Далі на Windows і з AppImage Inkboard оновлюється сам; на macOS і з `.deb` повідомляє про нову версію.
+Далі на Windows, з AppImage і зі Snap Store Inkboard оновлюється сам; на macOS і з `.deb` повідомляє про нову версію.
 
 ## Планшети Wacom
 

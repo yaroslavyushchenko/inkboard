@@ -19,6 +19,8 @@ Infinite board, pressure-sensitive vector ink, a protractor and a compass, shape
 [![Download for macOS](https://img.shields.io/badge/Download-macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/yaroslavyushchenko/inkboard/releases/latest)
 [![Download for Linux](https://img.shields.io/badge/Download-Linux-E95420?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/yaroslavyushchenko/inkboard/releases/latest)
 
+[![Get it from the Snap Store](https://snapcraft.io/en/dark/install.svg)](https://snapcraft.io/inkboard)
+
 **[Website](https://yaroslavyushchenko.github.io/inkboard/)** ·
 **[Download](https://github.com/yaroslavyushchenko/inkboard/releases/latest)** ·
 **[What's new](CHANGELOG.md)** ·
@@ -84,9 +86,10 @@ Get the latest version from the **[Releases page](https://github.com/yaroslavyus
 |---|---|---|
 | Windows 10 / 11 | `Inkboard-Setup-…-x64.exe` | Windows may warn about an unknown publisher (the app isn't code-signed yet): **More info → Run anyway** |
 | macOS (Intel and Apple silicon) | `Inkboard-…-mac-universal.dmg` | Not notarized by Apple yet: if macOS blocks the first launch, open **System Settings → Privacy & Security → Open Anyway** |
+| Ubuntu and other Linux with snaps | [Snap Store](https://snapcraft.io/inkboard) | Install from App Center (search for Inkboard) or run `sudo snap install inkboard` |
 | Linux | `Inkboard-…-x86_64.AppImage` or `.deb` | AppImage: allow it to run (file Properties → *Executable as Program*, or `chmod +x`), then open it |
 
-After that Inkboard updates itself on Windows and with the AppImage; on macOS and with the `.deb` it tells you when a new version is out.
+After that Inkboard updates itself on Windows, with the AppImage and from the Snap Store; on macOS and with the `.deb` it tells you when a new version is out.
 
 ## Controls
 
