@@ -27,6 +27,6 @@ The builds are not code-signed yet, so the system will warn you once:
 - **Windows:** "Windows protected your PC" → click **More info** → **Run anyway**.
 - **macOS:** open the `.dmg`, drag Inkboard to Applications, then **right-click the app → Open → Open**.
   If macOS says the app is damaged, run `xattr -cr /Applications/Inkboard.app` in Terminal.
-- **Linux AppImage:** `chmod +x Inkboard-*.AppImage` and run it.
+- **Linux AppImage:** `chmod +x Inkboard-*.AppImage` and run it. On Ubuntu 24.04+ install FUSE 2 first: `sudo apt install libfuse2t64`.
 
 Feedback and bug reports: open an issue in this repository.

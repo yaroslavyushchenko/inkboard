@@ -55,6 +55,16 @@ npm run build
 | New board / Open file | Ctrl+N / Ctrl+O |
 | Save as file | Ctrl+S (draft) or Ctrl+Shift+S |
 
+## Linux AppImage note
+
+Ubuntu 24.04 and newer don't ship the FUSE 2 library AppImages need. Install it once:
+
+```bash
+sudo apt install libfuse2t64
+```
+
+(or use the `.deb` package instead).
+
 ## Wacom tablets
 
 - **Pen side buttons:** in Wacom Center set the lower switch to *Right click* and the upper to *Middle click*;
