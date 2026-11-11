@@ -148,6 +148,7 @@
   }
   .os a.file:hover { filter: brightness(.96); }
   .os a.file span { font-weight: 500; font-size: 13px; opacity: .8; white-space: nowrap; }
+  .os .snap img { display: block; height: 48px; width: auto; }
   .os .note { font-size: 14px; color: var(--muted); margin: 0; }
   .os code { font-size: 12.5px; background: var(--bg-soft); border: 1px solid var(--line); padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
   .os code.cmd { display: block; width: fit-content; max-width: 100%; overflow-x: auto; margin-top: 6px; }
@@ -306,10 +307,10 @@
         <div class="os" data-os="linux">
           <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-2.2 0-3.5 1.8-3.5 4.5 0 1.6.4 2.6-.8 4.4C6.4 13.8 5 15.6 5.5 18c.4 1.8 2.6 2.6 6.5 2.6s6.1-.8 6.5-2.6c.5-2.4-.9-4.2-2.2-6.1-1.2-1.8-.8-2.8-.8-4.4C15.5 4.8 14.2 3 12 3z"/><path d="M10.3 8h.01M13.7 8h.01M11 10.2l1 .8 1-.8"/></svg>Linux</h3>
           <div class="files">
-            <a class="file" href="https://snapcraft.io/inkboard"><b data-i18n="d.snap">Snap Store (оновлюється сам)</b><span>snap</span></a>
             <a class="file" data-asset="appimage" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><b data-i18n="d.appimage">AppImage (оновлюється сама)</b><span>.AppImage</span></a>
             <a class="file" data-asset="deb" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><b>Ubuntu / Debian</b><span>.deb</span></a>
           </div>
+          <div class="snap" data-i18n-html="d.snap"><a href="https://snapcraft.io/inkboard"><img src="https://snapcraft.io/uk/dark/install.svg" alt="Завантажте з Snap Store" height="48"></a></div>
           <p class="note" data-i18n-html="d.linux">AppImage: у властивостях файлу дозвольте <b>запуск як програми</b> (або <code>chmod +x</code>) і відкрийте. Якщо на Ubuntu не запускається: <code class="cmd">sudo apt install libfuse2t64</code></p>
         </div>
       </div>
@@ -374,7 +375,7 @@
     'd.win': 'Windows 10 / 11. The app isn’t code-signed yet, so you’ll see “Windows protected your PC”. Click <b>More info</b> → <b>Run anyway</b>.',
     'd.mac': 'Drag it to Applications and open it. macOS will say it can’t verify the app: click Done, open <b>System Settings → Privacy &amp; Security</b> and click <b>Open Anyway</b> at the bottom. You only do this once.',
     'd.appimage': 'AppImage (updates itself)',
-    'd.snap': 'Snap Store (updates itself)',
+    'd.snap': '<a href="https://snapcraft.io/inkboard"><img src="https://snapcraft.io/en/dark/install.svg" alt="Get it from the Snap Store" height="48"></a>',
     'd.linux': 'AppImage: in the file’s Properties allow <b>Executable as Program</b> (or <code>chmod +x</code>) and open it. If it doesn’t start on Ubuntu: <code class="cmd">sudo apt install libfuse2t64</code>',
     'foot.license': 'free software under the GPL-3.0',
     'foot.code': 'Source code',
