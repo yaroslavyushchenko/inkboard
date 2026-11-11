@@ -80,7 +80,7 @@ class Editor {
       if (s.lang !== prev.lang || s.board !== prev.board || s.view !== prev.view) this.updateTitle()
       if (s.tool !== prev.tool) {
         // Picking a drawing tool means "done with the selection": drop it (lasso ↔ move keep it).
-        if (s.tool !== 'select' && s.tool !== 'move' && s.selectedIds.length) useUI.setState({ selectedIds: [] })
+        if (s.tool !== 'select' && s.tool !== 'brushSelect' && s.tool !== 'move' && s.selectedIds.length) useUI.setState({ selectedIds: [] })
         if (s.tool !== 'text' && s.textEdit) this.commitText()
       }
     })
@@ -509,6 +509,22 @@ class Editor {
     const entry = await platform.library.saveTemplate(name, bytes, thumb)
     await this.refreshLibrary()
     return entry
+  }
+
+  /** Replace a template's content with the selection (the UI asks for confirmation first). */
+  async replaceTemplateWithSelection(id: string): Promise<boolean> {
+    const items = this.selectedItems()
+    if (!items.length) return false
+    const bg = useUI.getState().background
+    const bytes = await encodeBoard({ items, background: bg, camera: this.camera })
+    const thumb = await renderThumbnail(items, bg)
+    const entry = await platform.library.replaceTemplate(id, bytes, thumb)
+    // Drop the cached preview so the new one is shown.
+    const old = this.templateUrls.get(id)
+    if (old) URL.revokeObjectURL(old)
+    this.templateUrls.delete(id)
+    await this.refreshLibrary()
+    return !!entry
   }
 
   async insertTemplate(id: string): Promise<void> {

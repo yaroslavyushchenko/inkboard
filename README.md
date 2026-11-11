@@ -19,7 +19,8 @@ Built for teachers who write and draw with a stylus.
 - Line ends (arrow, dot…) on any line, including freehand; any line width via a slider
 - Text: click and type, or paste text
 - Lock items or groups so they can't be erased, moved or deleted by accident
-- Templates: save any part of a board and insert it into other boards
+- Templates: save any part of a board and insert it into other boards; replace a template's content
+  with a new selection (asks for confirmation)
 - Automatic updates
 - English and Ukrainian UI
 
@@ -52,6 +53,7 @@ npm run build
 | Undo / Redo | Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) |
 | Insert image | Ctrl+V, drag a file in, or the toolbar button |
 | Lasso select | V; Del deletes, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy & paste |
+| Brush select | C: touch items with the circle to add them; mouse wheel = circle size; Ctrl / Alt + drag removes |
 | Straight line | hold Shift while drawing |
 | Group / ungroup | Ctrl+G / Ctrl+Shift+G |
 | Change a line's angle / length | select it (V or M) and drag one of its round end handles |

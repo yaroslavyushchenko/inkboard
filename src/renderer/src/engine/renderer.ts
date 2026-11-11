@@ -25,8 +25,8 @@ export interface CursorState {
   sy: number
   /** Pen is in range of the tablet but not touching. */
   penHover: boolean
-  /** 'ink' shows a dot of the pen colour and size, 'eraser' a ring. */
-  kind: 'ink' | 'eraser'
+  /** 'ink' shows a dot of the pen colour and size, 'eraser' a ring, 'select' the brush-select circle. */
+  kind: 'ink' | 'eraser' | 'select'
   color: string
   /** Radius in screen px. */
   radius: number
@@ -241,7 +241,19 @@ export class BoardRenderer {
 
       ctx.beginPath()
       ctx.arc(sx, sy, r, 0, Math.PI * 2)
-      if (cursor.kind === 'eraser') {
+      if (cursor.kind === 'select') {
+        ctx.fillStyle = 'rgba(79, 107, 237, 0.08)'
+        ctx.fill()
+        ctx.setLineDash([5, 4])
+        ctx.lineWidth = 1.5
+        ctx.strokeStyle = ACCENT
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.beginPath()
+        ctx.arc(sx, sy, 1.8, 0, Math.PI * 2)
+        ctx.fillStyle = ACCENT
+        ctx.fill()
+      } else if (cursor.kind === 'eraser') {
         ctx.fillStyle = 'rgba(255,255,255,0.6)'
         ctx.fill()
         ctx.lineWidth = 1.5

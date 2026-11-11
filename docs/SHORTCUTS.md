@@ -22,6 +22,7 @@ depend on them. New shortcuts: add to `shortcuts.ts`, this file, the test and bo
 | E | Eraser |
 | X | Swap pen ↔ eraser |
 | V | Lasso select |
+| C | Brush select: touch items with the circle to add them (mouse wheel = circle size) |
 | M | Move items (hover highlights, drag to move) |
 | T | Show / hide protractor |
 | Space (hold) | Move the board |

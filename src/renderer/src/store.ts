@@ -7,7 +7,7 @@ import type { Protractor } from './engine/protractor'
 import type { BackgroundKind, Camera, GraphParams, LineCap, LineDash } from './engine/types'
 import { detectLanguage, type Lang } from './i18n'
 
-export type Tool = 'select' | 'move' | 'pen' | 'highlighter' | 'eraser' | 'pan' | 'shape' | 'text'
+export type Tool = 'select' | 'brushSelect' | 'move' | 'pen' | 'highlighter' | 'eraser' | 'pan' | 'shape' | 'text'
 
 /** Text being typed on the board (a new one, or an existing item while it's edited). */
 export interface TextEdit {
@@ -82,6 +82,8 @@ interface UIState {
   activePen: number
   pens: InkSlot[]
   highlighter: InkSlot
+  /** Brush-select circle radius in screen px (mouse wheel changes it). */
+  selectRadius: number
   /** Eraser radius in screen px. */
   eraserRadius: number
   background: BackgroundKind
@@ -121,6 +123,7 @@ export const useUI = create<UIState>()(
       tool: 'pen',
       shape: 'rectangle',
       shapeBases: {},
+      selectRadius: 24,
       penButtons: DEFAULT_PEN_BUTTONS,
       setPenButton: (which, action) => set((s) => ({ penButtons: { ...s.penButtons, [which]: action } })),
       textStyle: { color: '#1e1e1e', size: 24 },
@@ -176,6 +179,7 @@ export const useUI = create<UIState>()(
         lang: s.lang,
         graphPresets: s.graphPresets,
         shapeBases: s.shapeBases,
+        selectRadius: s.selectRadius,
         penButtons: s.penButtons,
         textStyle: s.textStyle
       })

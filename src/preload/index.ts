@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('inkboard', {
     showInFolder: invoke('library:show-in-folder'),
     takePendingOpen: invoke('library:take-pending-open'),
     saveTemplate: invoke('template:save'),
+    replaceTemplate: invoke('template:replace'),
     loadTemplate: invoke('template:load'),
     templateThumb: invoke('template:thumb'),
     renameTemplate: invoke('template:rename'),

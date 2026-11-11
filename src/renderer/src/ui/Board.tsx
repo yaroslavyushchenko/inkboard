@@ -21,7 +21,7 @@ import { editor } from '../editor'
 import { matchShortcut, type ShortcutId } from '../shortcuts'
 import { useUI, type PenAction, type Tool } from '../store'
 
-type Effective = 'ink' | 'eraser' | 'pan' | 'select' | 'shape' | 'move' | 'text'
+type Effective = 'ink' | 'eraser' | 'pan' | 'select' | 'brush' | 'shape' | 'move' | 'text'
 
 type Gesture =
   | { kind: 'ink'; pointerId: number; live: LiveStroke; start: Point; snap?: { mode: 'arc'; startDeg: number } | { mode: 'center' } | { mode: 'base'; u0: number } }
@@ -55,6 +55,7 @@ type Gesture =
       startY: number
     }
   | { kind: 'eraser'; pointerId: number; removed: Item[]; lastX: number; lastY: number }
+  | { kind: 'brush'; pointerId: number; lastX: number; lastY: number; remove: boolean; touched: boolean; moved: boolean; sx: number; sy: number }
   | { kind: 'pan'; pointerId: number; lastX: number; lastY: number }
   | { kind: 'pinch'; dist: number; cx: number; cy: number }
   | { kind: 'lasso'; pointerId: number; points: [number, number][]; startX: number; startY: number; moved: boolean }
@@ -163,6 +164,8 @@ export function Board() {
           ? 'pan'
           : tool === 'select'
             ? 'select'
+            : tool === 'brushSelect'
+              ? 'brush'
             : tool === 'shape'
               ? 'shape'
               : tool === 'move'
@@ -301,6 +304,11 @@ export function Board() {
       if (eff === 'eraser') {
         return { sx: hover.sx, sy: hover.sy, penHover, kind: 'eraser', color: '', radius: ui.eraserRadius }
       }
+      if (eff === 'brush') {
+        // Over a resize handle the normal cursor shows instead.
+        if (!gesture && selectionHit(hover.sx, hover.sy)?.kind === 'handle') return null
+        return { sx: hover.sx, sy: hover.sy, penHover, kind: 'select', color: '', radius: ui.selectRadius }
+      }
       const slot = ui.tool === 'highlighter' ? ui.highlighter : ui.pens[ui.activePen]
       return {
         sx: hover.sx,
@@ -336,7 +344,11 @@ export function Board() {
       else if (gesture?.kind === 'move') c = 'move'
       else if (gesture?.kind === 'scale') c = gesture.cx > gesture.ax === gesture.cy > gesture.ay ? 'nwse-resize' : 'nesw-resize'
       else if (gesture?.kind === 'reshape') c = gesture.side % 2 === 0 ? 'ns-resize' : 'ew-resize'
-      else if (tool === 'select' || tool === 'move') {
+      else if (tool === 'brushSelect') {
+        // The circle is drawn on the overlay; over a resize handle show the usual resize cursor.
+        const h = hover ? selectionHit(hover.sx, hover.sy) : null
+        if (h?.kind === 'handle' && !editor.selectionLocked()) c = h.corner % 2 === 0 ? 'nwse-resize' : 'nesw-resize'
+      } else if (tool === 'select' || tool === 'move') {
         const h = hover ? selectionHit(hover.sx, hover.sy) : null
         if (h?.kind === 'end') c = 'crosshair'
         else if (h?.kind === 'side') c = h.side % 2 === 0 ? 'ns-resize' : 'ew-resize'
@@ -407,6 +419,49 @@ export function Board() {
       return { ...orig, points, bbox: bboxOfPoints(points, orig.size * 3) }
     }
 
+    /**
+     * Brush select: everything the circle touches between two board points is added to the selection
+     * (whole groups), or removed from it with Ctrl / Alt held.
+     */
+    const brushSegment = (x0: number, y0: number, x1: number, y1: number, g: Gesture & { kind: 'brush' }): void => {
+      const r = useUI.getState().selectRadius / editor.camera.zoom
+      const box = { minX: Math.min(x0, x1) - r, minY: Math.min(y0, y1) - r, maxX: Math.max(x0, x1) + r, maxY: Math.max(y0, y1) + r }
+      const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (r * 0.5)))
+      const hit: Item[] = []
+      for (const item of scene.getItems()) {
+        if (!bboxIntersects(item.bbox, box)) continue
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps
+          const cx = x0 + (x1 - x0) * t
+          const cy = y0 + (y1 - y0) * t
+          const touches =
+            item.type === 'stroke'
+              ? circleHitsPolyline(cx, cy, r + item.size / 2, item.points)
+              : cx + r >= item.bbox.minX && cx - r <= item.bbox.maxX && cy + r >= item.bbox.minY && cy - r <= item.bbox.maxY
+          if (touches) {
+            hit.push(item)
+            break
+          }
+        }
+      }
+      if (!hit.length) return
+      g.touched = true
+      const current = editor.selectedItems()
+      if (g.remove) {
+        const gone = new Set<string>()
+        for (const h of hit) {
+          if (h.groupId) for (const m of scene.getItems()) if (m.groupId === h.groupId) gone.add(m.id)
+          gone.add(h.id)
+        }
+        const next = current.filter((i) => !gone.has(i.id)).map((i) => i.id)
+        if (next.length !== current.length) useUI.setState({ selectedIds: next })
+      } else {
+        const have = new Set(current.map((i) => i.id))
+        const fresh = hit.filter((i) => !have.has(i.id))
+        if (fresh.length) editor.setSelection([...current, ...fresh])
+      }
+    }
+
     const pointFrom = (e: PointerEvent, pressure: boolean): Point => {
       const p = local(e)
       const w = screenToWorld(editor.camera, p.x, p.y)
@@ -457,6 +512,9 @@ export function Board() {
           ...(live.endCap ? { endCap: live.endCap } : {})
         }
         scene.add([stroke])
+      } else if (g.kind === 'brush') {
+        // A tap that touches nothing clears the selection.
+        if (!g.moved && !g.touched && !g.remove) editor.clearSelection()
       } else if (g.kind === 'eraser') {
         scene.record({ added: [], removed: g.removed })
       } else if (g.kind === 'lasso') {
@@ -683,6 +741,30 @@ export function Board() {
             ...(ui.shape === 'line' && slot.endCap ? { endCap: slot.endCap } : {})
           }
         }
+      } else if (eff === 'brush') {
+        const h = selectionHit(p.x, p.y)
+        if (h?.kind === 'handle' && !editor.selectionLocked()) {
+          const b = h.box
+          const xs = [b.minX, b.maxX, b.maxX, b.minX]
+          const ys = [b.minY, b.minY, b.maxY, b.maxY]
+          const o = (h.corner + 2) % 4
+          gesture = { kind: 'scale', pointerId: e.pointerId, ax: xs[o], ay: ys[o], cx: xs[h.corner], cy: ys[h.corner] }
+        } else {
+          const w = screenToWorld(editor.camera, p.x, p.y)
+          const g: Gesture = {
+            kind: 'brush',
+            pointerId: e.pointerId,
+            lastX: w.x,
+            lastY: w.y,
+            remove: e.ctrlKey || e.metaKey || e.altKey,
+            touched: false,
+            moved: false,
+            sx: p.x,
+            sy: p.y
+          }
+          gesture = g
+          brushSegment(w.x, w.y, w.x, w.y, g)
+        }
       } else if (eff === 'eraser') {
         const w = screenToWorld(editor.camera, p.x, p.y)
         const g: Gesture = { kind: 'eraser', pointerId: e.pointerId, removed: [], lastX: w.x, lastY: w.y }
@@ -865,6 +947,15 @@ export function Board() {
             g.by = w.y
             g.keep = e.shiftKey
             if (g.moved) g.live = { ...g.live, parts: shapeParts(g.shape, g.ax, g.ay, w.x, w.y, e.shiftKey, g.live.size, g.base) }
+          } else if (g.kind === 'brush') {
+            if (Math.hypot(p.x - g.sx, p.y - g.sy) > 4) g.moved = true
+            for (const ev of events) {
+              const lp = local(ev)
+              const w = screenToWorld(editor.camera, lp.x, lp.y)
+              brushSegment(g.lastX, g.lastY, w.x, w.y, g)
+              g.lastX = w.x
+              g.lastY = w.y
+            }
           } else if (g.kind === 'eraser') {
             for (const ev of events) {
               const lp = local(ev)
@@ -914,6 +1005,13 @@ export function Board() {
       const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1
       const dx = e.deltaX * unit
       const dy = e.deltaY * unit
+      if (useUI.getState().tool === 'brushSelect' && !e.ctrlKey && !e.metaKey && !spaceDown) {
+        // Brush select: the wheel sizes the circle (like Blender's circle select).
+        const r = useUI.getState().selectRadius * Math.exp(-dy * 0.002)
+        useUI.setState({ selectRadius: Math.max(6, Math.min(240, r)) })
+        invalidate(false)
+        return
+      }
       if (e.ctrlKey || e.metaKey) {
         // Ctrl + wheel, or touchpad pinch (Chromium reports it as ctrl+wheel).
         editor.setCamera(zoomAt(editor.camera, p.x, p.y, editor.camera.zoom * Math.exp(-dy * 0.0025)))
@@ -975,6 +1073,7 @@ export function Board() {
         // Quick swap between the current pen and the eraser (handy on a tablet ExpressKey).
         swapEraser: () => (ui.tool === 'eraser' ? ui.selectPen(ui.activePen) : ui.setTool('eraser')),
         lasso: () => ui.setTool('select'),
+        brushSelect: () => ui.setTool('brushSelect'),
         move: () => ui.setTool('move'),
         protractor: () => editor.toggleProtractor()
       }

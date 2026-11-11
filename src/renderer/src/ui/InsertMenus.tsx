@@ -201,7 +201,7 @@ export function GraphMenu() {
   )
 }
 
-function TemplateThumb({ id }: { id: string }) {
+export function TemplateThumb({ id, v }: { id: string; v?: number }) {
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
     let alive = true
@@ -209,7 +209,7 @@ function TemplateThumb({ id }: { id: string }) {
     return () => {
       alive = false
     }
-  }, [id])
+  }, [id, v])
   return <div className="card-thumb">{url ? <img src={url} alt="" draggable={false} /> : <div className="card-thumb-empty" />}</div>
 }
 
@@ -252,7 +252,7 @@ export function TemplatesMenu() {
                   void editor.insertTemplate(tp.id)
                 }}
               >
-                <TemplateThumb id={tp.id} />
+                <TemplateThumb id={tp.id} v={tp.updatedAt} />
               </button>
               {editing === tp.id ? (
                 <input

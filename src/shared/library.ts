@@ -30,6 +30,8 @@ export interface TemplateEntry {
   id: string
   name: string
   createdAt: number
+  /** Set when the template's content was replaced. */
+  updatedAt?: number
 }
 
 export interface LibraryState {

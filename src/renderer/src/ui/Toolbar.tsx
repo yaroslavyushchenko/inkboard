@@ -3,7 +3,7 @@ import { editor } from '../editor'
 import { useT } from '../i18n'
 import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useUI, type InkSlot } from '../store'
 import { TEXT_SIZES } from '../engine/text'
-import { EraserIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, ProtractorIcon, RedoIcon, TextIcon, UndoIcon } from './icons'
+import { BrushSelectIcon, EraserIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, ProtractorIcon, RedoIcon, TextIcon, UndoIcon } from './icons'
 import { GraphMenu, ShapesMenu, TemplatesMenu } from './InsertMenus'
 import { LineStyleControls, SizeSlider } from './LineStyle'
 import { Popover } from './Popover'
@@ -121,6 +121,16 @@ export function Toolbar() {
           }}
         >
           <LassoIcon />
+        </button>
+        <button
+          className={`icon-btn ${tool === 'brushSelect' ? 'active' : ''}`}
+          title={t('tool.brushSelect')}
+          onClick={() => {
+            setTool('brushSelect')
+            setOpen(null)
+          }}
+        >
+          <BrushSelectIcon />
         </button>
         <button
           className={`icon-btn ${tool === 'move' ? 'active' : ''}`}

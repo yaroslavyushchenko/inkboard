@@ -38,6 +38,7 @@ export type ShortcutId =
   | 'eraser'
   | 'swapEraser'
   | 'lasso'
+  | 'brushSelect'
   | 'move'
   | 'protractor'
 
@@ -74,6 +75,7 @@ export const SHORTCUTS: Shortcut[] = [
   S({ id: 'eraser', codes: ['KeyE'], mod: false, shift: false, display: 'E', group: 'tools', label: 'shortcuts.eraser' }),
   S({ id: 'swapEraser', codes: ['KeyX'], mod: false, shift: false, display: 'X', group: 'tools', label: 'shortcuts.swap' }),
   S({ id: 'lasso', codes: ['KeyV'], mod: false, shift: false, display: 'V', group: 'tools', label: 'shortcuts.lasso' }),
+  S({ id: 'brushSelect', codes: ['KeyC'], mod: false, shift: false, display: 'C', group: 'tools', label: 'shortcuts.brushSelect' }),
   S({ id: 'move', codes: ['KeyM'], mod: false, shift: false, display: 'M', group: 'tools', label: 'shortcuts.move' }),
   S({ id: 'protractor', codes: ['KeyT'], mod: false, shift: false, display: 'T', group: 'tools', label: 'shortcuts.protractor' }),
   // Editing

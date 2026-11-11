@@ -43,6 +43,7 @@ export interface LibraryApi {
   /** A board file the app was launched with ("Open with Inkboard"), already imported. */
   takePendingOpen(): Promise<string | null>
   saveTemplate(name: string, bytes: Uint8Array, thumb: Uint8Array | null): Promise<TemplateEntry>
+  replaceTemplate(id: string, bytes: Uint8Array, thumb: Uint8Array | null): Promise<TemplateEntry | null>
   loadTemplate(id: string): Promise<Uint8Array>
   templateThumb(id: string): Promise<Uint8Array | null>
   renameTemplate(id: string, name: string): Promise<void>
@@ -292,6 +293,15 @@ function browserLibrary(): LibraryApi {
       ;(idx.templates ??= []).push(entry)
       save()
       return entry
+    },
+    async replaceTemplate(id, bytes, thumb) {
+      const t = idx.templates.find((x) => x.id === id)
+      if (!t) return null
+      store.set(`tpl:${id}`, toB64(bytes))
+      if (thumb) store.set(`tplthumb:${id}`, toB64(thumb))
+      t.updatedAt = Date.now()
+      save()
+      return t
     },
     async loadTemplate(id) {
       const b = store.get(`tpl:${id}`)

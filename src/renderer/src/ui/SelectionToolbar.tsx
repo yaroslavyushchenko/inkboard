@@ -9,7 +9,8 @@ import { useT, type MessageKey } from '../i18n'
 import { useUI } from '../store'
 import { PEN_COLORS, PEN_SIZES } from '../store'
 import { BookmarkIcon, DuplicateIcon, GearIcon, GroupIcon, LockIcon, ShapesIcon, StyleIcon, TrashIcon, UngroupIcon, UnlockIcon } from './icons'
-import { BaseRow, ShapePreview } from './InsertMenus'
+import { BaseRow, ShapePreview, TemplateThumb } from './InsertMenus'
+import type { TemplateEntry } from '../../../shared/library'
 import { LineStyleControls, SizeSlider } from './LineStyle'
 import { Popover } from './Popover'
 
@@ -26,7 +27,12 @@ export function SelectionToolbar() {
   const [shaping, setShaping] = useState(false)
   const closeShape = useCallback(() => setShaping(false), [])
   const [name, setName] = useState('')
-  const close = useCallback(() => setSaving(false), [])
+  const [replacing, setReplacing] = useState<TemplateEntry | null>(null)
+  const templates = useUI((s) => s.library.templates)
+  const close = useCallback(() => {
+    setSaving(false)
+    setReplacing(null)
+  }, [])
   const closeStyle = useCallback(() => setStyling(false), [])
   if (!selectedIds.length || view !== 'board') return null
   const box = editor.selectionBBox()
@@ -189,7 +195,30 @@ export function SelectionToolbar() {
           <BookmarkIcon />
         </button>
         {saving && (
-          <Popover onClose={close} className="sel-popover">
+          <Popover onClose={close} className="sel-popover tpl-popover">
+            {replacing ? (
+              // Explicit second step, so a template can't be overwritten by a slip of the pen.
+              <div className="tpl-confirm">
+                <p>{t('tpl.replaceConfirm', { name: replacing.name })}</p>
+                <div className="tpl-confirm-actions">
+                  <button className="text-btn" onClick={() => setReplacing(null)}>
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    className="text-btn danger solid"
+                    onClick={() => {
+                      void editor.replaceTemplateWithSelection(replacing.id).then(() => {
+                        setReplacing(null)
+                        setSaving(false)
+                      })
+                    }}
+                  >
+                    {t('tpl.replaceYes')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+            <>
             <form
               className="tag-new flat"
               onSubmit={(e) => {
@@ -206,6 +235,21 @@ export function SelectionToolbar() {
                 {t('tpl.save')}
               </button>
             </form>
+            {templates.length > 0 && (
+              <>
+                <div className="popover-title section">{t('tpl.replaceTitle')}</div>
+                <div className="tpl-replace-list">
+                  {templates.map((tp) => (
+                    <button key={tp.id} className="tpl-replace-item" title={t('tpl.replaceTitle')} onClick={() => setReplacing(tp)}>
+                      <TemplateThumb id={tp.id} v={tp.updatedAt} />
+                      <span>{tp.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            </>
+            )}
           </Popover>
         )}
       </div>

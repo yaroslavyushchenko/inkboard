@@ -1481,3 +1481,61 @@ button:disabled {
   line-height: 1;
   box-shadow: none !important;
 }
+
+/* replace a template with the selection */
+.tpl-popover {
+  max-width: 300px;
+}
+
+.tpl-replace-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.tpl-replace-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 8px;
+  font-size: 11px;
+  color: #3b3d43;
+  text-align: center;
+}
+
+.tpl-replace-item:hover {
+  background: #f1f2f5;
+}
+
+.tpl-replace-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tpl-replace-item .card-thumb {
+  aspect-ratio: 3 / 2;
+}
+
+.tpl-confirm p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.tpl-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.text-btn.danger.solid {
+  background: #e03131;
+  color: #fff;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 8px;
+}

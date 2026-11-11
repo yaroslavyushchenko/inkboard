@@ -110,6 +110,7 @@ function registerIpc(): void {
   h('library:load-version', (_e, id: string, ts: number) => library.loadVersion(id, ts))
   h('library:snapshot', (_e, id: string, bytes: Uint8Array) => library.snapshotNow(id, bytes))
   h('template:save', (_e, name: string, bytes: Uint8Array, thumb: Uint8Array | null) => library.saveTemplate(name, bytes, thumb))
+  h('template:replace', (_e, id: string, bytes: Uint8Array, thumb: Uint8Array | null) => library.replaceTemplate(id, bytes, thumb))
   h('template:load', (_e, id: string) => library.loadTemplate(id))
   h('template:thumb', (_e, id: string) => library.templateThumb(id))
   h('template:rename', (_e, id: string, name: string) => library.renameTemplate(id, name))

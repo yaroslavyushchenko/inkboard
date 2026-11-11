@@ -410,6 +410,17 @@ export class Library {
     return entry
   }
 
+  /** Overwrite a template's content (the previous version stays as `.bak` next to it). */
+  async replaceTemplate(id: string, bytes: Uint8Array, thumb: Uint8Array | null): Promise<TemplateEntry | null> {
+    const t = this.index.templates.find((x) => x.id === id)
+    if (!t) return null
+    await writeDurable(this.p.template(id), bytes)
+    if (thumb) await writeDurable(this.p.templateThumb(id), thumb)
+    t.updatedAt = Date.now()
+    await this.writeIndex()
+    return t
+  }
+
   async loadTemplate(id: string): Promise<Uint8Array> {
     return new Uint8Array(await readDurable(this.p.template(id), isValidBoard))
   }
