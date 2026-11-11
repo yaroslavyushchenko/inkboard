@@ -3,7 +3,7 @@ import { editor } from '../editor'
 import { SELECTION_PAD } from '../engine/renderer'
 import { useT } from '../i18n'
 import { useUI } from '../store'
-import { BookmarkIcon, DuplicateIcon, GearIcon, TrashIcon } from './icons'
+import { BookmarkIcon, DuplicateIcon, GearIcon, GroupIcon, TrashIcon, UngroupIcon } from './icons'
 import { Popover } from './Popover'
 
 /** Small floating action bar above the current selection (like Whiteboard's context menu). */
@@ -13,7 +13,7 @@ export function SelectionToolbar() {
   const view = useUI((s) => s.view)
   // Re-render when the camera or items move so the bar follows the selection.
   useUI((s) => s.camera)
-  useUI((s) => s.canUndo)
+  useUI((s) => s.sceneVersion)
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
   const close = useCallback(() => setSaving(false), [])
@@ -22,6 +22,10 @@ export function SelectionToolbar() {
   if (!box) return null
   const items = editor.selectedItems()
   const graph = items.length === 1 && items[0].type === 'graph' ? items[0] : null
+  const firstGroup = items[0]?.groupId
+  const oneGroup = !!firstGroup && items.every((i) => i.groupId === firstGroup)
+  const canGroup = items.length >= 2 && !oneGroup
+  const canUngroup = items.some((i) => i.groupId)
   const cam = editor.camera
   const left = ((box.minX + box.maxX) / 2 - cam.x) * cam.zoom
   const top = (box.minY - cam.y) * cam.zoom - SELECTION_PAD
@@ -42,6 +46,21 @@ export function SelectionToolbar() {
           <GearIcon />
         </button>
       )}
+      {canGroup && (
+        <button className="labeled-btn" title={`${t('sel.group')} (Ctrl+G)`} onClick={() => editor.groupSelection()}>
+          <GroupIcon />
+          <span>{t('sel.group')}</span>
+          <kbd>Ctrl+G</kbd>
+        </button>
+      )}
+      {canUngroup && (
+        <button className="labeled-btn" title={`${t('sel.ungroup')} (Ctrl+Shift+G)`} onClick={() => editor.ungroupSelection()}>
+          <UngroupIcon />
+          <span>{t('sel.ungroup')}</span>
+          <kbd>Ctrl+Shift+G</kbd>
+        </button>
+      )}
+      {(canGroup || canUngroup) && <div className="sep" />}
       <div className="menu-anchor">
         <button data-popover-anchor className="icon-btn" title={t('tpl.saveSelection')} onClick={() => setSaving((v) => !v)}>
           <BookmarkIcon />

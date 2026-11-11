@@ -13,6 +13,8 @@ interface ItemBase {
   /** Stacking order. Higher is drawn on top. Preserved across undo/redo. */
   z: number
   bbox: BBox
+  /** Items sharing a groupId are selected, moved and scaled together (Ctrl+G). */
+  groupId?: string
 }
 
 /**

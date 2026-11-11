@@ -8,6 +8,7 @@
 - **Coordinates:** number lines and coordinate planes with previews; set your own ranges and unit length,
   save your own presets, change them after inserting (gear button on the selection).
 - **Templates:** select anything (e.g. "Given / Find / Solution"), press the bookmark button — and insert it into any board later.
+- **Group / ungroup:** select several things and press **Ctrl+G** (or the Group button) — they move and scale together. **Ctrl+Shift+G** ungroups.
 - **Automatic updates:** from this version on, Inkboard updates itself on Windows and Linux (AppImage).
   On macOS and .deb you get a notice with a download link.
 

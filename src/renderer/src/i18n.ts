@@ -14,6 +14,8 @@ const en = {
   'zoom.reset': 'Zoom to 100% (Ctrl+0)',
   'sel.delete': 'Delete (Del)',
   'sel.duplicate': 'Duplicate (Ctrl+D)',
+  'sel.group': 'Group',
+  'sel.ungroup': 'Ungroup',
 
   'settings.title': 'Settings',
   'settings.background': 'Background',
@@ -178,6 +180,8 @@ const uk: Record<MessageKey, string> = {
   'zoom.reset': 'Масштаб 100% (Ctrl+0)',
   'sel.delete': 'Видалити (Del)',
   'sel.duplicate': 'Дублювати (Ctrl+D)',
+  'sel.group': 'Згрупувати',
+  'sel.ungroup': 'Розгрупувати',
 
   'settings.title': 'Налаштування',
   'settings.background': 'Фон',

@@ -21,9 +21,11 @@ interface SerializedStroke {
   /** Flattened [x, y, pressure, x, y, pressure, ...]. */
   pts: number[]
   geom?: 'line'
+  groupId?: string
 }
 
 interface SerializedGraph extends GraphParams {
+  groupId?: string
   type: 'graph'
   id: string
   z: number
@@ -33,6 +35,7 @@ interface SerializedGraph extends GraphParams {
 }
 
 interface SerializedImage {
+  groupId?: string
   type: 'image'
   id: string
   z: number
@@ -72,8 +75,8 @@ export function serializeBoard(data: BoardData): BoardFile {
         pts[i * 3 + 1] = r2(y)
         pts[i * 3 + 2] = r3(p)
       })
-      const { id, z, tool, color, size, pressure, geom } = it
-      return { type: 'stroke', id, z, tool, color, size, pressure, pts, ...(geom ? { geom } : {}) }
+      const { id, z, tool, color, size, pressure, geom, groupId } = it
+      return { type: 'stroke', id, z, tool, color, size, pressure, pts, ...(geom ? { geom } : {}), ...(groupId ? { groupId } : {}) }
     }
     if (it.type === 'graph') {
       const { bbox: _bbox, ...rest } = it
@@ -85,7 +88,7 @@ export function serializeBoard(data: BoardData): BoardFile {
       assetKeys.set(it.src, key)
       assets[key] = it.src
     }
-    return { type: 'image', id: it.id, z: it.z, asset: key, x: it.x, y: it.y, w: it.w, h: it.h }
+    return { type: 'image', id: it.id, z: it.z, asset: key, x: it.x, y: it.y, w: it.w, h: it.h, ...(it.groupId ? { groupId: it.groupId } : {}) }
   })
   return { format: FORMAT, version: FORMAT_VERSION, background: data.background, camera: data.camera, assets, items }
 }
@@ -111,10 +114,12 @@ export function deserializeBoard(file: BoardFile): BoardData {
       items.push({
         type: 'stroke', id: s.id, z: s.z, tool: s.tool, color: s.color, size: s.size, pressure: s.pressure, points,
         ...(s.geom === 'line' ? { geom: 'line' as const } : {}),
+        ...(s.groupId ? { groupId: s.groupId } : {}),
         bbox: { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad }
       })
     } else if (s.type === 'graph') {
       const g: GraphItem = { ...sanitizeGraph(s), type: 'graph', id: s.id, z: s.z, ox: s.ox, oy: s.oy, color: s.color, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
+      if (s.groupId) g.groupId = s.groupId
       g.bbox = graphBBox(g)
       items.push(g)
     } else if (s.type === 'image') {
@@ -122,6 +127,7 @@ export function deserializeBoard(file: BoardFile): BoardData {
       if (!src) continue
       items.push({
         type: 'image', id: s.id, z: s.z, src, x: s.x, y: s.y, w: s.w, h: s.h,
+        ...(s.groupId ? { groupId: s.groupId } : {}),
         bbox: { minX: s.x, minY: s.y, maxX: s.x + s.w, maxY: s.y + s.h }
       })
     }

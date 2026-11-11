@@ -167,6 +167,23 @@ export const GearIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
+export const GroupIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="3" y="3" width="18" height="18" rx="2.5" strokeDasharray="3 2.5" />
+    <rect x="7" y="7" width="5" height="5" rx="1" />
+    <circle cx="15" cy="15" r="2.5" />
+  </svg>
+)
+
+export const UngroupIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="3" y="3" width="9" height="9" rx="1.5" strokeDasharray="3 2.5" />
+    <rect x="12" y="12" width="9" height="9" rx="1.5" strokeDasharray="3 2.5" />
+    <rect x="5.5" y="5.5" width="4" height="4" rx="0.8" />
+    <circle cx="16.5" cy="16.5" r="2" />
+  </svg>
+)
+
 export const ImageIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <rect x="3" y="4" width="18" height="16" rx="2.5" />

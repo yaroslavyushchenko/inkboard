@@ -42,6 +42,8 @@ interface UIState {
   zoom: number
   canUndo: boolean
   canRedo: boolean
+  /** Bumped on every board change so chrome that reads items (selection bar) re-renders. */
+  sceneVersion: number
   selectedIds: string[]
   /** Which screen is shown: the board or the home screen with all boards. */
   view: 'board' | 'home'
@@ -79,6 +81,7 @@ export const useUI = create<UIState>()(
       zoom: 1,
       canUndo: false,
       canRedo: false,
+      sceneVersion: 0,
       selectedIds: [],
       view: 'board',
       board: null,

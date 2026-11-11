@@ -1208,3 +1208,38 @@ button:disabled {
 .graph-preview text {
   font-size: 0;
 }
+
+/* Selection bar buttons with a text label and shortcut (Group / Ungroup). */
+.labeled-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 10px 0 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #3b3d43;
+  white-space: nowrap;
+}
+
+.labeled-btn:hover {
+  background: #f1f2f5;
+}
+
+.labeled-btn kbd {
+  font: inherit;
+  font-size: 11px;
+  color: var(--muted);
+  background: #f1f2f5;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.selection-toolbar {
+  align-items: center;
+}
+
+.selection-toolbar .sep {
+  height: 24px;
+  margin: 0 2px;
+}

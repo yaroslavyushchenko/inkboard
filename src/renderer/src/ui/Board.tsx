@@ -510,6 +510,8 @@ export function Board() {
       if (mod && key === '0') return e.preventDefault(), editor.resetZoom()
       if (mod && key === 'a') return e.preventDefault(), editor.selectAll()
       if (mod && key === 'd') return e.preventDefault(), editor.duplicateSelection()
+      if (mod && key === 'g' && e.shiftKey) return e.preventDefault(), editor.ungroupSelection()
+      if (mod && key === 'g') return e.preventDefault(), editor.groupSelection()
       if (mod) return
       if (key === 'delete' || key === 'backspace') return e.preventDefault(), editor.deleteSelection()
       if (key === 'escape') return editor.clearSelection()

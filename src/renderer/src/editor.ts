@@ -58,6 +58,7 @@ class Editor {
       useUI.setState({
         canUndo: this.scene.canUndo,
         canRedo: this.scene.canRedo,
+        sceneVersion: this.scene.version,
         selectedIds: alive.length === sel.length ? sel : alive
       })
       this.markChanged()
@@ -133,8 +134,29 @@ class Editor {
     return ids.length ? this.scene.getById(ids) : []
   }
 
+  /** Select items; picking any member of a group selects the whole group. */
   setSelection(items: Item[]): void {
-    useUI.setState({ selectedIds: items.map((i) => i.id) })
+    const groups = new Set(items.map((i) => i.groupId).filter(Boolean))
+    const all = groups.size ? this.scene.getItems().filter((i) => (i.groupId && groups.has(i.groupId)) || items.includes(i)) : items
+    useUI.setState({ selectedIds: all.map((i) => i.id) })
+  }
+
+  /** Ctrl+G: join the selection into one group (existing groups inside are merged). */
+  groupSelection(): void {
+    const items = this.selectedItems()
+    if (items.length < 2) return
+    const gid = newId()
+    this.scene.replace(items, items.map((i) => ({ ...i, groupId: gid })))
+  }
+
+  /** Ctrl+Shift+G: split the selected groups back into separate items (they stay selected). */
+  ungroupSelection(): void {
+    const items = this.selectedItems().filter((i) => i.groupId)
+    if (!items.length) return
+    this.scene.replace(
+      items,
+      items.map(({ groupId: _g, ...rest }) => rest as Item)
+    )
   }
 
   clearSelection(): void {
@@ -181,9 +203,21 @@ class Editor {
 
   /** Copies of `items` with fresh ids, on top of everything, shifted by (dx, dy). */
   private cloneItems(items: Item[], dx: number, dy: number): Item[] {
+    // Copies of a group form their own new group.
+    const groupMap = new Map<string, string>()
+    const regroup = (g?: string): string | undefined => {
+      if (!g) return undefined
+      if (!groupMap.has(g)) groupMap.set(g, newId())
+      return groupMap.get(g)
+    }
     return [...items]
       .sort((a, b) => a.z - b.z)
-      .map((it) => ({ ...applyXform(it, { s: 1, ax: 0, ay: 0, dx, dy }), id: newId(), z: this.scene.allocZ() }))
+      .map((it) => {
+        const copy = { ...applyXform(it, { s: 1, ax: 0, ay: 0, dx, dy }), id: newId(), z: this.scene.allocZ() }
+        const g = regroup(it.groupId)
+        if (g) copy.groupId = g
+        return copy
+      })
   }
 
   duplicateSelection(): void {

@@ -48,6 +48,7 @@ npm run build
 | Insert image | Ctrl+V, drag a file in, or the toolbar button |
 | Lasso select | V; Del deletes, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy & paste |
 | Straight line | hold Shift while drawing |
+| Group / ungroup | Ctrl+G / Ctrl+Shift+G |
 | All boards | Ctrl+H |
 | New board / Open file | Ctrl+N / Ctrl+O |
 | Save as file | Ctrl+S (draft) or Ctrl+Shift+S |
