@@ -11,6 +11,7 @@ import { ShortcutsDialog } from './ui/ShortcutsDialog'
 import { TextEditor } from './ui/TextEditor'
 import { Toolbar } from './ui/Toolbar'
 import { UpdateBanner } from './ui/UpdateBanner'
+import { InstrumentTip } from './ui/InstrumentTip'
 import { VersionHistory } from './ui/VersionHistory'
 import { ZoomControls } from './ui/ZoomControls'
 
@@ -42,6 +43,7 @@ export function App() {
       <VersionHistory />
       <GraphDialog />
       <UpdateBanner />
+      <InstrumentTip />
       <ShortcutsDialog />
       {view === 'home' && <HomeScreen />}
     </div>

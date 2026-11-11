@@ -1,6 +1,7 @@
 import { graphBBox, sanitizeGraph } from './graph'
-import { isShapeKind } from './shapes'
+import { isShapeKind, MAX_BASE, MIN_BASE } from './shapes'
 import { textBBox } from './text'
+import type { TextRun } from './types'
 import type { BackgroundKind, Camera, GraphItem, GraphParams, Item, LineCap, LineDash, Point, ShapeSpec, TextItem } from './types'
 
 /**
@@ -13,9 +14,10 @@ export const FORMAT = 'inkboard'
  * 2 = straight-line strokes (`geom`), coordinate graphs, groups.
  * 3 = line patterns (`dash`) and line ends (`startCap` / `endCap`).
  * 4 = editable shapes (`shape` spec on shape strokes), locked items (`locked`), text items.
+ * 5 = formatted text (`runs` on text items), any number of sides for a solid's base.
  * Readers accept ≤ this; older apps refuse newer files instead of silently dropping data.
  */
-export const FORMAT_VERSION = 4
+export const FORMAT_VERSION = 5
 
 interface SerializedStroke {
   type: 'stroke'
@@ -69,6 +71,7 @@ interface SerializedText {
   text: string
   size: number
   color: string
+  runs?: TextRun[]
   groupId?: string
   locked?: boolean
 }
@@ -172,6 +175,7 @@ export function deserializeBoard(file: BoardFile): BoardData {
       if (typeof s.text !== 'string' || !s.text || !(s.size > 0)) continue
       const t: TextItem = {
         type: 'text', id: s.id, z: s.z, x: s.x, y: s.y, text: s.text, size: s.size, color: s.color,
+        ...(readRuns(s.runs, s.text) ? { runs: readRuns(s.runs, s.text)! } : {}),
         ...(s.groupId ? { groupId: s.groupId } : {}),
         ...(s.locked ? { locked: true } : {}),
         bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 }
@@ -221,6 +225,23 @@ function readSpec(v: unknown): ShapeSpec | null {
   const nums = [o.ax, o.ay, o.bx, o.by]
   if (!nums.every((n) => typeof n === 'number' && Number.isFinite(n))) return null
   const spec: ShapeSpec = { kind: o.kind, ax: o.ax as number, ay: o.ay as number, bx: o.bx as number, by: o.by as number }
-  if (typeof o.base === 'number' && Number.isInteger(o.base) && o.base >= 3 && o.base <= 8) spec.base = o.base
+  if (typeof o.base === 'number' && Number.isInteger(o.base) && o.base >= MIN_BASE && o.base <= MAX_BASE) spec.base = o.base
   return spec
+}
+
+/** Validated text runs: only known fields, and their texts must add up to the item's text. */
+function readRuns(v: unknown, text: string): TextRun[] | null {
+  if (!Array.isArray(v) || !v.length) return null
+  const out: TextRun[] = []
+  for (const r of v as Record<string, unknown>[]) {
+    if (!r || typeof r.text !== 'string') return null
+    const o: TextRun = { text: r.text }
+    if (typeof r.color === 'string') o.color = r.color
+    if (typeof r.size === 'number' && r.size > 0 && Number.isFinite(r.size)) o.size = r.size
+    if (r.bold === true) o.bold = true
+    if (r.italic === true) o.italic = true
+    if (r.underline === true) o.underline = true
+    out.push(o)
+  }
+  return out.map((r) => r.text).join('') === text ? out : null
 }

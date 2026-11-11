@@ -15,8 +15,9 @@ import {
 } from './engine/serialize'
 import { editableShape, regenerateShape } from './engine/shapeItems'
 import { applyXform, unionBBox, type Xform } from './engine/transform'
-import { textBBox } from './engine/text'
-import type { BBox, Camera, GraphItem, GraphParams, ImageItem, Item, LineCap, LineDash, ShapeSpec, StrokeItem, TextItem } from './engine/types'
+import { COMPASS_CELL } from './engine/compass'
+import { formatAll, formatRange, fullRuns, textBBox, textFields, trimRunsEnd } from './engine/text'
+import type { BBox, Camera, GraphItem, GraphParams, ImageItem, Item, LineCap, LineDash, ShapeSpec, StrokeItem, TextFormat, TextItem } from './engine/types'
 import { translate, type MessageKey } from './i18n'
 import { platform } from './platform'
 import { useUI } from './store'
@@ -188,14 +189,14 @@ class Editor {
   startText(x: number, y: number): void {
     this.commitText()
     const { color, size } = useUI.getState().textStyle
-    useUI.setState({ textEdit: { x, y, text: '', size, color }, selectedIds: [] })
+    useUI.setState({ textEdit: { x, y, size, color, runs: [] }, selectedIds: [] })
   }
 
   /** Edit an existing text item in place (it's hidden on the board meanwhile). */
   editText(item: TextItem): void {
     if (item.locked) return
     this.commitText()
-    useUI.setState({ textEdit: { id: item.id, x: item.x, y: item.y, text: item.text, size: item.size, color: item.color }, selectedIds: [] })
+    useUI.setState({ textEdit: { id: item.id, x: item.x, y: item.y, size: item.size, color: item.color, runs: fullRuns(item) }, selectedIds: [] })
     this.invalidate(true)
   }
 
@@ -204,29 +205,37 @@ class Editor {
     const te = useUI.getState().textEdit
     if (!te) return
     useUI.setState({ textEdit: null })
-    const text = te.text.replace(/\s+$/, '')
+    const fields = textFields(trimRunsEnd(te.runs), te)
     const old = te.id ? (this.scene.getById([te.id])[0] as TextItem | undefined) : undefined
-    if (!text) {
+    if (!fields.text) {
       if (old) this.scene.remove([old])
       else this.invalidate(true)
       return
     }
-    if (old && old.text === text) return this.invalidate(true)
+    if (old && old.text === fields.text && old.color === fields.color && old.size === fields.size && JSON.stringify(old.runs) === JSON.stringify(fields.runs)) {
+      return this.invalidate(true)
+    }
     const item: TextItem = {
       type: 'text',
       id: old?.id ?? newId(),
       z: old?.z ?? this.scene.allocZ(),
       x: te.x,
       y: te.y,
-      text,
-      size: te.size,
-      color: te.color,
+      ...fields,
       ...(old?.groupId ? { groupId: old.groupId } : {}),
       bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 }
     }
     item.bbox = textBBox(item)
     if (old) this.scene.replace([old], [item])
     else this.scene.add([item])
+  }
+
+  /** Format the whole text being typed (text tool options while editing). */
+  formatEditingText(patch: TextFormat): void {
+    const te = useUI.getState().textEdit
+    if (!te) return
+    const runs = formatRange(te.runs, 0, Infinity, patch)
+    useUI.setState({ textEdit: { ...te, ...(patch.color ? { color: patch.color } : {}), ...(patch.size ? { size: patch.size } : {}), runs } })
   }
 
   /** Paste plain text as a text item in the middle of the view. */
@@ -245,14 +254,15 @@ class Editor {
     this.setSelection([item])
   }
 
-  /** Change colour / font size of the selected text items (undoable). */
-  restyleText(patch: { color?: string; size?: number }): void {
+  /** Change colour / size / bold / italic / underline of the selected text items as a whole (undoable). */
+  restyleText(patch: TextFormat): void {
     const texts = this.selectedItems().filter((i): i is TextItem => i.type === 'text' && !i.locked)
     if (!texts.length) return
     this.scene.replace(
       texts,
       texts.map((t) => {
-        const n = { ...t, ...(patch.color ? { color: patch.color } : {}), ...(patch.size ? { size: patch.size } : {}) }
+        const { runs: _runs, ...rest } = t
+        const n: TextItem = { ...rest, ...formatAll(t, patch) }
         return { ...n, bbox: textBBox(n) }
       })
     )
@@ -486,6 +496,18 @@ class Editor {
   // ---------------------------------------------------------------- protractor
 
   /** Show the protractor in the middle of the view, or hide it. */
+  /** Show the compass in the middle of the view (legs open 4 cells), or hide it. */
+  toggleCompass(): void {
+    if (useUI.getState().compass) {
+      useUI.setState({ compass: null })
+      return
+    }
+    const { width, height } = this.view()
+    const c = screenToWorld(this.camera, width / 2, height / 2)
+    const r = Math.min(COMPASS_CELL * 4, (Math.min(width, height) * 0.25) / this.camera.zoom)
+    useUI.setState({ compass: { x: c.x - r / 2, y: c.y + r * 0.3, r, a: 0 } })
+  }
+
   toggleProtractor(): void {
     if (useUI.getState().protractor) {
       useUI.setState({ protractor: null })

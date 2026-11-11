@@ -106,7 +106,24 @@ export interface GraphItem extends ItemBase, GraphParams {
   color: string
 }
 
-/** Typed text. Position is the top-left corner; `size` is the font size in board units. */
+/** Formatting of a piece of text; unset fields fall back to the text item's own colour / size. */
+export interface TextFormat {
+  color?: string
+  size?: number
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+}
+
+/** A piece of text with one formatting (may contain line breaks). */
+export interface TextRun extends TextFormat {
+  text: string
+}
+
+/**
+ * Typed text. Position is the top-left corner; `size` is the font size in board units.
+ * `runs` (optional) splits `text` into differently formatted pieces; their texts joined equal `text`.
+ */
 export interface TextItem extends ItemBase {
   type: 'text'
   x: number
@@ -114,6 +131,7 @@ export interface TextItem extends ItemBase {
   text: string
   size: number
   color: string
+  runs?: TextRun[]
 }
 
 export type Item = StrokeItem | ImageItem | GraphItem | TextItem

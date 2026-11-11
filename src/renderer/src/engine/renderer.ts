@@ -4,6 +4,7 @@ import { bboxIntersects } from './geometry'
 import { getImage } from './images'
 import { drawGraph } from './graph'
 import { drawText } from './text'
+import { drawCompass, type Compass } from './compass'
 import { drawAngleLabel, drawProtractor, type Protractor } from './protractor'
 import { buildInkPath, drawCaps, drawStroke, fillInk, linePath, strokeLine, type InkStyle } from './ink'
 import { xformBBox, type Xform } from './transform'
@@ -118,12 +119,17 @@ export class BoardRenderer {
     cursor: CursorState | null,
     cam: Camera,
     sel: SelectionOverlay,
-    extras: { protractor?: Protractor | null; angleLabel?: { sx: number; sy: number; text: string } | null } = {}
+    extras: {
+      protractor?: Protractor | null
+      compass?: { c: Compass; color: string; label: string } | null
+      angleLabel?: { sx: number; sy: number; text: string } | null
+    } = {}
   ): void {
     const ctx = this.overlay
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height)
     if (extras.protractor) drawProtractor(ctx, cam, this.dpr, extras.protractor)
+    if (extras.compass) drawCompass(ctx, cam, this.dpr, extras.compass.c, extras.compass.color, extras.compass.label)
 
     if (sel.lasso && sel.lasso.length > 1) {
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)

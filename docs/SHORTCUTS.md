@@ -25,6 +25,7 @@ depend on them. New shortcuts: add to `shortcuts.ts`, this file, the test and bo
 | C | Brush select: touch items with the circle to add them (mouse wheel = circle size) |
 | M | Move items (hover highlights, drag to move) |
 | T | Show / hide protractor |
+| K | Show / hide compass |
 | Space (hold) | Move the board |
 
 ## Editing
@@ -60,7 +61,7 @@ depend on them. New shortcuts: add to `shortcuts.ts`, this file, the test and bo
 | Input | Action |
 |---|---|
 | Pen lower side button | Eraser by default (Settings → Pen buttons) |
-| Pen upper side button | Move the board by default |
+| Pen upper side button | Keeps the current tool by default |
 | Pen eraser end | Eraser by default |
 | Mouse middle / right button drag | Move the board |
 | Mouse wheel / touchpad | Scroll; Ctrl + wheel or pinch zooms |
@@ -73,4 +74,17 @@ Text tool: **T** button in the toolbar (no keyboard shortcut — T is the protra
 |---|---|
 | Enter | New line |
 | Esc or Ctrl+Enter | Done |
-| Double-click on text (V / M) | Edit it |
+| Double-click / double-tap on text (V / M) | Edit it (or select it and press "Edit text") |
+| Select words, or right-click | Format bar: colour, size, bold, italic, underline |
+| Ctrl+B / Ctrl+I / Ctrl+U | Bold / italic / underline the selected words |
+
+## Protractor and compass
+
+| Action | Result |
+|---|---|
+| Draw from the protractor's centre | A ray at a whole-degree angle (the angle is shown while drawing) |
+| Draw along the protractor's edge | An arc; its angle is written next to it ("50°") |
+| Draw along the protractor's bottom edge | A straight line |
+| Drag the compass needle or a leg | Move the compass |
+| Drag the ↔ handle beside the pencil | Open / close the legs (radius, shown in paper cells) |
+| Drag the pencil (coloured dot) | Draw an arc around the needle with the current pen; a full turn is a circle |

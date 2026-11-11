@@ -114,12 +114,20 @@ in progress and the pen cursor (so drawing never forces a full board redraw).
 - [x] Brush select (C): circle cursor, wheel = size, touched items are added (Ctrl / Alt removes)
 - [x] Replace a template's content with the selection (explicit confirmation step)
 
+### Stage 3.7 — text and drawing aids (v0.5)
+- [x] Formatted text: select words (or right-click) → colour, size, bold, italic, underline; Ctrl+B / I / U
+- [x] Edit existing text: double-click / double-tap (pen too) or "Edit text" in the selection bar
+- [x] Pyramids and prisms with any number of sides for the base (3–24)
+- [x] Compass (K): set the radius in paper cells, draw arcs / circles around the needle
+- [x] Protractor arcs get their angle written next to them; how-to tips for both instruments
+- [x] Toolbar: hand (pan) next to the selection tools; four-way arrows for the Move tool
+
 ### Stage 4 — content
 - [ ] **Hold-to-snap shapes** (like Procreate's QuickShape): draw and keep the pen down ~0.7 s
       (configurable) → the stroke becomes a clean line / circle / ellipse / rectangle / triangle / arrow.
       While still holding, the shape can be dragged to resize/rotate. The result stays a vector stroke.
       On/off in settings.
-- [ ] Sticky notes, text formatting (bold, lists)
+- [ ] Sticky notes, lists in text
 - [ ] Import PDF pages as backgrounds (worksheets for students)
 - [ ] Templates (math grid, handwriting practice, etc.)
 

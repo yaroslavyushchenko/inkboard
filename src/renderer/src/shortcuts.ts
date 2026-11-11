@@ -41,6 +41,7 @@ export type ShortcutId =
   | 'brushSelect'
   | 'move'
   | 'protractor'
+  | 'compass'
 
 export type ShortcutGroup = 'tools' | 'editing' | 'view'
 
@@ -78,6 +79,7 @@ export const SHORTCUTS: Shortcut[] = [
   S({ id: 'brushSelect', codes: ['KeyC'], mod: false, shift: false, display: 'C', group: 'tools', label: 'shortcuts.brushSelect' }),
   S({ id: 'move', codes: ['KeyM'], mod: false, shift: false, display: 'M', group: 'tools', label: 'shortcuts.move' }),
   S({ id: 'protractor', codes: ['KeyT'], mod: false, shift: false, display: 'T', group: 'tools', label: 'shortcuts.protractor' }),
+  S({ id: 'compass', codes: ['KeyK'], mod: false, shift: false, display: 'K', group: 'tools', label: 'shortcuts.compass' }),
   // Editing
   S({ id: 'undo', codes: ['KeyZ'], mod: true, shift: false, display: 'Ctrl+Z', group: 'editing', label: 'shortcuts.undo' }),
   S({ id: 'redo', codes: ['KeyY'], mod: true, shift: false, display: 'Ctrl+Y', group: 'editing', label: 'shortcuts.redo' }),

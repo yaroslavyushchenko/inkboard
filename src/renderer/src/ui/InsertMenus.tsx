@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { editor } from '../editor'
 import { BUILTIN_GRAPHS, graphBBox, graphSvg, type GraphPreset } from '../engine/graph'
 import { lineSvgPath } from '../engine/ink'
-import { SHAPE_BASES, SHAPES_2D, SHAPES_3D, shapeParts, type ShapeKind } from '../engine/shapes'
+import { MAX_BASE, MIN_BASE, SHAPE_BASES, SHAPES_2D, SHAPES_3D, shapeParts, type ShapeKind } from '../engine/shapes'
 import type { GraphItem, GraphParams } from '../engine/types'
 import { useT, type MessageKey } from '../i18n'
 import { useUI } from '../store'
@@ -62,11 +62,17 @@ export function ShapePreview({ kind, base }: { kind: ShapeKind; base?: number })
   )
 }
 
-/** "Base: △ □ ⬠ ⬡" — number of sides of a pyramid's / prism's base. */
+/** "Base: △ □ ⬠ ⬡ [n]" — number of sides of a pyramid's / prism's base; any n can be typed. */
 export function BaseRow({ kind, value, onChange }: { kind: ShapeKind; value: number; onChange: (n: number) => void }) {
   const t = useT()
+  const [draft, setDraft] = useState<string | null>(null)
   const opts = SHAPE_BASES[kind]
   if (!opts) return null
+  const custom = !opts.options.includes(value)
+  const commit = (raw: string): void => {
+    const n = Math.round(Number(raw))
+    if (Number.isFinite(n) && n >= MIN_BASE && n <= MAX_BASE && n !== value) onChange(n)
+  }
   return (
     <div className="base-row">
       <span className="base-label">{t('shapes.base')}</span>
@@ -75,6 +81,25 @@ export function BaseRow({ kind, value, onChange }: { kind: ShapeKind; value: num
           <PolygonIcon n={n} />
         </button>
       ))}
+      <label className={`base-n ${custom ? 'active' : ''}`} title={t('shapes.baseN')}>
+        <span>n =</span>
+        <input
+          type="number"
+          min={MIN_BASE}
+          max={MAX_BASE}
+          step={1}
+          value={draft ?? String(value)}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            commit(e.target.value)
+          }}
+          onBlur={() => setDraft(null)}
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            if (e.code === 'Enter' || e.code === 'NumpadEnter') (e.target as HTMLInputElement).blur()
+          }}
+        />
+      </label>
     </div>
   )
 }

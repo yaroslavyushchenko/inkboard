@@ -1,35 +1,27 @@
 **Inkboard** — a free infinite whiteboard for pen tablets.
 
-## What's new in 0.4.0
-
-### Fixes
-- **The pen no longer gets "stuck" moving the board.** If the pen was lifted over a panel or outside the
-  window, every pen movement kept moving the board until the app was restarted. Fixed.
-- **Resizing works in the Move tool (M)** — the corner handles used to move the selection instead.
-- Pen buttons can no longer be set to "move"; to move the board with a pen button, give it the
-  **Space** keystroke in Wacom Center (hold = move).
-- The eraser removes a **whole shape**, not single edges.
-- Picking a pen or another drawing tool clears the selection; toolbar buttons don't keep keyboard focus.
+## What's new in 0.5.0
 
 ### New
-- **Text** (T button in the toolbar): click and type, Esc when done, double-click text to edit.
-  Pasting text puts it on the board.
-- **Drag the ends of straight lines** to change length and angle — around the protractor centre it turns
-  in whole degrees, with the angle shown.
-- **Edit shapes after drawing:** stretch with the side handles, or press **Shape** to change the kind.
-  **Pyramids and prisms** with a triangle, square, pentagon or hexagon as base.
-- **Lock** items or groups (selection bar) so they can't be erased, moved or deleted by accident.
-- **Brush select (C):** a circle cursor — everything it touches is selected; mouse wheel changes its size.
-- **Arrow / dot ends on freehand lines** too, and **any line width** with a slider.
-- **3D coordinate axes** (x, y, z) in the Coordinates menu.
-- **Replace a template** with the current selection (asks for confirmation first).
+- **Compass (K):** drag ↔ to set the radius (shown in paper cells), then drag the pencil around the
+  needle — an arc, or a full circle. It draws with the current pen.
+- **Protractor arcs get their angle written next to them** ("50°"). A short tip at the bottom explains
+  how to use the protractor and the compass (click "Got it" to hide it).
+- **Formatted text:** select words (or right-click) → colour, size, **bold**, *italic*, underline.
+  Ctrl+B / Ctrl+I / Ctrl+U work too.
+- **Edit existing text:** double-click or double-tap with the pen, or select it and press **Edit text**.
+- **Any number of sides** (3–24) for the base of a pyramid or prism: type it in the "n =" box.
 
-Boards saved by 0.4 can't be opened by older versions — update every computer you use.
+### Changes
+- The hand (move the board) sits next to the selection tools; the Move tool has the usual four-arrow icon.
+- Fix: on the "All boards" screen several card menus could be open at once.
 
-## Also in 0.3
+Boards saved by 0.5 can't be opened by older versions — update every computer you use.
 
-- Protractor, 3D shapes, line styles, move tool, shortcuts on any keyboard layout, templates, grouping.
-- **Automatic updates** on Windows and Linux AppImage — from 0.3.0 on, new versions install themselves.
+## Also in 0.4
+
+- Text, line end dragging, editable shapes, lock, brush select (C), arrows on freehand lines, 3D axes,
+  replacing templates. Fix for the pen getting "stuck" moving the board.
 
 ## Download
 

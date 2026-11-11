@@ -3,12 +3,12 @@ import { canHaveEnds, editor } from '../editor'
 import { SELECTION_PAD } from '../engine/renderer'
 import { editableShape } from '../engine/shapeItems'
 import { isLinear, SHAPE_BASES, SHAPES_2D, SHAPES_3D, type ShapeKind } from '../engine/shapes'
-import { TEXT_SIZES } from '../engine/text'
+import { fullRuns, TEXT_SIZES } from '../engine/text'
 import type { StrokeItem, TextItem } from '../engine/types'
 import { useT, type MessageKey } from '../i18n'
 import { useUI } from '../store'
 import { PEN_COLORS, PEN_SIZES } from '../store'
-import { BookmarkIcon, DuplicateIcon, GearIcon, GroupIcon, LockIcon, ShapesIcon, StyleIcon, TrashIcon, UngroupIcon, UnlockIcon } from './icons'
+import { BookmarkIcon, DuplicateIcon, GearIcon, GroupIcon, LockIcon, ShapesIcon, StyleIcon, TextIcon, TrashIcon, UngroupIcon, UnlockIcon } from './icons'
 import { BaseRow, ShapePreview, TemplateThumb } from './InsertMenus'
 import type { TemplateEntry } from '../../../shared/library'
 import { LineStyleControls, SizeSlider } from './LineStyle'
@@ -117,6 +117,12 @@ export function SelectionToolbar() {
           )}
         </div>
       )}
+      {firstText && items.length === 1 && (
+        <button className="labeled-btn" title={t('text.edit')} onClick={() => editor.editText(firstText)}>
+          <TextIcon />
+          <span>{t('text.edit')}</span>
+        </button>
+      )}
       {(first || firstText) && (
         <div className="menu-anchor">
           <button data-popover-anchor className="labeled-btn" title={t('sel.style')} onClick={() => setStyling((v) => !v)}>
@@ -161,6 +167,7 @@ export function SelectionToolbar() {
                     ))}
                   </div>
                   <SizeSlider value={firstText!.size} max={160} onChange={(size) => editor.restyleText({ size })} />
+                  <TextFormatButtons text={firstText!} />
                 </>
               )}
             </Popover>
@@ -259,6 +266,22 @@ export function SelectionToolbar() {
       <button className="icon-btn" title={t('sel.delete')} disabled={allLocked} onClick={() => editor.deleteSelection()}>
         <TrashIcon />
       </button>
+    </div>
+  )
+}
+
+/** Bold / italic / underline for whole text items (lit when every character has it). */
+function TextFormatButtons({ text }: { text: TextItem }) {
+  const t = useT()
+  const runs = fullRuns(text)
+  const all = (k: 'bold' | 'italic' | 'underline'): boolean => runs.every((r) => r[k])
+  return (
+    <div className="tf-row text-format-row">
+      {(['bold', 'italic', 'underline'] as const).map((k) => (
+        <button key={k} className={`tf-btn ${all(k) ? 'active' : ''}`} title={t(`text.${k}`)} onClick={() => editor.restyleText({ [k]: !all(k) })}>
+          {k === 'bold' ? <b>B</b> : k === 'italic' ? <i>I</i> : <u>U</u>}
+        </button>
+      ))}
     </div>
   )
 }

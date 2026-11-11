@@ -4,6 +4,8 @@ import type { LibraryState } from '../../shared/library'
 import type { GraphPreset } from './engine/graph'
 import type { ShapeKind } from './engine/shapes'
 import type { Protractor } from './engine/protractor'
+import type { Compass } from './engine/compass'
+import type { FullRun } from './engine/text'
 import type { BackgroundKind, Camera, GraphParams, LineCap, LineDash } from './engine/types'
 import { detectLanguage, type Lang } from './i18n'
 
@@ -14,9 +16,10 @@ export interface TextEdit {
   id?: string
   x: number
   y: number
-  text: string
+  /** Base size / colour: what new characters typed into an empty box get. */
   size: number
   color: string
+  runs: FullRun[]
 }
 
 /**
@@ -109,6 +112,10 @@ interface UIState {
   appVersion: string
   /** On-board protractor, or null when hidden. */
   protractor: Protractor | null
+  /** On-board compass, or null when hidden. */
+  compass: Compass | null
+  /** Instrument tips the user closed ("protractor", "compass"); they don't show again. */
+  hiddenTips: string[]
   setTool: (tool: Tool) => void
   selectPen: (index: number) => void
   updatePen: (index: number, patch: Partial<InkSlot>) => void
@@ -153,6 +160,8 @@ export const useUI = create<UIState>()(
       historyOpen: false,
       shortcutsOpen: false,
       protractor: null,
+      compass: null,
+      hiddenTips: [],
       justUpdatedTo: null,
       appVersion: '',
       setTool: (tool) => set({ tool }),
@@ -169,7 +178,12 @@ export const useUI = create<UIState>()(
       version: 1,
       merge: (saved, current) => {
         const p = (saved ?? {}) as Partial<UIState>
-        return { ...current, ...p, penButtons: cleanPenButtons(p.penButtons) }
+        return {
+          ...current,
+          ...p,
+          penButtons: cleanPenButtons(p.penButtons),
+          hiddenTips: Array.isArray(p.hiddenTips) ? p.hiddenTips.filter((x) => typeof x === 'string') : []
+        }
       },
       partialize: (s) => ({
         pens: s.pens,
@@ -181,7 +195,8 @@ export const useUI = create<UIState>()(
         shapeBases: s.shapeBases,
         selectRadius: s.selectRadius,
         penButtons: s.penButtons,
-        textStyle: s.textStyle
+        textStyle: s.textStyle,
+        hiddenTips: s.hiddenTips
       })
     }
   )

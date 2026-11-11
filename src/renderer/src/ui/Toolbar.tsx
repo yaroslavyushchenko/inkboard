@@ -3,7 +3,7 @@ import { editor } from '../editor'
 import { useT } from '../i18n'
 import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useUI, type InkSlot } from '../store'
 import { TEXT_SIZES } from '../engine/text'
-import { BrushSelectIcon, EraserIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, ProtractorIcon, RedoIcon, TextIcon, UndoIcon } from './icons'
+import { BrushSelectIcon, CompassIcon, EraserIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, ProtractorIcon, RedoIcon, TextIcon, UndoIcon } from './icons'
 import { GraphMenu, ShapesMenu, TemplatesMenu } from './InsertMenus'
 import { LineStyleControls, SizeSlider } from './LineStyle'
 import { Popover } from './Popover'
@@ -17,8 +17,7 @@ function TextOptions() {
   const set = (patch: Partial<typeof style>): void => {
     useUI.setState((s) => ({ textStyle: { ...s.textStyle, ...patch } }))
     // Also restyle the text being typed right now.
-    const te = useUI.getState().textEdit
-    if (te) useUI.setState({ textEdit: { ...te, ...patch } })
+    editor.formatEditingText(patch)
   }
   return (
     <>
@@ -88,6 +87,7 @@ function InkOptions({
 export function Toolbar() {
   const { tool, activePen, pens, highlighter, canUndo, canRedo } = useUI()
   const protractor = useUI((s) => s.protractor !== null)
+  const compass = useUI((s) => s.compass !== null)
   const { selectPen, setTool, updatePen, updateHighlighter } = useUI.getState()
   const [open, setOpen] = useState<Open>(null)
   const close = useCallback(() => setOpen(null), [])
@@ -142,6 +142,16 @@ export function Toolbar() {
         >
           <MoveIcon />
         </button>
+        <button
+          className={`icon-btn ${tool === 'pan' ? 'active' : ''}`}
+          title={t('tool.pan')}
+          onClick={() => {
+            setTool('pan')
+            setOpen(null)
+          }}
+        >
+          <HandIcon />
+        </button>
         <div className="sep" />
         <div className="pens">
           {pens.map((p, i) => (
@@ -191,19 +201,16 @@ export function Toolbar() {
         </button>
         <ShapesMenu />
         <GraphMenu />
+        <TemplatesMenu />
+        <button className="icon-btn" title={t('tool.image')} onClick={() => fileRef.current?.click()}>
+          <ImageIcon />
+        </button>
+        <div className="sep" />
         <button className={`icon-btn ${protractor ? 'active' : ''}`} title={t('tool.protractor')} onClick={() => editor.toggleProtractor()}>
           <ProtractorIcon />
         </button>
-        <TemplatesMenu />
-        <button
-          className={`icon-btn ${tool === 'pan' ? 'active' : ''}`}
-          title={t('tool.pan')}
-          onClick={() => setTool('pan')}
-        >
-          <HandIcon />
-        </button>
-        <button className="icon-btn" title={t('tool.image')} onClick={() => fileRef.current?.click()}>
-          <ImageIcon />
+        <button className={`icon-btn ${compass ? 'active' : ''}`} title={t('tool.compass')} onClick={() => editor.toggleCompass()}>
+          <CompassIcon />
         </button>
         <div className="sep" />
         <button className="icon-btn" title={t('action.undo')} disabled={!canUndo} onClick={() => editor.undo()}>

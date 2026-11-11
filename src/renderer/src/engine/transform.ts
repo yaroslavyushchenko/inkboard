@@ -1,6 +1,6 @@
 import { circleHitsPolyline } from './geometry'
 import { graphBBox } from './graph'
-import { textBBox } from './text'
+import { scaleRuns, textBBox } from './text'
 import type { BBox, Item } from './types'
 
 /** Uniform scale `s` about anchor (ax, ay), then translate by (dx, dy): p' = a + (p - a) * s + d */
@@ -43,7 +43,7 @@ export function applyXform(item: Item, t: Xform): Item {
     return { ...g, bbox: graphBBox(g) }
   }
   if (item.type === 'text') {
-    const n = { ...item, x: tx(t, item.x), y: ty(t, item.y), size: item.size * t.s }
+    const n = { ...item, x: tx(t, item.x), y: ty(t, item.y), size: item.size * t.s, ...(item.runs ? { runs: scaleRuns(item.runs, t.s) } : {}) }
     return { ...n, bbox: textBBox(n) }
   }
   const x = tx(t, item.x)

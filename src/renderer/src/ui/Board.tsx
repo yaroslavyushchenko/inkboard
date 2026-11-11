@@ -16,17 +16,41 @@ import { arcStroke, baseStroke, hitProtractor, rayStroke, scaleAngle, toLocal, t
 import { buildShapeItems, editableShape, regenerateShape, shapeMembers } from '../engine/shapeItems'
 import { DEFAULT_SHAPE_SIZE, isLinear, SHAPE_BASES, shapeBox, shapeParts, snapAngle, type ShapeKind } from '../engine/shapes'
 import { hitTest, itemsInLasso } from '../engine/transform'
-import type { BBox, Item, Point, ShapeSpec, StrokeItem } from '../engine/types'
+import type { BBox, Item, Point, ShapeSpec, StrokeItem, TextItem } from '../engine/types'
 import { editor } from '../editor'
 import { matchShortcut, type ShortcutId } from '../shortcuts'
-import { useUI, type PenAction, type Tool } from '../store'
+import { useUI, type InkSlot, type PenAction, type Tool } from '../store'
+import { translate, type Lang } from '../i18n'
+import { compassArc, hitCompass, radiusCells, radiusFromHandle, type CompassHit } from '../engine/compass'
+import { textBBox } from '../engine/text'
+
+/** "r = 4 cells" / "r = 4,5 клітинки" for the compass. */
+function radiusLabel(lang: Lang, r: number): string {
+  const { n, form } = radiusCells(r)
+  const num = lang === 'uk' ? String(n).replace('.', ',') : String(n)
+  // English: only exactly 1 is singular.
+  const f = lang === 'en' ? (n === 1 ? 'cell1' : 'cellMany') : form
+  return translate(lang, 'compass.radius', { n: num, unit: translate(lang, `compass.${f}`) })
+}
 
 type Effective = 'ink' | 'eraser' | 'pan' | 'select' | 'brush' | 'shape' | 'move' | 'text'
 
 type Gesture =
-  | { kind: 'ink'; pointerId: number; live: LiveStroke; start: Point; snap?: { mode: 'arc'; startDeg: number } | { mode: 'center' } | { mode: 'base'; u0: number } }
+  | {
+      kind: 'ink'
+      pointerId: number
+      live: LiveStroke
+      start: Point
+      snap?:
+        | { mode: 'arc'; startDeg: number; endDeg?: number }
+        | { mode: 'center' }
+        | { mode: 'base'; u0: number }
+        | { mode: 'compass'; a0: number; last: number; sweep: number }
+    }
   | { kind: 'protMove'; pointerId: number; lastX: number; lastY: number }
   | { kind: 'protRotate'; pointerId: number }
+  | { kind: 'compMove'; pointerId: number; lastX: number; lastY: number }
+  | { kind: 'compRadius'; pointerId: number }
   | {
       kind: 'shape'
       pointerId: number
@@ -102,6 +126,8 @@ export function Board() {
     let hover: Hover | null = null
     let spaceDown = false
     let lastPenTime = -Infinity
+    /** Last press on a text item (for double click / double tap = edit). */
+    let lastTap: { id: string; t: number } | null = null
     const touches = new Map<number, { x: number; y: number }>()
 
     // ---------- render loop ----------
@@ -130,7 +156,13 @@ export function Board() {
           corners: !info?.line,
           sides: !!info?.shape,
           ends: info?.line ? lineEnds(info.line) : hl ? lineEnds(hl) : null
-        }, { protractor: ui.protractor, angleLabel })
+        }, {
+          protractor: ui.protractor,
+          compass: ui.compass
+            ? { c: ui.compass, color: inkSlot().color, label: radiusLabel(ui.lang, ui.compass.r) }
+            : null,
+          angleLabel
+        })
       }
       baseDirty = false
       overlayDirty = false
@@ -283,6 +315,20 @@ export function Board() {
     let hoverBox: BBox | null = null
     let angleLabel: { sx: number; sy: number; text: string } | null = null
 
+    /** What a press at screen point (sx, sy) hits on the compass, if it's shown. */
+    const compassHitAt = (sx: number, sy: number): CompassHit | null => {
+      const c = useUI.getState().compass
+      if (!c) return null
+      const w = screenToWorld(editor.camera, sx, sy)
+      return hitCompass(c, w.x, w.y, editor.camera.zoom)
+    }
+
+    /** The ink a pen stroke would use now (the compass pencil draws with it too). */
+    const inkSlot = (): InkSlot => {
+      const ui = useUI.getState()
+      return ui.tool === 'highlighter' ? ui.highlighter : ui.pens[ui.activePen]
+    }
+
     /** What a press at screen point (sx, sy) hits on the protractor, if it's shown. */
     const protractorHitAt = (sx: number, sy: number): ProtractorHit | null => {
       const prot = useUI.getState().protractor
@@ -327,7 +373,8 @@ export function Board() {
       else if (spaceDown || tool === 'pan') c = 'grab'
       else if (tool === 'shape') c = 'crosshair'
       else if (tool === 'text') c = 'text'
-      else if (gesture?.kind === 'protMove') c = 'grabbing'
+      else if (gesture?.kind === 'protMove' || gesture?.kind === 'compMove' || gesture?.kind === 'compRadius') c = 'grabbing'
+      else if (gesture?.kind === 'ink' && gesture.snap?.mode === 'compass') c = 'grabbing'
       else if (gesture?.kind === 'protRotate') c = 'grabbing'
       else if (gesture?.kind === 'endpoint') c = 'crosshair'
       // A line end on top of the protractor wins over the protractor (same order as on press).
@@ -338,7 +385,10 @@ export function Board() {
         (selectionHit(hover.sx, hover.sy)?.kind === 'end' || hoverEndAt(hover.sx, hover.sy))
       )
         c = 'crosshair'
-      else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'body') c = 'move'
+      else if (!gesture && hover && compassHitAt(hover.sx, hover.sy)) {
+        const h = compassHitAt(hover.sx, hover.sy)
+        c = h === 'close' ? 'pointer' : h === 'pencil' || h === 'radius' ? 'grab' : 'move'
+      } else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'body') c = 'move'
       else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'rotate') c = 'grab'
       else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'close') c = 'pointer'
       else if (gesture?.kind === 'move') c = 'move'
@@ -493,7 +543,7 @@ export function Board() {
             () => ({ id: newId(), z: scene.allocZ() })
           )
         )
-      } else if (g.kind === 'ink' && g.live.points.length > 0) {
+      } else if (g.kind === 'ink' && g.live.points.length > 0 && !(g.snap?.mode === 'compass' && Math.abs(g.snap.sweep) < 0.01)) {
         const { live } = g
         const stroke: StrokeItem = {
           type: 'stroke',
@@ -511,7 +561,22 @@ export function Board() {
           ...(live.startCap ? { startCap: live.startCap } : {}),
           ...(live.endCap ? { endCap: live.endCap } : {})
         }
-        scene.add([stroke])
+        // An arc drawn along the protractor gets its angle written next to it ("50°"), kept with it as a group.
+        const prot = useUI.getState().protractor
+        const deg = g.snap?.mode === 'arc' && g.snap.endDeg !== undefined ? Math.round(Math.abs(g.snap.endDeg - g.snap.startDeg)) : 0
+        if (prot && deg >= 1 && g.snap?.mode === 'arc') {
+          const size = Math.max(14, Math.min(48, prot.r * 0.075))
+          const mid = (((g.snap.startDeg + g.snap.endDeg!) / 2) * Math.PI) / 180
+          const rr = prot.r + live.size + size * 1.1
+          const at = toWorld(prot, Math.cos(mid) * rr, -Math.sin(mid) * rr)
+          const label: TextItem = { type: 'text', id: newId(), z: scene.allocZ(), x: 0, y: 0, text: `${deg}°`, size, color: live.color, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
+          const b = textBBox(label)
+          label.x = at.x - (b.maxX - b.minX) / 2
+          label.y = at.y - (b.maxY - b.minY) / 2
+          label.bbox = textBBox(label)
+          const groupId = newId()
+          scene.add([{ ...stroke, groupId }, { ...label, groupId }])
+        } else scene.add([stroke])
       } else if (g.kind === 'brush') {
         // A tap that touches nothing clears the selection.
         if (!g.moved && !g.touched && !g.remove) editor.clearSelection()
@@ -556,8 +621,12 @@ export function Board() {
       const p = local(e)
       touches.set(e.pointerId, p)
       capture(e.pointerId)
-      const ph = touches.size === 1 ? protractorHitAt(p.x, p.y) : null
-      if (ph && ph !== 'close' && ph !== 'rotate') {
+      const ch = touches.size === 1 ? compassHitAt(p.x, p.y) : null
+      const ph = touches.size === 1 && !ch ? protractorHitAt(p.x, p.y) : null
+      if (ch === 'needle' || ch === 'body') {
+        const w = screenToWorld(editor.camera, p.x, p.y)
+        gesture = { kind: 'compMove', pointerId: e.pointerId, lastX: w.x, lastY: w.y }
+      } else if (ph && ph !== 'close' && ph !== 'rotate') {
         const w = screenToWorld(editor.camera, p.x, p.y)
         gesture = { kind: 'protMove', pointerId: e.pointerId, lastX: w.x, lastY: w.y }
       } else if (touches.size === 1) {
@@ -578,6 +647,12 @@ export function Board() {
         cam = panBy(cam, c.cx - gesture.cx, c.cy - gesture.cy)
         gesture = { kind: 'pinch', dist: c.dist, cx: c.cx, cy: c.cy }
         editor.setCamera(cam)
+      } else if (gesture?.kind === 'compMove' && gesture.pointerId === e.pointerId) {
+        const w = screenToWorld(editor.camera, local(e).x, local(e).y)
+        const c = useUI.getState().compass
+        if (c) useUI.setState({ compass: { ...c, x: c.x + w.x - gesture.lastX, y: c.y + w.y - gesture.lastY } })
+        gesture.lastX = w.x
+        gesture.lastY = w.y
       } else if (gesture?.kind === 'protMove' && gesture.pointerId === e.pointerId) {
         const w = screenToWorld(editor.camera, local(e).x, local(e).y)
         const prot = useUI.getState().protractor
@@ -623,9 +698,50 @@ export function Board() {
       // Line end points win over the protractor: a ray drawn from its centre must stay adjustable.
       const selH = eff === 'select' || eff === 'move' ? selectionHit(p.x, p.y) : null
       const endGrab = selH?.kind === 'end' ? selH : eff === 'select' || eff === 'move' ? hoverEndAt(p.x, p.y) : null
-      const pHit = eff === 'pan' || endGrab ? null : protractorHitAt(p.x, p.y)
+      // The compass lies on top of the protractor; with the eraser its pencil would only get in the way.
+      const cHit = eff === 'pan' || eff === 'eraser' || endGrab ? null : compassHitAt(p.x, p.y)
+      const pHit = eff === 'pan' || endGrab || cHit ? null : protractorHitAt(p.x, p.y)
       const protGrab = pHit === 'body' || (pHit !== null && pHit !== 'close' && pHit !== 'rotate' && eff !== 'ink')
-      if (endGrab) {
+      if (cHit) {
+        const c = useUI.getState().compass!
+        const w = screenToWorld(editor.camera, p.x, p.y)
+        if (cHit === 'close') {
+          useUI.setState({ compass: null })
+          try {
+            overlay.releasePointerCapture(e.pointerId)
+          } catch {
+            // not captured
+          }
+        } else if (cHit === 'radius') {
+          gesture = { kind: 'compRadius', pointerId: e.pointerId }
+        } else if (cHit === 'pencil') {
+          // The pencil turns around the needle and draws with the current pen.
+          editor.clearSelection()
+          const ui = useUI.getState()
+          const isHl = ui.tool === 'highlighter'
+          const slot = inkSlot()
+          const start: Point = [c.x + Math.cos(c.a) * c.r, c.y + Math.sin(c.a) * c.r, 0.5]
+          gesture = {
+            kind: 'ink',
+            pointerId: e.pointerId,
+            start,
+            live: {
+              tool: isHl ? 'highlighter' : 'pen',
+              color: slot.color,
+              size: slot.size,
+              pressure: false,
+              geom: 'line',
+              points: [],
+              ...(slot.dash ? { dash: slot.dash } : {}),
+              ...(slot.startCap ? { startCap: slot.startCap } : {}),
+              ...(slot.endCap ? { endCap: slot.endCap } : {})
+            },
+            snap: { mode: 'compass', a0: c.a, last: Math.atan2(w.y - c.y, w.x - c.x), sweep: 0 }
+          }
+        } else {
+          gesture = { kind: 'compMove', pointerId: e.pointerId, lastX: w.x, lastY: w.y }
+        }
+      } else if (endGrab) {
         editor.setSelection([endGrab.item])
         gesture = { kind: 'endpoint', pointerId: e.pointerId, original: endGrab.item, current: endGrab.item, which: endGrab.which }
         hoverBox = null
@@ -659,6 +775,21 @@ export function Board() {
         }
       } else if (eff === 'select' || eff === 'move') {
         const w = screenToWorld(editor.camera, p.x, p.y)
+        // Double click / double tap (pen too) on text edits it.
+        const tapHit = e.button === 0 ? hitTest(scene.getItems(), w.x, w.y, 4 / editor.camera.zoom) : null
+        const now = performance.now()
+        if (tapHit?.type === 'text' && !isLocked(tapHit) && lastTap?.id === tapHit.id && now - lastTap.t < 500) {
+          lastTap = null
+          try {
+            overlay.releasePointerCapture(e.pointerId)
+          } catch {
+            // not captured
+          }
+          editor.commitPreview()
+          editor.editText(tapHit)
+          return
+        }
+        lastTap = tapHit?.type === 'text' ? { id: tapHit.id, t: now } : null
         const h = selH
         const locked = editor.selectionLocked()
         if (h?.kind === 'handle') {
@@ -827,6 +958,20 @@ export function Board() {
           editor.setCamera(panBy(editor.camera, p.x - g.lastX, p.y - g.lastY))
           g.lastX = p.x
           g.lastY = p.y
+        } else if (g.kind === 'compMove') {
+          const w = screenToWorld(editor.camera, p.x, p.y)
+          const c = useUI.getState().compass
+          if (c) useUI.setState({ compass: { ...c, x: c.x + w.x - g.lastX, y: c.y + w.y - g.lastY } })
+          g.lastX = w.x
+          g.lastY = w.y
+        } else if (g.kind === 'compRadius') {
+          const w = screenToWorld(editor.camera, p.x, p.y)
+          const c = useUI.getState().compass
+          if (c) {
+            const next = radiusFromHandle(c, w.x, w.y, editor.camera.zoom)
+            useUI.setState({ compass: next })
+            angleLabel = { sx: p.x, sy: p.y, text: radiusLabel(useUI.getState().lang, next.r) }
+          }
         } else if (g.kind === 'protMove') {
           const w = screenToWorld(editor.camera, p.x, p.y)
           const prot = useUI.getState().protractor
@@ -915,11 +1060,27 @@ export function Board() {
           const samples = e.getCoalescedEvents?.() ?? []
           const events = samples.length ? samples : [e]
           const prot = useUI.getState().protractor
-          if (g.kind === 'ink' && g.snap && prot) {
+          const comp = useUI.getState().compass
+          if (g.kind === 'ink' && g.snap?.mode === 'compass') {
+            if (comp) {
+              // Follow the pointer around the needle; the sweep adds up (up to one full turn either way).
+              const w = screenToWorld(editor.camera, p.x, p.y)
+              const ang = Math.atan2(w.y - comp.y, w.x - comp.x)
+              let d = ang - g.snap.last
+              if (d > Math.PI) d -= Math.PI * 2
+              if (d < -Math.PI) d += Math.PI * 2
+              g.snap.last = ang
+              g.snap.sweep = Math.max(-Math.PI * 2, Math.min(Math.PI * 2, g.snap.sweep + d))
+              useUI.setState({ compass: { ...comp, a: g.snap.a0 + g.snap.sweep } })
+              g.live = { ...g.live, points: compassArc(comp, g.snap.a0, g.snap.sweep) }
+              angleLabel = { sx: p.x, sy: p.y, text: `${Math.round(Math.abs((g.snap.sweep * 180) / Math.PI))}°` }
+            }
+          } else if (g.kind === 'ink' && g.snap && g.snap.mode !== 'compass' && prot) {
             const w = screenToWorld(editor.camera, p.x, p.y)
             const off = g.live.size / 2 + 1 / editor.camera.zoom
             if (g.snap.mode === 'arc') {
               const cur = scaleAngle(prot, w.x, w.y)
+              g.snap.endDeg = cur
               g.live = { ...g.live, points: arcStroke(prot, g.snap.startDeg, cur, off) }
               angleLabel = { sx: p.x, sy: p.y, text: `${Math.round(Math.abs(cur - g.snap.startDeg))}°` }
             } else if (g.snap.mode === 'center') {
@@ -1075,7 +1236,8 @@ export function Board() {
         lasso: () => ui.setTool('select'),
         brushSelect: () => ui.setTool('brushSelect'),
         move: () => ui.setTool('move'),
-        protractor: () => editor.toggleProtractor()
+        protractor: () => editor.toggleProtractor(),
+        compass: () => editor.toggleCompass()
       }
       void actions[sc.id]()
     }
@@ -1131,7 +1293,7 @@ export function Board() {
     ro.observe(overlay.parentElement!)
 
     const unsubTool = useUI.subscribe((s, prev) => {
-      if (s.protractor !== prev.protractor) invalidate(false)
+      if (s.protractor !== prev.protractor || s.compass !== prev.compass) invalidate(false)
       if (s.textEdit?.id !== prev.textEdit?.id) invalidate(true)
       if (s.tool !== prev.tool) {
         hoverBox = null
@@ -1145,19 +1307,6 @@ export function Board() {
       if (s.tool !== prev.tool) updateCssCursor()
     })
 
-    // Double-click on text (select / move tool) edits it.
-    const onDoubleClick = (e: MouseEvent): void => {
-      const tool = useUI.getState().tool
-      if (tool !== 'select' && tool !== 'move') return
-      const p = local(e)
-      const w = screenToWorld(editor.camera, p.x, p.y)
-      const hit = hitTest(scene.getItems(), w.x, w.y, 4 / editor.camera.zoom)
-      if (hit?.type === 'text' && !isLocked(hit)) {
-        editor.commitPreview()
-        editor.editText(hit)
-      }
-    }
-
     const preventMenu = (e: Event): void => e.preventDefault()
     overlay.addEventListener('pointerdown', onPointerDown)
     overlay.addEventListener('pointermove', onPointerMove)
@@ -1166,7 +1315,6 @@ export function Board() {
     overlay.addEventListener('pointerleave', onPointerLeave)
     overlay.addEventListener('wheel', onWheel, { passive: false })
     overlay.addEventListener('contextmenu', preventMenu)
-    overlay.addEventListener('dblclick', onDoubleClick)
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
     window.addEventListener('blur', onBlur)
@@ -1193,7 +1341,6 @@ export function Board() {
       overlay.removeEventListener('pointerleave', onPointerLeave)
       overlay.removeEventListener('wheel', onWheel)
       overlay.removeEventListener('contextmenu', preventMenu)
-      overlay.removeEventListener('dblclick', onDoubleClick)
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)

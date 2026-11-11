@@ -27,6 +27,10 @@ export interface ShapePart {
 
 const LINEAR: ReadonlySet<ShapeKind> = new Set(['line', 'arrow', 'doubleArrow'])
 
+/** Limits for a solid's base (number of sides); the base row also lets you type any n in between. */
+export const MIN_BASE = 3
+export const MAX_BASE = 24
+
 /** Solids whose base can be chosen (number of sides) and the default. */
 export const SHAPE_BASES: Partial<Record<ShapeKind, { options: number[]; def: number }>> = {
   pyramid: { options: [3, 4, 5, 6], def: 4 },

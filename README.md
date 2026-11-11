@@ -15,11 +15,12 @@ Built for teachers who write and draw with a stylus.
 - **Never lose work:** every board autosaves within seconds (power-cut safe), with version history
 - Board library with thumbnails, search, pins and colour tags; Recently deleted
 - Export to PNG or vector PDF; optional automatic backup folder
-- Shift for straight lines, a shapes menu (solids with a choice of base, editable after drawing),
-  coordinate lines / planes / 3D axes for maths, a protractor
+- Shift for straight lines, a shapes menu (solids with any number of sides for the base, editable
+  after drawing), coordinate lines / planes / 3D axes for maths
+- Protractor (arcs get their angle written next to them) and a compass for arcs and circles
 - Drag the ends of a straight line to change its length and angle (whole degrees on the protractor)
 - Line ends (arrow, dot…) on any line, including freehand; any line width via a slider
-- Text: click and type, or paste text
+- Text: click and type, or paste text; select words to change their colour, size, bold, italic, underline
 - Lock items or groups so they can't be erased, moved or deleted by accident
 - Templates: save any part of a board and insert it into other boards; replace a template's content
   with a new selection (asks for confirmation)
@@ -60,7 +61,9 @@ npm run build
 | Group / ungroup | Ctrl+G / Ctrl+Shift+G |
 | Change a line's angle / length | select it (V or M) and drag one of its round end handles |
 | Stretch a shape | select it and drag a side handle; *Shape* on the selection bar changes kind / base |
-| Text | **T** button in the toolbar: click and type, Esc when done; double-click text to edit |
+| Text | **T** button in the toolbar: click and type, Esc when done; double-click text to edit; select words (or right-click) for colour / size / bold / italic / underline |
+| Protractor | T: draw from the centre for an angle, along the edge for an arc (its degrees are written next to it) |
+| Compass | K: drag ↔ to set the radius, then drag the pencil around the needle (a full turn = circle) |
 | Lock / unlock | *Lock* on the selection bar |
 | Move tool (drag anything) | M |
 | Swap pen ↔ eraser | X |

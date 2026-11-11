@@ -149,10 +149,11 @@ export const ShapesIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
+/** Coordinate axes with a parabola (kept unlike the four-way move arrows). */
 export const AxesIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
-    <path d="M3 13h17M18 11l2 2-2 2M10 21V4M8 6l2-2 2 2" />
-    <path d="M6 12v2M14 12v2M9 17h2M9 9h2" strokeWidth="1.2" />
+    <path d="M5 21V3.5M3 5.5l2-2 2 2M3 19h17.5M18.5 17l2 2-2 2" />
+    <path d="M8 6c1.4 5.5 2.8 8.5 4.8 8.5S16.4 11.5 18 6" strokeWidth="1.5" />
   </svg>
 )
 
@@ -200,10 +201,20 @@ export const UngroupIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
+/** Four-way arrows: the usual "move / drag" symbol. */
 export const MoveIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
-    <path d="M5 3.5l10.5 6.2-4.6 1.2 2.9 5.4-2.3 1.2-2.9-5.4L5 15.5z" />
-    <path d="M17 15v6M14 18h6M15.5 16.5l1.5-1.5 1.5 1.5M15.5 19.5l1.5 1.5 1.5-1.5" strokeWidth="1.4" />
+    <path d="M12 3v18M3 12h18" />
+    <path d="M9.5 5.5 12 3l2.5 2.5M9.5 18.5 12 21l2.5-2.5M5.5 9.5 3 12l2.5 2.5M18.5 9.5 21 12l-2.5 2.5" />
+  </svg>
+)
+
+export const CompassIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="4.5" r="1.8" />
+    <path d="M11 6.2 5.5 20.5M13 6.2l5.2 13.3" />
+    <path d="M12 2.7V1.5" />
+    <path d="M7.6 15.2c2.8 1.3 6 1.3 8.8 0" strokeDasharray="1.6 1.8" strokeWidth="1.4" />
   </svg>
 )
 

@@ -1,6 +1,13 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 
-/** Floating panel that closes on outside click or Escape. */
+/** Popovers on screen now; opening one closes the others (except ones it sits inside). */
+const open = new Set<{ el: HTMLElement; close: () => void }>()
+
+/**
+ * Floating panel that closes on outside click or Escape. Clicks on menu buttons
+ * (`data-popover-anchor`) don't close it, so a button can toggle its own popover; only one
+ * popover is open at a time, so another menu button still replaces it.
+ */
 export function Popover({
   onClose,
   className,
@@ -11,6 +18,18 @@ export function Popover({
   children: ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    for (const o of [...open]) if (!o.el.contains(el)) o.close()
+    const me = { el, close: () => closeRef.current() }
+    open.add(me)
+    return () => {
+      open.delete(me)
+    }
+  }, [])
   useEffect(() => {
     const down = (e: PointerEvent): void => {
       const t = e.target as Node
