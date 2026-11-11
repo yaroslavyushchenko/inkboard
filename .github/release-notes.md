@@ -1,16 +1,16 @@
 **Inkboard** — a free infinite whiteboard for pen tablets.
 
-## What's new in 0.3
+## What's new in 0.3.1
 
-- **Straight lines:** hold **Shift** while drawing (snaps to horizontal / vertical / 45°).
-- **Shapes** menu: lines, arrows, rectangle, circle, triangles, rhombus, parallelogram, trapezoid, polygons, star, cube.
-  Drag to draw, click for a default size, Shift keeps proportions.
-- **Coordinates:** number lines and coordinate planes with previews; set your own ranges and unit length,
-  save your own presets, change them after inserting (gear button on the selection).
-- **Templates:** select anything (e.g. "Given / Find / Solution"), press the bookmark button — and insert it into any board later.
-- **Group / ungroup:** select several things and press **Ctrl+G** (or the Group button) — they move and scale together. **Ctrl+Shift+G** ungroups.
-- **Automatic updates:** from this version on, Inkboard updates itself on Windows and Linux (AppImage).
-  On macOS and .deb you get a notice with a download link.
+- **Move tool (M):** hover over anything — it lights up — and just drag it. Works with mouse and pen; dragging empty space moves the board.
+- **Pen buttons:** Settings → *Pen buttons* — choose what the lower / upper side button and the eraser end do
+  (eraser, lasso, move items, move the board). A tester shows what your pen sends.
+- **Keyboard shortcuts & Wacom ExpressKeys** guide in Settings; **X** swaps pen ↔ eraser (great for a tablet button).
+
+## Also in 0.3
+
+- **Straight lines** with Shift, a **Shapes** menu, **coordinate lines / planes**, **templates**, **group / ungroup** (Ctrl+G).
+- **Automatic updates** on Windows and Linux AppImage — from 0.3.0 on, new versions install themselves.
 
 ## Download
 
