@@ -5,6 +5,7 @@ import { LANGUAGES, useT, type Lang, type MessageKey } from '../i18n'
 import { platform } from '../platform'
 import { useUI } from '../store'
 import { PaperIcon } from './icons'
+import { PenSettings } from './PenSettings'
 import { AboutSection } from './UpdateBanner'
 import { Popover } from './Popover'
 
@@ -87,6 +88,7 @@ export function BackgroundPicker() {
               </div>
             </>
           )}
+          <PenSettings />
           <AboutSection />
         </Popover>
       )}

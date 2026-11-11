@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { editor } from '../editor'
 import { useT } from '../i18n'
 import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useUI, type InkSlot } from '../store'
-import { EraserIcon, HandIcon, ImageIcon, LassoIcon, PenIcon, RedoIcon, UndoIcon } from './icons'
+import { EraserIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, RedoIcon, UndoIcon } from './icons'
 import { GraphMenu, ShapesMenu, TemplatesMenu } from './InsertMenus'
 import { Popover } from './Popover'
 
@@ -84,6 +84,16 @@ export function Toolbar() {
           }}
         >
           <LassoIcon />
+        </button>
+        <button
+          className={`icon-btn ${tool === 'move' ? 'active' : ''}`}
+          title={t('tool.move')}
+          onClick={() => {
+            setTool('move')
+            setOpen(null)
+          }}
+        >
+          <MoveIcon />
         </button>
         <div className="sep" />
         <div className="pens">

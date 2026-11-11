@@ -184,6 +184,20 @@ export const UngroupIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
+export const MoveIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M5 3.5l10.5 6.2-4.6 1.2 2.9 5.4-2.3 1.2-2.9-5.4L5 15.5z" />
+    <path d="M17 15v6M14 18h6M15.5 16.5l1.5-1.5 1.5 1.5M15.5 19.5l1.5 1.5 1.5-1.5" strokeWidth="1.4" />
+  </svg>
+)
+
+export const KeyboardIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="2.5" y="6" width="19" height="12" rx="2" />
+    <path d="M6 10h.01M9.5 10h.01M13 10h.01M16.5 10h.01M7.5 14h9" />
+  </svg>
+)
+
 export const ImageIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <rect x="3" y="4" width="18" height="16" rx="2.5" />

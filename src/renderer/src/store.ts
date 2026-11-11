@@ -6,7 +6,19 @@ import type { ShapeKind } from './engine/shapes'
 import type { BackgroundKind, Camera, GraphParams } from './engine/types'
 import { detectLanguage, type Lang } from './i18n'
 
-export type Tool = 'select' | 'pen' | 'highlighter' | 'eraser' | 'pan' | 'shape'
+export type Tool = 'select' | 'move' | 'pen' | 'highlighter' | 'eraser' | 'pan' | 'shape'
+
+/** What a pen button does while it's held (the Wacom driver decides which button the browser sees). */
+export type PenAction = 'eraser' | 'select' | 'move' | 'pan' | 'tool'
+
+export interface PenButtons {
+  /** Lower side switch — arrives as the right button (button 2). */
+  lower: PenAction
+  /** Upper side switch — arrives as the middle button (button 1) when set to "Middle click" in the driver. */
+  upper: PenAction
+  /** Eraser end of the pen (button 5). */
+  eraserEnd: PenAction
+}
 
 export interface InkSlot {
   color: string
@@ -26,6 +38,8 @@ interface UIState {
   tool: Tool
   /** Shape drawn by the shape tool. */
   shape: ShapeKind
+  penButtons: PenButtons
+  setPenButton: (which: keyof PenButtons, action: PenAction) => void
   /** The user's own coordinate-plane/line presets. */
   graphPresets: GraphPreset[]
   /** Coordinate settings dialog: insert a new graph or edit the selected one. */
@@ -52,6 +66,7 @@ interface UIState {
   saveStatus: 'saved' | 'pending' | 'saving' | 'error'
   library: LibraryState
   historyOpen: boolean
+  shortcutsOpen: boolean
   setTool: (tool: Tool) => void
   selectPen: (index: number) => void
   updatePen: (index: number, patch: Partial<InkSlot>) => void
@@ -65,6 +80,8 @@ export const useUI = create<UIState>()(
     (set) => ({
       tool: 'pen',
       shape: 'rectangle',
+      penButtons: { lower: 'eraser', upper: 'pan', eraserEnd: 'eraser' },
+      setPenButton: (which, action) => set((s) => ({ penButtons: { ...s.penButtons, [which]: action } })),
       graphPresets: [],
       graphDialog: null,
       activePen: 0,
@@ -88,6 +105,7 @@ export const useUI = create<UIState>()(
       saveStatus: 'saved',
       library: { boards: [], tags: [], templates: [], lastOpenedId: null, backupDir: null },
       historyOpen: false,
+      shortcutsOpen: false,
       setTool: (tool) => set({ tool }),
       selectPen: (index) => set({ tool: 'pen', activePen: index }),
       updatePen: (index, patch) =>
@@ -106,7 +124,8 @@ export const useUI = create<UIState>()(
         eraserRadius: s.eraserRadius,
         background: s.background,
         lang: s.lang,
-        graphPresets: s.graphPresets
+        graphPresets: s.graphPresets,
+        penButtons: s.penButtons
       })
     }
   )

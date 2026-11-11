@@ -49,9 +49,19 @@ npm run build
 | Lasso select | V; Del deletes, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy & paste |
 | Straight line | hold Shift while drawing |
 | Group / ungroup | Ctrl+G / Ctrl+Shift+G |
+| Move tool (drag anything) | M |
+| Swap pen ↔ eraser | X |
 | All boards | Ctrl+H |
 | New board / Open file | Ctrl+N / Ctrl+O |
 | Save as file | Ctrl+S (draft) or Ctrl+Shift+S |
+
+## Wacom tablets
+
+- **Pen side buttons:** in Wacom Center set the lower switch to *Right click* and the upper to *Middle click*;
+  then choose what each does in Inkboard (Settings → Pen buttons: eraser, lasso, move items, move the board).
+  The settings panel has a tester that shows which button Inkboard receives.
+- **ExpressKeys** on the tablet are configured in Wacom Center as *Keystroke…* — e.g. Ctrl+Z, X, V, M, Space.
+  Settings → *Keyboard shortcuts & Wacom ExpressKeys* lists every shortcut.
 
 ## Where boards are stored
 

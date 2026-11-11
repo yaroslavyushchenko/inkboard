@@ -89,6 +89,9 @@ in progress and the pen cursor (so drawing never forces a full board redraw).
       editable after insertion; axes only (the paper background is the grid)
 - [x] Templates: save any selection (e.g. "Given / Find / Solution") and insert it into any board
 - [x] Group / ungroup (Ctrl+G / Ctrl+Shift+G, buttons on the selection bar)
+- [x] Move tool (M): hover highlight, drag anything (or its group) directly
+- [x] Pen buttons: configurable lower / upper side button and eraser end, with a live tester
+- [x] Shortcuts help with a Wacom ExpressKeys guide; X swaps pen ↔ eraser
 - [x] Auto-update from GitHub Releases (Windows, AppImage); "new version" notice on macOS / .deb
 
 ### Stage 4 — content

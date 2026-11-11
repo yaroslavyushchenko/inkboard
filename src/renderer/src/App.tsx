@@ -7,6 +7,7 @@ import { Board } from './ui/Board'
 import { HomeScreen } from './ui/HomeScreen'
 import { MainMenu } from './ui/MainMenu'
 import { SelectionToolbar } from './ui/SelectionToolbar'
+import { ShortcutsDialog } from './ui/ShortcutsDialog'
 import { Toolbar } from './ui/Toolbar'
 import { UpdateBanner } from './ui/UpdateBanner'
 import { VersionHistory } from './ui/VersionHistory'
@@ -29,6 +30,7 @@ export function App() {
       <VersionHistory />
       <GraphDialog />
       <UpdateBanner />
+      <ShortcutsDialog />
       {view === 'home' && <HomeScreen />}
     </div>
   )

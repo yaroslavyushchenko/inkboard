@@ -36,6 +36,8 @@ export interface SelectionOverlay {
   box: BBox | null
   /** Lasso polygon in world units while it's being drawn. */
   lasso: readonly (readonly [number, number])[] | null
+  /** Item (or whole group) under the pointer in select / move mode. */
+  hover?: BBox | null
 }
 
 export const HANDLE_SIZE = 10
@@ -116,6 +118,18 @@ export class BoardRenderer {
       ctx.strokeStyle = ACCENT
       ctx.stroke()
       ctx.setLineDash([])
+    }
+
+    if (sel.hover) {
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+      const r = selectionScreenRect(sel.hover, cam)
+      ctx.beginPath()
+      ctx.roundRect(r.x, r.y, r.w, r.h, 6)
+      ctx.fillStyle = 'rgba(79, 107, 237, 0.07)'
+      ctx.fill()
+      ctx.lineWidth = 1.5
+      ctx.strokeStyle = 'rgba(79, 107, 237, 0.7)'
+      ctx.stroke()
     }
 
     if (sel.box) {

@@ -14,9 +14,9 @@ import { DEFAULT_SHAPE_SIZE, isLinear, shapeOutline, snapAngle, type ShapeKind }
 import { hitTest, itemsInLasso } from '../engine/transform'
 import type { BBox, Item, Point, StrokeItem } from '../engine/types'
 import { editor } from '../editor'
-import { useUI, type Tool } from '../store'
+import { useUI, type PenAction, type Tool } from '../store'
 
-type Effective = 'ink' | 'eraser' | 'pan' | 'select' | 'shape'
+type Effective = 'ink' | 'eraser' | 'pan' | 'select' | 'shape' | 'move'
 
 type Gesture =
   | { kind: 'ink'; pointerId: number; live: LiveStroke; start: Point }
@@ -67,7 +67,8 @@ export function Board() {
         const live = gesture?.kind === 'ink' || gesture?.kind === 'shape' ? gesture.live : null
         renderer.renderOverlay(live, cursorState(), editor.camera, {
           box: ui.selectedIds.length ? editor.selectionBBox() : null,
-          lasso: gesture?.kind === 'lasso' ? gesture.points : null
+          lasso: gesture?.kind === 'lasso' ? gesture.points : null,
+          hover: gesture ? null : hoverBox
         })
       }
       baseDirty = false
@@ -96,7 +97,7 @@ export function Board() {
     }
 
     const toolEffect = (tool: Tool): Effective =>
-      tool === 'eraser' ? 'eraser' : tool === 'pan' ? 'pan' : tool === 'select' ? 'select' : tool === 'shape' ? 'shape' : 'ink'
+      tool === 'eraser' ? 'eraser' : tool === 'pan' ? 'pan' : tool === 'select' ? 'select' : tool === 'shape' ? 'shape' : tool === 'move' ? 'move' : 'ink'
 
     /** What a press at screen point (sx, sy) would grab on the current selection. */
     const selectionHit = (sx: number, sy: number): { kind: 'handle'; corner: number; box: BBox } | { kind: 'body' } | null => {
@@ -118,11 +119,34 @@ export function Board() {
       if (e.pointerType === 'mouse' && (e.button === 1 || e.button === 2)) return 'pan'
       if (spaceDown) return 'pan'
       if (e.pointerType === 'pen') {
-        // Eraser end of the pen (button 5 / buttons bit 32) or the barrel button.
-        if (e.button === 5 || (e.buttons & 32) !== 0 || e.button === 2) return 'eraser'
+        // Pen buttons, as configured in Settings → Pen buttons.
+        const pb = useUI.getState().penButtons
+        const act = (a: PenAction): Effective | null => (a === 'tool' ? null : a === 'eraser' ? 'eraser' : a)
+        let mapped: Effective | null = null
+        if (e.button === 5 || (e.buttons & 32) !== 0) mapped = act(pb.eraserEnd)
+        else if (e.button === 2 || (e.buttons & 2) !== 0) mapped = act(pb.lower)
+        else if (e.button === 1 || (e.buttons & 4) !== 0) mapped = act(pb.upper)
+        if (mapped) return mapped
       }
       return toolEffect(useUI.getState().tool)
     }
+
+    /** Item (or its whole group) under a screen point, for hover highlight and quick move. */
+    const hoverTarget = (sx: number, sy: number): { item: Item; box: BBox } | null => {
+      const w = screenToWorld(editor.camera, sx, sy)
+      const hit = hitTest(scene.getItems(), w.x, w.y, 6 / editor.camera.zoom)
+      if (!hit) return null
+      const members = hit.groupId ? scene.getItems().filter((i) => i.groupId === hit.groupId) : [hit]
+      const box = { ...members[0].bbox }
+      for (const m of members) {
+        box.minX = Math.min(box.minX, m.bbox.minX)
+        box.minY = Math.min(box.minY, m.bbox.minY)
+        box.maxX = Math.max(box.maxX, m.bbox.maxX)
+        box.maxY = Math.max(box.maxY, m.bbox.maxY)
+      }
+      return { item: hit, box }
+    }
+    let hoverBox: BBox | null = null
 
     function cursorState(): CursorState | null {
       if (!hover || spaceDown) return null
@@ -131,7 +155,7 @@ export function Board() {
       const penHover = hover.pointerType === 'pen' && hover.buttons === 0
       const eraserButton = hover.pointerType === 'pen' && (hover.buttons & 32) !== 0
       const eff = eraserButton ? 'eraser' : toolEffect(ui.tool)
-      if (eff === 'pan' || eff === 'select' || eff === 'shape') return null
+      if (eff === 'pan' || eff === 'select' || eff === 'shape' || eff === 'move') return null
       // While actually inking, the ink itself is the feedback.
       if (gesture?.kind === 'ink') return null
       if (eff === 'eraser') {
@@ -156,9 +180,11 @@ export function Board() {
       else if (tool === 'shape') c = 'crosshair'
       else if (gesture?.kind === 'move') c = 'move'
       else if (gesture?.kind === 'scale') c = gesture.cx > gesture.ax === gesture.cy > gesture.ay ? 'nwse-resize' : 'nesw-resize'
-      else if (tool === 'select') {
+      else if (tool === 'select' || tool === 'move') {
         const h = hover ? selectionHit(hover.sx, hover.sy) : null
-        c = !h ? 'default' : h.kind === 'body' ? 'move' : h.corner % 2 === 0 ? 'nwse-resize' : 'nesw-resize'
+        if (h) c = h.kind === 'body' ? 'move' : h.corner % 2 === 0 ? 'nwse-resize' : 'nesw-resize'
+        else if (hoverBox) c = 'move'
+        else c = tool === 'move' ? 'grab' : 'default'
       }
       overlay.style.cursor = c
     }
@@ -324,7 +350,21 @@ export function Board() {
       const p = local(e)
       const eff = effectiveFor(e)
 
-      if (eff === 'pan') {
+      if (eff === 'move') {
+        // Quick move: grab whatever is under the pointer (or the current selection) and drag it.
+        const w = screenToWorld(editor.camera, p.x, p.y)
+        const h = selectionHit(p.x, p.y)
+        const target = h ? null : hoverTarget(p.x, p.y)
+        if (h || target) {
+          if (target) editor.setSelection([target.item])
+          gesture = { kind: 'move', pointerId: e.pointerId, startX: w.x, startY: w.y }
+        } else {
+          // Empty space: drag the board instead.
+          editor.clearSelection()
+          gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
+        }
+        hoverBox = null
+      } else if (eff === 'pan') {
         gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
       } else if (eff === 'select') {
         const w = screenToWorld(editor.camera, p.x, p.y)
@@ -339,9 +379,9 @@ export function Board() {
         } else if (h?.kind === 'body') {
           gesture = { kind: 'move', pointerId: e.pointerId, startX: w.x, startY: w.y }
         } else {
-          // Pressing on an unselected item grabs it right away; empty space starts a lasso.
+          // Pressing on a highlighted item grabs it right away; empty space starts a lasso.
           const hit = hitTest(scene.getItems(), w.x, w.y, 6 / editor.camera.zoom)
-          if (hit && e.pointerType !== 'pen') {
+          if (hit && (e.pointerType !== 'pen' || hoverBox)) {
             editor.setSelection([hit])
             gesture = { kind: 'move', pointerId: e.pointerId, startX: w.x, startY: w.y }
           } else {
@@ -444,7 +484,14 @@ export function Board() {
           }
         }
       }
-      if (!gesture && useUI.getState().tool === 'select') updateCssCursor()
+      if (!gesture) {
+        // Hover highlight in select / move mode (not over the current selection's frame).
+        const tool = useUI.getState().tool
+        const prev = hoverBox
+        hoverBox =
+          (tool === 'select' || tool === 'move') && !spaceDown && !selectionHit(p.x, p.y) ? (hoverTarget(p.x, p.y)?.box ?? null) : null
+        if (prev !== hoverBox || tool === 'select' || tool === 'move') updateCssCursor()
+      }
       invalidate(false)
     }
 
@@ -459,6 +506,7 @@ export function Board() {
       // Pen left the tablet's detection range (or the mouse left the window).
       if (e.pointerType !== 'touch' && !gesture) {
         hover = null
+        hoverBox = null
         invalidate(false)
       }
     }
@@ -516,6 +564,9 @@ export function Board() {
       if (key === 'delete' || key === 'backspace') return e.preventDefault(), editor.deleteSelection()
       if (key === 'escape') return editor.clearSelection()
       if (key === 'v') return ui.setTool('select')
+      if (key === 'm') return ui.setTool('move')
+      // X: quick swap between the current pen and the eraser (handy on a tablet ExpressKey).
+      if (key === 'x') return ui.tool === 'eraser' ? ui.selectPen(ui.activePen) : ui.setTool('eraser')
       if (key === 'p') ui.selectPen(ui.activePen)
       else if (key === 'h') ui.setTool('highlighter')
       else if (key === 'e') ui.setTool('eraser')
@@ -564,6 +615,9 @@ export function Board() {
     ro.observe(overlay.parentElement!)
 
     const unsubTool = useUI.subscribe((s, prev) => {
+      if (s.tool !== prev.tool) hoverBox = null
+      // Items changed under the pointer (delete, undo…): drop a stale highlight.
+      if (s.sceneVersion !== prev.sceneVersion && !gesture) hoverBox = null
       if (s.tool !== prev.tool) updateCssCursor()
     })
 
