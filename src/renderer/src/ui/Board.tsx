@@ -925,8 +925,12 @@ export function Board() {
     }
 
     // ---------- keyboard ----------
+    // Only real text fields swallow shortcuts; a focused slider or checkbox must not block Ctrl+Z, 1, 2, 3…
     const isTyping = (t: EventTarget | null): boolean =>
-      t instanceof HTMLElement && (t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')
+      t instanceof HTMLElement &&
+      (t.isContentEditable ||
+        t.tagName === 'TEXTAREA' ||
+        (t instanceof HTMLInputElement && !['range', 'checkbox', 'radio', 'button', 'color'].includes(t.type)))
 
     const onKeyDown = (e: KeyboardEvent): void => {
       if (isTyping(e.target)) return

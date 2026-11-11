@@ -78,6 +78,11 @@ class Editor {
         this.invalidate(false)
       }
       if (s.lang !== prev.lang || s.board !== prev.board || s.view !== prev.view) this.updateTitle()
+      if (s.tool !== prev.tool) {
+        // Picking a drawing tool means "done with the selection": drop it (lasso ↔ move keep it).
+        if (s.tool !== 'select' && s.tool !== 'move' && s.selectedIds.length) useUI.setState({ selectedIds: [] })
+        if (s.tool !== 'text' && s.textEdit) this.commitText()
+      }
     })
   }
 

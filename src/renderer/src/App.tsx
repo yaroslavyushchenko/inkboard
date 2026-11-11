@@ -19,6 +19,16 @@ export function App() {
   useEffect(() => {
     void editor.start()
   }, [])
+  useEffect(() => {
+    // Buttons and sliders shouldn't keep keyboard focus after a click: a focused button would be
+    // "pressed" again by Space (hold-to-pan) or Enter, and the focus ring lingers on the toolbar.
+    const drop = (e: PointerEvent): void => {
+      const el = (e.target as HTMLElement | null)?.closest?.('button, input[type="range"], input[type="checkbox"]')
+      if (el instanceof HTMLElement) setTimeout(() => document.activeElement === el && el.blur(), 0)
+    }
+    window.addEventListener('pointerup', drop, true)
+    return () => window.removeEventListener('pointerup', drop, true)
+  }, [])
   return (
     <div className="app">
       {/* The board stays mounted under the home screen so switching back is instant. */}

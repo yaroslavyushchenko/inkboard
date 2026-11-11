@@ -110,6 +110,7 @@ in progress and the pen cursor (so drawing never forces a full board redraw).
 - [x] Lock items / groups (no erase, delete, move, resize or restyle until unlocked)
 - [x] Line ends on freehand ink; any line width via a slider
 - [x] Text tool (click and type, double-click to edit, paste text); 3D coordinate axes
+- [x] Focus: picking a drawing tool clears the selection; toolbar buttons / sliders don't keep keyboard focus
 
 ### Stage 4 — content
 - [ ] **Hold-to-snap shapes** (like Procreate's QuickShape): draw and keep the pen down ~0.7 s
