@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Download Inkboard / Завантажити
+    url: https://github.com/yaroslavyushchenko/inkboard/releases/latest
+    about: Installers for Windows, macOS and Linux.
+  - name: Website / Сайт
+    url: https://yaroslavyushchenko.github.io/inkboard/
+    about: What Inkboard can do, in English and Ukrainian.

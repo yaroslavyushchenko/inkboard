@@ -1,5 +1,7 @@
 **Inkboard** — a free infinite whiteboard for pen tablets.
 
+![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
+
 ## What's new in 0.5.0
 
 ### New

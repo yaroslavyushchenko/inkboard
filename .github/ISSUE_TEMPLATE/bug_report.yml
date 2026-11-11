@@ -1,0 +1,43 @@
+name: Bug report / Помилка
+description: Something doesn't work as it should. / Щось працює не так.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! You can write in English or Ukrainian.
+        Дякуємо! Можна писати англійською або українською.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / Що сталося?
+      description: What did you do, what did you expect, and what happened instead? Screenshots help a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / Як повторити
+      placeholder: |
+        1. Pick the compass
+        2. Drag the pencil…
+  - type: input
+    id: version
+    attributes:
+      label: Inkboard version / Версія
+      description: Shown in the menu (☰) and on the "All boards" screen.
+      placeholder: "0.5.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: System / Система
+      options: [Windows 11, Windows 10, macOS, Linux (AppImage), Linux (.deb), Other]
+    validations:
+      required: true
+  - type: input
+    id: tablet
+    attributes:
+      label: Pen tablet / Планшет
+      placeholder: "e.g. Wacom One, Wacom Intuos S, mouse only"

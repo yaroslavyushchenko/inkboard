@@ -1,48 +1,92 @@
+<div align="center">
+
+<img src="build/icon.png" width="112" alt="Inkboard icon">
+
 # Inkboard
 
-**Website & downloads:** https://yaroslavyushchenko.github.io/inkboard/
+**A free whiteboard for teachers who write and draw with a pen tablet.**<br>
+Infinite board, pressure-sensitive vector ink, a protractor and a compass, shapes and coordinate axes for maths.
 
-A free, open-source infinite whiteboard for pen tablets — inspired by the feel of Microsoft Whiteboard.
-Built for teachers who write and draw with a stylus.
+[![Latest release](https://img.shields.io/github/v/release/yaroslavyushchenko/inkboard?label=release&color=4f6bed)](https://github.com/yaroslavyushchenko/inkboard/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/yaroslavyushchenko/inkboard/total?color=2f9e44)](https://github.com/yaroslavyushchenko/inkboard/releases)
+[![CI](https://github.com/yaroslavyushchenko/inkboard/actions/workflows/ci.yml/badge.svg)](https://github.com/yaroslavyushchenko/inkboard/actions/workflows/ci.yml)
+[![Release build](https://github.com/yaroslavyushchenko/inkboard/actions/workflows/release.yml/badge.svg)](https://github.com/yaroslavyushchenko/inkboard/actions/workflows/release.yml)
+[![License: GPL v3+](https://img.shields.io/github/license/yaroslavyushchenko/inkboard?color=blue)](LICENSE)
+![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+![Languages](https://img.shields.io/badge/UI-English%20%7C%20Українська-ffd43b)
 
-- Infinite canvas: pan and zoom in any direction
-- Pressure-sensitive **vector** ink — stays sharp at any zoom
-- Pens, highlighter, stroke eraser (pen eraser end / barrel button supported)
-- Pen hover indicator, palm rejection
-- Paper backgrounds: blank, dots, grid, lines
-- Images: paste, drag & drop, or insert from file
-- Lasso selection: move, scale, duplicate, copy/paste
-- **Never lose work:** every board autosaves within seconds (power-cut safe), with version history
-- Board library with thumbnails, search, pins and colour tags; Recently deleted
-- Export to PNG or vector PDF; optional automatic backup folder
-- Shift for straight lines, a shapes menu (solids with any number of sides for the base, editable
-  after drawing), coordinate lines / planes / 3D axes for maths
-- Protractor (arcs get their angle written next to them) and a compass for arcs and circles
-- Drag the ends of a straight line to change its length and angle (whole degrees on the protractor)
-- Line ends (arrow, dot…) on any line, including freehand; any line width via a slider
-- Text: click and type, or paste text; select words to change their colour, size, bold, italic, underline
-- Lock items or groups so they can't be erased, moved or deleted by accident
-- Templates: save any part of a board and insert it into other boards; replace a template's content
-  with a new selection (asks for confirmation)
-- Automatic updates
-- English and Ukrainian UI
+[![Download for Windows](https://img.shields.io/badge/Download-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/yaroslavyushchenko/inkboard/releases/latest)
+[![Download for macOS](https://img.shields.io/badge/Download-macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/yaroslavyushchenko/inkboard/releases/latest)
+[![Download for Linux](https://img.shields.io/badge/Download-Linux-E95420?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/yaroslavyushchenko/inkboard/releases/latest)
 
-Status: early development. See [docs/PLAN.md](docs/PLAN.md) for the roadmap.
+**[Website](https://yaroslavyushchenko.github.io/inkboard/)** ·
+**[Download](https://github.com/yaroslavyushchenko/inkboard/releases/latest)** ·
+**[What's new](CHANGELOG.md)** ·
+**[Keyboard shortcuts](docs/SHORTCUTS.md)** ·
+**[Українською](README.uk.md)**
 
-## Development
+<img src="docs/images/hero.png" alt="Inkboard: a lesson board with formatted text, a protractor with a 50° angle, a hexagonal pyramid and a circle drawn with the compass" width="900">
 
-Requires Node.js (LTS or newer).
+</div>
 
-```bash
-npm install
-npm run dev        # start the app with hot reload
-npm run dev:x11    # Linux/Wayland: use this if pen pressure doesn't work
-npm run typecheck
-npm run build
-```
+## Why Inkboard
 
-> npm 11+ may skip Electron's install script. If `npm run dev` says Electron failed to install,
-> run `node node_modules/electron/install.js` once.
+Microsoft Whiteboard was the go-to board for many teachers with a pen tablet, and it's being retired.
+Inkboard aims to feel just as simple — open it and write — while adding the tools a maths or science
+lesson needs. It works fully offline, needs no account, and your boards stay on your computer.
+
+## Features
+
+**Writing and drawing**
+- Infinite board: pan and zoom in any direction
+- Pressure-sensitive **vector** ink that stays sharp at any zoom
+- Pens, highlighter, stroke eraser — the pen's eraser end and barrel button work too
+- Pen hover indicator and palm rejection
+- Paper: blank, dots, grid or lines
+
+**For maths lessons**
+- **Protractor** — draw an angle from its centre or an arc along its edge; the degrees are written next to the arc
+- **Compass** — set the radius (shown in paper cells) and draw arcs or full circles
+- Shapes: lines, polygons, circles, and pyramids / prisms with **any number of sides** for the base — still editable after drawing
+- Number lines, coordinate planes and 3D axes
+- Shift for straight lines; drag a line's end to change its length and angle (whole degrees on the protractor)
+- Arrows and dots on line ends, including freehand lines
+
+**Text and pictures**
+- Type right on the board; select words to change their colour, size, **bold**, *italic*, underline
+- Paste pictures and screenshots (Ctrl+V), drag them in, or insert from a file
+
+<p align="center"><img src="docs/images/text-format.png" alt="Formatting part of a text: the selected words get their own colour, size and style" width="460"></p>
+
+**Organising**
+- Lasso and brush selection: move, scale, duplicate, group, lock
+- Templates: save part of a board and reuse it in other lessons
+- **All boards** screen with previews, search, pins and colour tags (e.g. a class or a subject)
+
+<p align="center"><img src="docs/images/home.png" alt="The All boards screen: board previews with pins and colour tags" width="900"></p>
+
+**Never lose work**
+- Every board saves itself within seconds — safe even if the power goes out
+- Version history, and *Recently deleted* for 30 days
+- Optional backup folder (a USB stick or a Google Drive / OneDrive folder)
+- Export to PNG or vector PDF; save a board as an `.inkboard` file to share it
+
+**And also**
+- Automatic updates (Windows, Linux AppImage); a new-version notice on macOS
+- English and Ukrainian interface
+- Works with Wacom tablets, including side buttons and ExpressKeys ([see below](#wacom-tablets))
+
+## Download and install
+
+Get the latest version from the **[Releases page](https://github.com/yaroslavyushchenko/inkboard/releases/latest)**:
+
+| System | File | Notes |
+|---|---|---|
+| Windows 10 / 11 | `Inkboard-Setup-…-x64.exe` | Windows may warn about an unknown publisher (the app isn't code-signed yet): **More info → Run anyway** |
+| macOS (Intel and Apple silicon) | `Inkboard-…-mac-universal.dmg` | Not notarized by Apple yet: if macOS blocks the first launch, open **System Settings → Privacy & Security → Open Anyway** |
+| Linux | `Inkboard-…-x86_64.AppImage` or `.deb` | AppImage on Ubuntu 24.04+ needs `sudo apt install libfuse2t64` once |
+
+After that Inkboard updates itself on Windows and with the AppImage; on macOS and with the `.deb` it tells you when a new version is out.
 
 ## Controls
 
@@ -71,15 +115,7 @@ npm run build
 | New board / Open file | Ctrl+N / Ctrl+O |
 | Save as file | Ctrl+S (draft) or Ctrl+Shift+S |
 
-## Linux AppImage note
-
-Ubuntu 24.04 and newer don't ship the FUSE 2 library AppImages need. Install it once:
-
-```bash
-sudo apt install libfuse2t64
-```
-
-(or use the `.deb` package instead).
+The full list is in [docs/SHORTCUTS.md](docs/SHORTCUTS.md) and in the app (Settings → *Keyboard shortcuts*).
 
 ## Wacom tablets
 
@@ -99,15 +135,31 @@ sudo apt install libfuse2t64
   autosaving into that file.
 - Every write is crash-safe (temp file + fsync + atomic rename, previous version kept as `.bak`).
 
-## License
+## Feedback
 
-GPL-3.0-or-later. See [LICENSE](LICENSE).
+Found a bug or missing something for your lessons?
+[Open an issue](https://github.com/yaroslavyushchenko/inkboard/issues/new/choose) — in English or Ukrainian.
+See [CONTRIBUTING.md](CONTRIBUTING.md) if you'd like to help with code or translations.
+The roadmap is in [docs/PLAN.md](docs/PLAN.md).
 
-## Download
+## Development
 
-Installers for Windows, macOS and Linux are on the [Releases](https://github.com/yaroslavyushchenko/inkboard/releases) page.
+Built with Electron, React and TypeScript; the board is a custom Canvas 2D engine
+(`src/renderer/src/engine`). Requires Node.js (LTS or newer).
 
-## Building installers
+```bash
+npm install
+npm run dev        # start the app with hot reload
+npm run dev:x11    # Linux/Wayland: use this if pen pressure doesn't work
+npm run typecheck
+npm test
+npm run build
+```
+
+> npm 11+ may skip Electron's install script. If `npm run dev` says Electron failed to install,
+> run `node node_modules/electron/install.js` once.
+
+### Building installers
 
 ```bash
 npm run dist:linux   # AppImage + .deb
@@ -117,3 +169,7 @@ npm run dist:mac     # macOS .dmg (must be built on a Mac / CI)
 
 Releases are built by GitHub Actions: push a tag like `v0.1.0` and the
 [Release workflow](.github/workflows/release.yml) builds every platform and publishes a release.
+
+## License
+
+Inkboard is free software: [GPL-3.0-or-later](LICENSE).

@@ -1,0 +1,15 @@
+name: Idea / Ідея
+description: Suggest a tool or an improvement. / Запропонуйте інструмент або покращення.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help in your lessons? / Що допомогло б на уроках?
+      description: Describe what you want to do on the board. A photo of how you'd draw it on paper is welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: now
+    attributes:
+      label: How do you do it now? / Як ви робите це зараз?
