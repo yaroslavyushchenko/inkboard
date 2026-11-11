@@ -43,7 +43,17 @@ linux:
   syncDesktopName: true
   category: Education
   maintainer: Yaroslav Yushchenko <contact@yaroslavyushchenko.com>
-  synopsis: Infinite whiteboard for pen tablets
+  synopsis: Free whiteboard for teachers with a pen tablet
+  description: >-
+    Inkboard is an infinite whiteboard for writing and drawing with a pen tablet.
+    It has pressure-sensitive vector ink, a protractor and a compass, shapes,
+    pyramids and prisms, number lines, coordinate planes and formatted text.
+    Every board saves itself within seconds, so nothing is lost even if the power
+    goes out. Works offline, needs no account. English and Ukrainian interface.
+
+# Static AppImage runtime: runs on Ubuntu 22.04+ without installing libfuse2.
+toolsets:
+  appimage: '1.0.3'
 
 # Auto-update feed: electron-updater reads latest*.yml from GitHub Releases.
 publish:
