@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useUI } from '../store'
 import { editor } from '../editor'
 import { useT } from '../i18n'
 import { platform, type UpdateState } from '../platform'
@@ -13,7 +14,32 @@ export function UpdateBanner() {
     platform.update.onState(setS)
   }, [])
   const key = `${s.status}:${s.version}`
+  // "Updated to X": shown once after the app starts with a new version.
+  const justUpdated = useUI((st) => st.justUpdatedTo)
+  if (justUpdated && hidden !== `updated:${justUpdated}`) {
+    return (
+      <div className="panel update-banner success">
+        <span>{t('update.updated', { version: justUpdated })}</span>
+        <button className="text-btn" onClick={() => void platform.update.openDownload()}>
+          {t('update.whatsNew')}
+        </button>
+        <button className="text-btn" onClick={() => setHidden(`updated:${justUpdated}`)}>
+          {t('common.close')}
+        </button>
+      </div>
+    )
+  }
   if (hidden === key) return null
+  if (s.status === 'downloading') {
+    return (
+      <div className="panel update-banner">
+        <span className="save-spinner" />
+        <span>
+          {t('update.downloading', { version: s.version ?? '' })} {s.percent ?? 0}%
+        </span>
+      </div>
+    )
+  }
   if (s.status === 'ready') {
     return (
       <div className="panel update-banner">
@@ -60,7 +86,9 @@ export function AboutSection() {
     platform.update.onState(setS)
   }, [])
   const status =
-    s.status === 'checking'
+    s.status === 'dev'
+      ? t('update.dev')
+      : s.status === 'checking'
       ? t('update.checking')
       : s.status === 'none'
         ? t('update.upToDate')
@@ -77,7 +105,7 @@ export function AboutSection() {
     <>
       <div className="popover-title section">{t('settings.about')}</div>
       <div className="about-row">
-        <span>Inkboard · {t('settings.version', { version })}</span>
+        <span className="about-version">Inkboard {version}</span>
         <button className="text-btn outline" disabled={s.status === 'checking' || s.status === 'downloading'} onClick={() => void platform.update.check()}>
           {t('update.check')}
         </button>

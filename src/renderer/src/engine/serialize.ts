@@ -1,5 +1,5 @@
 import { graphBBox, sanitizeGraph } from './graph'
-import type { BackgroundKind, Camera, GraphItem, GraphParams, Item, Point } from './types'
+import type { BackgroundKind, Camera, GraphItem, GraphParams, Item, LineCap, LineDash, Point } from './types'
 
 /**
  * `.inkboard` file format: gzip-compressed JSON.
@@ -7,8 +7,12 @@ import type { BackgroundKind, Camera, GraphItem, GraphParams, Item, Point } from
  * byte-for-byte as they were inserted, and referenced by key.
  */
 export const FORMAT = 'inkboard'
-/** 2 = adds straight-line strokes (`geom`) and coordinate graphs. Readers accept ≤ this. */
-export const FORMAT_VERSION = 2
+/**
+ * 2 = straight-line strokes (`geom`), coordinate graphs, groups.
+ * 3 = line patterns (`dash`) and line ends (`startCap` / `endCap`).
+ * Readers accept ≤ this; older apps refuse newer files instead of silently dropping data.
+ */
+export const FORMAT_VERSION = 3
 
 interface SerializedStroke {
   type: 'stroke'
@@ -22,6 +26,9 @@ interface SerializedStroke {
   pts: number[]
   geom?: 'line'
   groupId?: string
+  dash?: LineDash
+  startCap?: LineCap
+  endCap?: LineCap
 }
 
 interface SerializedGraph extends GraphParams {
@@ -75,8 +82,15 @@ export function serializeBoard(data: BoardData): BoardFile {
         pts[i * 3 + 1] = r2(y)
         pts[i * 3 + 2] = r3(p)
       })
-      const { id, z, tool, color, size, pressure, geom, groupId } = it
-      return { type: 'stroke', id, z, tool, color, size, pressure, pts, ...(geom ? { geom } : {}), ...(groupId ? { groupId } : {}) }
+      const { id, z, tool, color, size, pressure, geom, groupId, dash, startCap, endCap } = it
+      return {
+        type: 'stroke', id, z, tool, color, size, pressure, pts,
+        ...(geom ? { geom } : {}),
+        ...(groupId ? { groupId } : {}),
+        ...(dash ? { dash } : {}),
+        ...(startCap ? { startCap } : {}),
+        ...(endCap ? { endCap } : {})
+      }
     }
     if (it.type === 'graph') {
       const { bbox: _bbox, ...rest } = it
@@ -115,6 +129,9 @@ export function deserializeBoard(file: BoardFile): BoardData {
         type: 'stroke', id: s.id, z: s.z, tool: s.tool, color: s.color, size: s.size, pressure: s.pressure, points,
         ...(s.geom === 'line' ? { geom: 'line' as const } : {}),
         ...(s.groupId ? { groupId: s.groupId } : {}),
+        ...(s.dash ? { dash: s.dash } : {}),
+        ...(s.startCap ? { startCap: s.startCap } : {}),
+        ...(s.endCap ? { endCap: s.endCap } : {}),
         bbox: { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad }
       })
     } else if (s.type === 'graph') {

@@ -3,7 +3,8 @@ import { autoUpdater } from 'electron-updater'
 
 /** What the renderer shows in the update banner / settings. */
 export interface UpdateState {
-  status: 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'
+  /** 'dev' = running from source (npm run dev): updates only work in the installed app. */
+  status: 'idle' | 'dev' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'
   version?: string
   percent?: number
   /** No silent install on this platform (macOS without signing, .deb): offer a download link. */
@@ -29,7 +30,7 @@ function newer(a: string, b: string): boolean {
  * macOS (not code-signed yet) and .deb only get a "new version available → Download" notice.
  */
 export function initUpdater(getWindow: () => BrowserWindow | null, beforeInstall: () => void): void {
-  let state: UpdateState = { status: 'idle' }
+  let state: UpdateState = { status: app.isPackaged ? 'idle' : 'dev' }
   const canAutoInstall = process.platform === 'win32' || (process.platform === 'linux' && !!process.env['APPIMAGE'])
   const set = (s: UpdateState): void => {
     state = s
@@ -73,7 +74,7 @@ export function initUpdater(getWindow: () => BrowserWindow | null, beforeInstall
   const check = async (): Promise<void> => {
     // Never interrupt a download / ready-to-install update with a new check.
     if (state.status === 'downloading' || state.status === 'ready') return
-    if (!app.isPackaged) return set({ status: 'none' })
+    if (!app.isPackaged) return set({ status: 'dev' })
     if (canAutoInstall) {
       try {
         await autoUpdater.checkForUpdates()

@@ -10,16 +10,20 @@ import {
   type CursorState,
   type LiveStroke
 } from '../engine/renderer'
-import { DEFAULT_SHAPE_SIZE, isLinear, shapeOutline, snapAngle, type ShapeKind } from '../engine/shapes'
+import { arcStroke, baseStroke, hitProtractor, rayStroke, scaleAngle, toLocal, type ProtractorHit } from '../engine/protractor'
+import { DEFAULT_SHAPE_SIZE, isLinear, shapeParts, snapAngle, type ShapeKind } from '../engine/shapes'
 import { hitTest, itemsInLasso } from '../engine/transform'
 import type { BBox, Item, Point, StrokeItem } from '../engine/types'
 import { editor } from '../editor'
+import { matchShortcut, type ShortcutId } from '../shortcuts'
 import { useUI, type PenAction, type Tool } from '../store'
 
 type Effective = 'ink' | 'eraser' | 'pan' | 'select' | 'shape' | 'move'
 
 type Gesture =
-  | { kind: 'ink'; pointerId: number; live: LiveStroke; start: Point }
+  | { kind: 'ink'; pointerId: number; live: LiveStroke; start: Point; snap?: { mode: 'arc'; startDeg: number } | { mode: 'center' } | { mode: 'base'; u0: number } }
+  | { kind: 'protMove'; pointerId: number; lastX: number; lastY: number }
+  | { kind: 'protRotate'; pointerId: number }
   | { kind: 'shape'; pointerId: number; shape: ShapeKind; ax: number; ay: number; sx: number; sy: number; moved: boolean; live: LiveStroke }
   | { kind: 'eraser'; pointerId: number; removed: Item[]; lastX: number; lastY: number }
   | { kind: 'pan'; pointerId: number; lastX: number; lastY: number }
@@ -69,7 +73,7 @@ export function Board() {
           box: ui.selectedIds.length ? editor.selectionBBox() : null,
           lasso: gesture?.kind === 'lasso' ? gesture.points : null,
           hover: gesture ? null : hoverBox
-        })
+        }, { protractor: ui.protractor, angleLabel })
       }
       baseDirty = false
       overlayDirty = false
@@ -147,6 +151,15 @@ export function Board() {
       return { item: hit, box }
     }
     let hoverBox: BBox | null = null
+    let angleLabel: { sx: number; sy: number; text: string } | null = null
+
+    /** What a press at screen point (sx, sy) hits on the protractor, if it's shown. */
+    const protractorHitAt = (sx: number, sy: number): ProtractorHit | null => {
+      const prot = useUI.getState().protractor
+      if (!prot) return null
+      const w = screenToWorld(editor.camera, sx, sy)
+      return hitProtractor(prot, w.x, w.y, editor.camera.zoom)
+    }
 
     function cursorState(): CursorState | null {
       if (!hover || spaceDown) return null
@@ -178,6 +191,11 @@ export function Board() {
       if (gesture?.kind === 'pan' || gesture?.kind === 'pinch') c = 'grabbing'
       else if (spaceDown || tool === 'pan') c = 'grab'
       else if (tool === 'shape') c = 'crosshair'
+      else if (gesture?.kind === 'protMove') c = 'grabbing'
+      else if (gesture?.kind === 'protRotate') c = 'grabbing'
+      else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'body') c = 'move'
+      else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'rotate') c = 'grab'
+      else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'close') c = 'pointer'
       else if (gesture?.kind === 'move') c = 'move'
       else if (gesture?.kind === 'scale') c = gesture.cx > gesture.ax === gesture.cy > gesture.ay ? 'nwse-resize' : 'nesw-resize'
       else if (tool === 'select' || tool === 'move') {
@@ -230,30 +248,41 @@ export function Board() {
     const finishGesture = (): void => {
       const g = gesture
       gesture = null
+      angleLabel = null
       if (!g) return
       if (g.kind === 'shape') {
-        let pts = g.live.points
+        let parts = g.live.parts ?? []
         if (!g.moved) {
           // A plain click drops a default-size shape centred on the click.
           const d = DEFAULT_SHAPE_SIZE / editor.camera.zoom
-          pts = isLinear(g.shape)
-            ? shapeOutline(g.shape, g.ax - d / 2, g.ay, g.ax + d / 2, g.ay, false, g.live.size)
-            : shapeOutline(g.shape, g.ax - d / 2, g.ay - d / 2, g.ax + d / 2, g.ay + d / 2, false, g.live.size)
+          parts = isLinear(g.shape)
+            ? shapeParts(g.shape, g.ax - d / 2, g.ay, g.ax + d / 2, g.ay, false, g.live.size)
+            : shapeParts(g.shape, g.ax - d / 2, g.ay - d / 2, g.ax + d / 2, g.ay + d / 2, false, g.live.size)
         }
-        scene.add([
-          {
-            type: 'stroke',
-            id: newId(),
-            z: scene.allocZ(),
-            tool: 'pen',
-            color: g.live.color,
-            size: g.live.size,
-            pressure: false,
-            geom: 'line',
-            points: pts,
-            bbox: bboxOfPoints(pts, g.live.size)
-          }
-        ])
+        // Solids are several lines (visible + dashed hidden edges) kept together as one group.
+        const groupId = parts.length > 1 ? newId() : undefined
+        const caps = g.shape === 'line' ? { startCap: g.live.startCap, endCap: g.live.endCap } : {}
+        scene.add(
+          parts.map((part): StrokeItem => {
+            const dash = part.dash ?? g.live.dash
+            return {
+              type: 'stroke',
+              id: newId(),
+              z: scene.allocZ(),
+              tool: 'pen',
+              color: g.live.color,
+              size: g.live.size,
+              pressure: false,
+              geom: 'line',
+              points: part.points,
+              bbox: bboxOfPoints(part.points, g.live.size * 3),
+              ...(dash ? { dash } : {}),
+              ...(caps.startCap ? { startCap: caps.startCap } : {}),
+              ...(caps.endCap ? { endCap: caps.endCap } : {}),
+              ...(groupId ? { groupId } : {})
+            }
+          })
+        )
       } else if (g.kind === 'ink' && g.live.points.length > 0) {
         const { live } = g
         const stroke: StrokeItem = {
@@ -265,8 +294,12 @@ export function Board() {
           size: live.size,
           pressure: live.pressure,
           points: live.points,
-          bbox: bboxOfPoints(live.points, live.size),
-          ...(live.geom ? { geom: live.geom } : {})
+          bbox: bboxOfPoints(live.points, live.geom ? live.size * 3 : live.size),
+          ...(live.geom ? { geom: live.geom } : {}),
+          ...(live.dash ? { dash: live.dash } : {}),
+          // Line ends only decorate straight lines.
+          ...(live.geom === 'line' && live.startCap ? { startCap: live.startCap } : {}),
+          ...(live.geom === 'line' && live.endCap ? { endCap: live.endCap } : {})
         }
         scene.add([stroke])
       } else if (g.kind === 'eraser') {
@@ -303,7 +336,11 @@ export function Board() {
       const p = local(e)
       touches.set(e.pointerId, p)
       capture(e.pointerId)
-      if (touches.size === 1) {
+      const ph = touches.size === 1 ? protractorHitAt(p.x, p.y) : null
+      if (ph && ph !== 'close' && ph !== 'rotate') {
+        const w = screenToWorld(editor.camera, p.x, p.y)
+        gesture = { kind: 'protMove', pointerId: e.pointerId, lastX: w.x, lastY: w.y }
+      } else if (touches.size === 1) {
         gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
       } else if (touches.size === 2) {
         const c = touchCentroid()
@@ -321,6 +358,12 @@ export function Board() {
         cam = panBy(cam, c.cx - gesture.cx, c.cy - gesture.cy)
         gesture = { kind: 'pinch', dist: c.dist, cx: c.cx, cy: c.cy }
         editor.setCamera(cam)
+      } else if (gesture?.kind === 'protMove' && gesture.pointerId === e.pointerId) {
+        const w = screenToWorld(editor.camera, local(e).x, local(e).y)
+        const prot = useUI.getState().protractor
+        if (prot) useUI.setState({ protractor: { ...prot, x: prot.x + w.x - gesture.lastX, y: prot.y + w.y - gesture.lastY } })
+        gesture.lastX = w.x
+        gesture.lastY = w.y
       } else if (gesture?.kind === 'pan' && gesture.pointerId === e.pointerId) {
         const p = local(e)
         editor.setCamera(panBy(editor.camera, p.x - gesture.lastX, p.y - gesture.lastY))
@@ -350,7 +393,21 @@ export function Board() {
       const p = local(e)
       const eff = effectiveFor(e)
 
-      if (eff === 'move') {
+      const pHit = eff === 'pan' ? null : protractorHitAt(p.x, p.y)
+      const protGrab = pHit === 'body' || (pHit !== null && pHit !== 'close' && pHit !== 'rotate' && eff !== 'ink')
+      if (pHit === 'close') {
+        useUI.setState({ protractor: null })
+        try {
+          overlay.releasePointerCapture(e.pointerId)
+        } catch {
+          // not captured
+        }
+      } else if (pHit === 'rotate') {
+        gesture = { kind: 'protRotate', pointerId: e.pointerId }
+      } else if (protGrab) {
+        const w = screenToWorld(editor.camera, p.x, p.y)
+        gesture = { kind: 'protMove', pointerId: e.pointerId, lastX: w.x, lastY: w.y }
+      } else if (eff === 'move') {
         // Quick move: grab whatever is under the pointer (or the current selection) and drag it.
         const w = screenToWorld(editor.camera, p.x, p.y)
         const h = selectionHit(p.x, p.y)
@@ -402,7 +459,18 @@ export function Board() {
           sx: p.x,
           sy: p.y,
           moved: false,
-          live: { tool: 'pen', color: slot.color, size: slot.size, pressure: false, geom: 'line', points: [] }
+          live: {
+            tool: 'pen',
+            color: slot.color,
+            size: slot.size,
+            pressure: false,
+            geom: 'line',
+            points: [],
+            ...(slot.dash ? { dash: slot.dash } : {}),
+            // Line ends apply to the Line shape only.
+            ...(ui.shape === 'line' && slot.startCap ? { startCap: slot.startCap } : {}),
+            ...(ui.shape === 'line' && slot.endCap ? { endCap: slot.endCap } : {})
+          }
         }
       } else if (eff === 'eraser') {
         const w = screenToWorld(editor.camera, p.x, p.y)
@@ -420,10 +488,31 @@ export function Board() {
           kind: 'ink',
           pointerId: e.pointerId,
           start,
-          live: { tool: isHl ? 'highlighter' : 'pen', color: slot.color, size: slot.size, pressure, points: [start] }
+          live: {
+            tool: isHl ? 'highlighter' : 'pen',
+            color: slot.color,
+            size: slot.size,
+            // Dashed / dotted ink is drawn along its centre line, so it has no pressure width.
+            pressure: pressure && !slot.dash,
+            points: [start],
+            ...(slot.dash ? { dash: slot.dash } : {}),
+            ...(slot.startCap ? { startCap: slot.startCap } : {}),
+            ...(slot.endCap ? { endCap: slot.endCap } : {})
+          }
         }
         // Shift held from the start: straight line.
         if (e.shiftKey) gesture.live = { ...gesture.live, geom: 'line', pressure: false }
+        // Drawing along the protractor: arc along the edge, ray from the centre, or along the baseline.
+        const prot = useUI.getState().protractor
+        if (prot && (pHit === 'arc' || pHit === 'center' || pHit === 'base')) {
+          const w = screenToWorld(editor.camera, p.x, p.y)
+          const g = gesture
+          g.live = { ...g.live, geom: 'line', pressure: false }
+          if (pHit === 'arc') g.snap = { mode: 'arc', startDeg: scaleAngle(prot, w.x, w.y) }
+          else if (pHit === 'center') g.snap = { mode: 'center' }
+          else g.snap = { mode: 'base', u0: Math.max(-prot.r, Math.min(prot.r, toLocal(prot, w.x, w.y).u)) }
+          g.live.points = []
+        }
       }
       hover = { sx: p.x, sy: p.y, pointerType: e.pointerType, buttons: e.buttons }
       updateCssCursor()
@@ -442,6 +531,24 @@ export function Board() {
           editor.setCamera(panBy(editor.camera, p.x - g.lastX, p.y - g.lastY))
           g.lastX = p.x
           g.lastY = p.y
+        } else if (g.kind === 'protMove') {
+          const w = screenToWorld(editor.camera, p.x, p.y)
+          const prot = useUI.getState().protractor
+          if (prot) useUI.setState({ protractor: { ...prot, x: prot.x + w.x - g.lastX, y: prot.y + w.y - g.lastY } })
+          g.lastX = w.x
+          g.lastY = w.y
+        } else if (g.kind === 'protRotate') {
+          const prot = useUI.getState().protractor
+          if (prot) {
+            const w = screenToWorld(editor.camera, p.x, p.y)
+            let rot = Math.atan2(w.y - prot.y, w.x - prot.x)
+            const step = e.shiftKey ? Math.PI / 12 : Math.PI / 2
+            const snapped = Math.round(rot / step) * step
+            // Shift: 15° steps; otherwise a gentle magnet to horizontal / vertical.
+            if (e.shiftKey || Math.abs(rot - snapped) < (3 * Math.PI) / 180) rot = snapped
+            const r = Math.max(60 / editor.camera.zoom, Math.hypot(w.x - prot.x, w.y - prot.y) - 26 / editor.camera.zoom)
+            useUI.setState({ protractor: { ...prot, rot, r } })
+          }
         } else if (g.kind === 'lasso') {
           const w = screenToWorld(editor.camera, p.x, p.y)
           g.points.push([w.x, w.y])
@@ -460,7 +567,24 @@ export function Board() {
           // Coalesced events give every sample the tablet produced (often 200+ Hz), not just one per frame.
           const samples = e.getCoalescedEvents?.() ?? []
           const events = samples.length ? samples : [e]
-          if (g.kind === 'ink') {
+          const prot = useUI.getState().protractor
+          if (g.kind === 'ink' && g.snap && prot) {
+            const w = screenToWorld(editor.camera, p.x, p.y)
+            const off = g.live.size / 2 + 1 / editor.camera.zoom
+            if (g.snap.mode === 'arc') {
+              const cur = scaleAngle(prot, w.x, w.y)
+              g.live = { ...g.live, points: arcStroke(prot, g.snap.startDeg, cur, off) }
+              angleLabel = { sx: p.x, sy: p.y, text: `${Math.round(Math.abs(cur - g.snap.startDeg))}°` }
+            } else if (g.snap.mode === 'center') {
+              const deg = Math.round(scaleAngle(prot, w.x, w.y))
+              const len = Math.max(Math.hypot(w.x - prot.x, w.y - prot.y), 2 / editor.camera.zoom)
+              g.live = { ...g.live, points: rayStroke(prot, deg, len) }
+              angleLabel = { sx: p.x, sy: p.y, text: `${deg}°` }
+            } else {
+              const u = Math.max(-prot.r, Math.min(prot.r, toLocal(prot, w.x, w.y).u))
+              g.live = { ...g.live, points: baseStroke(prot, g.snap.u0, u, off) }
+            }
+          } else if (g.kind === 'ink') {
             if (e.shiftKey || g.live.geom === 'line') {
               // Shift = straight line from where the stroke started (snaps to 0°/45°/90°).
               const w = screenToWorld(editor.camera, p.x, p.y)
@@ -472,7 +596,7 @@ export function Board() {
           } else if (g.kind === 'shape') {
             const w = screenToWorld(editor.camera, p.x, p.y)
             if (Math.hypot(p.x - g.sx, p.y - g.sy) > 4) g.moved = true
-            if (g.moved) g.live.points = shapeOutline(g.shape, g.ax, g.ay, w.x, w.y, e.shiftKey, g.live.size)
+            if (g.moved) g.live = { ...g.live, parts: shapeParts(g.shape, g.ax, g.ay, w.x, w.y, e.shiftKey, g.live.size) }
           } else if (g.kind === 'eraser') {
             for (const ev of events) {
               const lp = local(ev)
@@ -534,15 +658,8 @@ export function Board() {
     const onKeyDown = (e: KeyboardEvent): void => {
       if (isTyping(e.target)) return
       const ui = useUI.getState()
-      const mod = e.ctrlKey || e.metaKey
-      const key = e.key.toLowerCase()
-      // App-wide shortcuts (also on the home screen).
-      if (mod && key === 'n') return e.preventDefault(), void editor.newBoard()
-      if (mod && key === 'o') return e.preventDefault(), void editor.openFile()
-      if (ui.view !== 'board') return
-      if (mod && key === 'h') return e.preventDefault(), void editor.goHome()
-      if (mod && key === 's') return e.preventDefault(), void (e.shiftKey ? editor.saveAsFile() : editor.save())
-      if (e.code === 'Space') {
+      // Hold Space = pan (not a one-shot shortcut).
+      if (e.code === 'Space' && ui.view === 'board' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault()
         if (!spaceDown) {
           spaceDown = true
@@ -551,26 +668,40 @@ export function Board() {
         }
         return
       }
-      if (mod && key === 'z' && !e.shiftKey) return e.preventDefault(), editor.undo()
-      if (mod && (key === 'y' || (key === 'z' && e.shiftKey))) return e.preventDefault(), editor.redo()
-      if (mod && (key === '=' || key === '+')) return e.preventDefault(), editor.zoomStep(1)
-      if (mod && key === '-') return e.preventDefault(), editor.zoomStep(-1)
-      if (mod && key === '0') return e.preventDefault(), editor.resetZoom()
-      if (mod && key === 'a') return e.preventDefault(), editor.selectAll()
-      if (mod && key === 'd') return e.preventDefault(), editor.duplicateSelection()
-      if (mod && key === 'g' && e.shiftKey) return e.preventDefault(), editor.ungroupSelection()
-      if (mod && key === 'g') return e.preventDefault(), editor.groupSelection()
-      if (mod) return
-      if (key === 'delete' || key === 'backspace') return e.preventDefault(), editor.deleteSelection()
-      if (key === 'escape') return editor.clearSelection()
-      if (key === 'v') return ui.setTool('select')
-      if (key === 'm') return ui.setTool('move')
-      // X: quick swap between the current pen and the eraser (handy on a tablet ExpressKey).
-      if (key === 'x') return ui.tool === 'eraser' ? ui.selectPen(ui.activePen) : ui.setTool('eraser')
-      if (key === 'p') ui.selectPen(ui.activePen)
-      else if (key === 'h') ui.setTool('highlighter')
-      else if (key === 'e') ui.setTool('eraser')
-      else if (['1', '2', '3'].includes(key)) ui.selectPen(Number(key) - 1)
+      // All shortcuts come from shortcuts.ts and match the physical key, so they work on any layout.
+      const sc = matchShortcut(e, ui.view === 'board' ? 'board' : 'app')
+      if (!sc) return
+      e.preventDefault()
+      const actions: Record<ShortcutId, () => unknown> = {
+        undo: () => editor.undo(),
+        redo: () => editor.redo(),
+        newBoard: () => editor.newBoard(),
+        openFile: () => editor.openFile(),
+        home: () => editor.goHome(),
+        save: () => editor.save(),
+        saveAs: () => editor.saveAsFile(),
+        zoomIn: () => editor.zoomStep(1),
+        zoomOut: () => editor.zoomStep(-1),
+        zoomReset: () => editor.resetZoom(),
+        selectAll: () => editor.selectAll(),
+        duplicate: () => editor.duplicateSelection(),
+        group: () => editor.groupSelection(),
+        ungroup: () => editor.ungroupSelection(),
+        delete: () => editor.deleteSelection(),
+        escape: () => editor.clearSelection(),
+        pen1: () => ui.selectPen(0),
+        pen2: () => ui.selectPen(1),
+        pen3: () => ui.selectPen(2),
+        pen: () => ui.selectPen(ui.activePen),
+        highlighter: () => ui.setTool('highlighter'),
+        eraser: () => ui.setTool('eraser'),
+        // Quick swap between the current pen and the eraser (handy on a tablet ExpressKey).
+        swapEraser: () => (ui.tool === 'eraser' ? ui.selectPen(ui.activePen) : ui.setTool('eraser')),
+        lasso: () => ui.setTool('select'),
+        move: () => ui.setTool('move'),
+        protractor: () => editor.toggleProtractor()
+      }
+      void actions[sc.id]()
     }
 
     const onKeyUp = (e: KeyboardEvent): void => {
@@ -615,6 +746,7 @@ export function Board() {
     ro.observe(overlay.parentElement!)
 
     const unsubTool = useUI.subscribe((s, prev) => {
+      if (s.protractor !== prev.protractor) invalidate(false)
       if (s.tool !== prev.tool) hoverBox = null
       // Items changed under the pointer (delete, undo…): drop a stale highlight.
       if (s.sceneVersion !== prev.sceneVersion && !gesture) hoverBox = null

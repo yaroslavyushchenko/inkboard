@@ -1,7 +1,7 @@
 import { BACKGROUND_STYLE, drawBackground, PAPER_COLOR } from './background'
 import { loadImage } from './images'
 import { graphSvg } from './graph'
-import { HIGHLIGHTER_ALPHA, inkOutlineSvg, lineSvgPath } from './ink'
+import { capsSvg, dashPattern, HIGHLIGHTER_ALPHA, inkOutlineSvg, lineSvgPath, usesLineRender } from './ink'
 import { drawItems } from './renderer'
 import { unionBBox } from './transform'
 import type { BackgroundKind, BBox, Camera, Item } from './types'
@@ -108,11 +108,13 @@ export function renderSvg(items: readonly Item[], bg: BackgroundKind): { svg: st
       parts.push(graphSvg(it))
     } else if (it.type === 'image') {
       parts.push(`<image href="${esc(it.src)}" x="${r2(it.x)}" y="${r2(it.y)}" width="${r2(it.w)}" height="${r2(it.h)}" preserveAspectRatio="none"/>`)
-    } else if (it.geom === 'line') {
+    } else if (usesLineRender(it)) {
       const hl = it.tool === 'highlighter' ? ` stroke-opacity="${HIGHLIGHTER_ALPHA}" style="mix-blend-mode:multiply"` : ''
+      const dash = it.dash ? ` stroke-dasharray="${dashPattern(it.dash, it.size).map(r2).join(' ')}"` : ''
       parts.push(
-        `<path d="${lineSvgPath(it.points)}" fill="none" stroke="${esc(it.color)}" stroke-width="${r2(it.size)}" stroke-linecap="round" stroke-linejoin="round"${hl}/>`
+        `<path d="${lineSvgPath(it.points)}" fill="none" stroke="${esc(it.color)}" stroke-width="${r2(it.size)}" stroke-linecap="round" stroke-linejoin="round"${dash}${hl}/>`
       )
+      parts.push(capsSvg(it))
     } else {
       const d = inkOutlineSvg(it)
       if (!d) continue

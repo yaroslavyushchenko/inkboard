@@ -35,7 +35,15 @@ export interface StrokeItem extends ItemBase {
    * (Shift straight lines and shapes). Absent = freehand ink.
    */
   geom?: 'line'
+  /** Line pattern (drawn along the centre line, uniform width). Absent = solid. */
+  dash?: LineDash
+  /** End decorations of straight lines. */
+  startCap?: LineCap
+  endCap?: LineCap
 }
+
+export type LineDash = 'dashed' | 'dotted'
+export type LineCap = 'arrow' | 'dot' | 'circle' | 'bar'
 
 /** A raster image placed on the board. Kept at its original resolution. */
 export interface ImageItem extends ItemBase {

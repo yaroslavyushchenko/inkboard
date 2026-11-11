@@ -1,48 +1,14 @@
 import { useT, type MessageKey } from '../i18n'
+import { CLIPBOARD_KEYS, HOLD_KEYS, SHORTCUTS, type ShortcutGroup } from '../shortcuts'
 import { useUI } from '../store'
 
-const GROUPS: { title: MessageKey; rows: [string, MessageKey][] }[] = [
-  {
-    title: 'shortcuts.tools',
-    rows: [
-      ['1 / 2 / 3', 'shortcuts.pens'],
-      ['P', 'shortcuts.pen'],
-      ['H', 'shortcuts.highlighter'],
-      ['E', 'shortcuts.eraser'],
-      ['X', 'shortcuts.swap'],
-      ['V', 'shortcuts.lasso'],
-      ['M', 'shortcuts.move'],
-      ['Space', 'shortcuts.pan']
-    ]
-  },
-  {
-    title: 'shortcuts.editing',
-    rows: [
-      ['Ctrl+Z', 'shortcuts.undo'],
-      ['Ctrl+Y', 'shortcuts.redo'],
-      ['Shift', 'shortcuts.straight'],
-      ['Ctrl+G', 'shortcuts.group'],
-      ['Ctrl+Shift+G', 'shortcuts.ungroup'],
-      ['Ctrl+D', 'shortcuts.duplicate'],
-      ['Del', 'shortcuts.delete'],
-      ['Ctrl+A', 'shortcuts.selectAll'],
-      ['Ctrl+C / Ctrl+V', 'shortcuts.copyPaste']
-    ]
-  },
-  {
-    title: 'shortcuts.view',
-    rows: [
-      ['Ctrl + / Ctrl −', 'shortcuts.zoom'],
-      ['Ctrl+0', 'shortcuts.zoomReset'],
-      ['Ctrl+H', 'shortcuts.home'],
-      ['Ctrl+N', 'shortcuts.new'],
-      ['Ctrl+O', 'shortcuts.open'],
-      ['Ctrl+S', 'shortcuts.save']
-    ]
-  }
+const GROUPS: { id: ShortcutGroup; title: MessageKey }[] = [
+  { id: 'tools', title: 'shortcuts.tools' },
+  { id: 'editing', title: 'shortcuts.editing' },
+  { id: 'view', title: 'shortcuts.view' }
 ]
 
-/** All keyboard shortcuts + how to put them on Wacom ExpressKeys. */
+/** All keyboard shortcuts (read from shortcuts.ts) + how to put them on Wacom ExpressKeys. */
 export function ShortcutsDialog() {
   const t = useT()
   const open = useUI((s) => s.shortcutsOpen)
@@ -50,18 +16,27 @@ export function ShortcutsDialog() {
   const close = (): void => {
     useUI.setState({ shortcutsOpen: false })
   }
+  const rows = (g: ShortcutGroup): { display: string; label: string }[] => [
+    ...SHORTCUTS.filter((s) => s.group === g && !s.alias).map((s) => {
+      // Show alternative bindings of the same action on one line (e.g. Ctrl+Y / Ctrl+Shift+Z).
+      const alt = SHORTCUTS.filter((a) => a.alias && a.id === s.id && a.display !== s.display).map((a) => a.display)
+      return { display: [s.display, ...alt].join(' / '), label: s.label }
+    }),
+    ...HOLD_KEYS.filter((h) => h.group === g),
+    ...(CLIPBOARD_KEYS.group === g ? [CLIPBOARD_KEYS] : [])
+  ]
   return (
     <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && close()}>
       <div className="panel modal shortcuts-dialog">
         <h3>{t('shortcuts.title')}</h3>
         <div className="shortcuts-cols">
           {GROUPS.map((g) => (
-            <div key={g.title}>
+            <div key={g.id}>
               <div className="popover-title">{t(g.title)}</div>
-              {g.rows.map(([keys, label]) => (
-                <div key={keys} className="shortcut-row">
-                  <kbd>{keys}</kbd>
-                  <span>{t(label)}</span>
+              {rows(g.id).map((r) => (
+                <div key={r.display + r.label} className="shortcut-row">
+                  <kbd>{r.display}</kbd>
+                  <span>{t(r.label as MessageKey)}</span>
                 </div>
               ))}
             </div>

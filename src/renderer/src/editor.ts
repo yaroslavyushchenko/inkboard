@@ -2,7 +2,7 @@ import type { BoardEntry, TemplateEntry } from '../../shared/library'
 import { clampZoom, screenToWorld, zoomAt } from './engine/camera'
 import { renderPng, renderSvg, renderThumbnail } from './engine/export'
 import { graphBBox, sanitizeGraph } from './engine/graph'
-import { newId } from './engine/geometry'
+import { bboxOfPoints, newId } from './engine/geometry'
 import { loadImage, readFileAsDataURL } from './engine/images'
 import { Scene } from './engine/scene'
 import {
@@ -14,7 +14,7 @@ import {
   type BoardFile
 } from './engine/serialize'
 import { applyXform, unionBBox, type Xform } from './engine/transform'
-import type { BBox, Camera, GraphItem, GraphParams, ImageItem, Item } from './engine/types'
+import type { BBox, Camera, GraphItem, GraphParams, ImageItem, Item, LineCap, LineDash, StrokeItem } from './engine/types'
 import { translate, type MessageKey } from './i18n'
 import { platform } from './platform'
 import { useUI } from './store'
@@ -93,6 +93,12 @@ class Editor {
 
   // ---------------------------------------------------------------- camera
 
+  /** Visible board size; falls back to the window if the board hasn't been measured yet. */
+  view(): { width: number; height: number } {
+    const { width, height } = this.viewport
+    return width > 0 && height > 0 ? this.viewport : { width: window.innerWidth, height: window.innerHeight }
+  }
+
   setCamera(cam: Camera): void {
     this.camera = cam
     useUI.setState({ camera: cam, zoom: cam.zoom })
@@ -100,7 +106,7 @@ class Editor {
   }
 
   zoomBy(factor: number): void {
-    const { width, height } = this.viewport
+    const { width, height } = this.view()
     this.setCamera(zoomAt(this.camera, width / 2, height / 2, this.camera.zoom * factor))
   }
 
@@ -139,6 +145,32 @@ class Editor {
     const groups = new Set(items.map((i) => i.groupId).filter(Boolean))
     const all = groups.size ? this.scene.getItems().filter((i) => (i.groupId && groups.has(i.groupId)) || items.includes(i)) : items
     useUI.setState({ selectedIds: all.map((i) => i.id) })
+  }
+
+  /** Change colour / width / pattern / ends of the selected lines (undoable). Ends only go on straight lines. */
+  restyleSelection(patch: { color?: string; size?: number; dash?: LineDash; startCap?: LineCap; endCap?: LineCap }): void {
+    const strokes = this.selectedItems().filter((i): i is StrokeItem => i.type === 'stroke')
+    if (!strokes.length) return
+    const next = strokes.map((s) => {
+      const n: StrokeItem = { ...s }
+      if ('color' in patch && patch.color) n.color = patch.color
+      if ('size' in patch && patch.size) {
+        n.size = patch.size
+        n.bbox = bboxOfPoints(n.points, n.geom ? n.size * 3 : n.size)
+      }
+      if ('dash' in patch) {
+        if (patch.dash) n.dash = patch.dash
+        else delete n.dash
+      }
+      const straight = n.geom === 'line' && n.points.length === 2
+      for (const k of ['startCap', 'endCap'] as const) {
+        if (!(k in patch) || !straight) continue
+        if (patch[k]) n[k] = patch[k]
+        else delete n[k]
+      }
+      return n
+    })
+    this.scene.replace(strokes, next)
   }
 
   /** Ctrl+G: join the selection into one group (existing groups inside are merged). */
@@ -272,7 +304,7 @@ class Editor {
   private placeAtCenter(items: Item[]): void {
     const box = unionBBox(items)
     if (!box) return
-    const c = screenToWorld(this.camera, this.viewport.width / 2, this.viewport.height / 2)
+    const c = screenToWorld(this.camera, this.view().width / 2, this.view().height / 2)
     // Keep the dot-paper alignment: shift by whole 24-unit cells.
     const snap = (v: number): number => Math.round(v / 24) * 24
     const copies = this.cloneItems(items, snap(c.x - (box.minX + box.maxX) / 2), snap(c.y - (box.minY + box.maxY) / 2))
@@ -286,7 +318,7 @@ class Editor {
   /** Insert a coordinate line/plane centred in the view, origin on a dot-paper point. */
   insertGraph(params: GraphParams): void {
     const p = sanitizeGraph(params)
-    const c = screenToWorld(this.camera, this.viewport.width / 2, this.viewport.height / 2)
+    const c = screenToWorld(this.camera, this.view().width / 2, this.view().height / 2)
     const midX = ((p.xMin + p.xMax) / 2) * p.unit
     const midY = p.kind === 'plane' ? ((p.yMin + p.yMax) / 2) * p.unit : 0
     const snap = (v: number): number => Math.round(v / 24) * 24
@@ -313,6 +345,20 @@ class Editor {
     const next: GraphItem = { ...old, ...sanitizeGraph(params) }
     next.bbox = graphBBox(next)
     this.scene.replace([old], [next])
+  }
+
+  // ---------------------------------------------------------------- protractor
+
+  /** Show the protractor in the middle of the view, or hide it. */
+  toggleProtractor(): void {
+    if (useUI.getState().protractor) {
+      useUI.setState({ protractor: null })
+      return
+    }
+    const { width, height } = this.view()
+    const r = (Math.min(width, height) * 0.3) / this.camera.zoom
+    const c = screenToWorld(this.camera, width / 2, height / 2)
+    useUI.setState({ protractor: { x: c.x, y: c.y + r * 0.45, r, rot: 0 } })
   }
 
   // ---------------------------------------------------------------- templates
@@ -364,7 +410,7 @@ class Editor {
       const src = await readFileAsDataURL(file)
       const img = await loadImage(src)
       const cam = this.camera
-      const { width, height } = this.viewport
+      const { width, height } = this.view()
       const center = screenToWorld(cam, sx ?? width / 2, sy ?? height / 2)
       // Fit into ~60% of the visible area, never upscale. The original pixels are kept as-is.
       const maxW = (width / cam.zoom) * 0.6
@@ -478,6 +524,19 @@ class Editor {
     platform.setTitle(`${name} — Inkboard`)
   }
 
+  /** Remember the running version; if it changed since last launch, show "Updated to X". */
+  private async noticeUpdate(): Promise<void> {
+    const version = await platform.update.version()
+    useUI.setState({ appVersion: version })
+    try {
+      const prev = localStorage.getItem('inkboard-last-version')
+      if (prev && prev !== version && version !== 'dev') useUI.setState({ justUpdatedTo: version })
+      localStorage.setItem('inkboard-last-version', version)
+    } catch {
+      // storage unavailable: just skip the notice
+    }
+  }
+
   // ---------------------------------------------------------------- boards
 
   async refreshLibrary(): Promise<void> {
@@ -491,6 +550,7 @@ class Editor {
     if (this.started) return
     this.started = true
     platform.onOpenBoard((id) => void this.refreshLibrary().then(() => this.openBoard(id)))
+    void this.noticeUpdate()
     platform.onFlushRequest(() => this.flush(true))
     platform.onBeforeClose(() => this.flush(true))
     await this.refreshLibrary()

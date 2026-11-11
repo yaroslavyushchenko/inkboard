@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { editor } from '../editor'
 import { BUILTIN_GRAPHS, graphBBox, graphSvg, type GraphPreset } from '../engine/graph'
 import { lineSvgPath } from '../engine/ink'
-import { SHAPES, shapeOutline, type ShapeKind } from '../engine/shapes'
+import { SHAPES_2D, SHAPES_3D, shapeParts, type ShapeKind } from '../engine/shapes'
 import type { GraphItem, GraphParams } from '../engine/types'
 import { useT, type MessageKey } from '../i18n'
 import { useUI } from '../store'
@@ -43,10 +43,21 @@ function MenuButton({
 /** Tiny SVG preview of a shape, drawn with the real outline code. */
 export function ShapePreview({ kind }: { kind: ShapeKind }) {
   const linear = kind === 'line' || kind === 'arrow' || kind === 'doubleArrow'
-  const pts = linear ? shapeOutline(kind, 4, 20, 24, 8, false, 1.2) : shapeOutline(kind, 4, 5, 24, 23, false, 1.2)
+  const parts = linear ? shapeParts(kind, 4, 20, 24, 8, false, 1.2) : shapeParts(kind, 4, 4, 24, 24, false, 1.2)
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
-      <path d={lineSvgPath(pts)} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" strokeLinecap="round" />
+      {parts.map((part, i) => (
+        <path
+          key={i}
+          d={lineSvgPath(part.points)}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={part.dash ? 1.2 : 1.7}
+          strokeDasharray={part.dash ? '2.2 2' : undefined}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      ))}
     </svg>
   )
 }
@@ -59,21 +70,23 @@ export function ShapesMenu() {
   return (
     <MenuButton icon={<ShapesIcon />} title={t('shapes.title')} active={tool === 'shape'} open={open} setOpen={setOpen}>
       <div className="popover-title">{t('shapes.title')}</div>
-      <div className="shape-grid">
-        {SHAPES.map((k) => (
-          <button
-            key={k}
-            className={`shape-btn ${tool === 'shape' && shape === k ? 'active' : ''}`}
-            title={t(`shape.${k}` as MessageKey)}
-            onClick={() => {
-              useUI.setState({ tool: 'shape', shape: k })
-              setOpen(false)
-            }}
-          >
-            <ShapePreview kind={k} />
-          </button>
-        ))}
-      </div>
+      {[SHAPES_2D, SHAPES_3D].map((list, i) => (
+        <div key={i} className={`shape-grid ${i ? 'solids' : ''}`}>
+          {list.map((k) => (
+            <button
+              key={k}
+              className={`shape-btn ${tool === 'shape' && shape === k ? 'active' : ''}`}
+              title={t(`shape.${k}` as MessageKey)}
+              onClick={() => {
+                useUI.setState({ tool: 'shape', shape: k })
+                setOpen(false)
+              }}
+            >
+              <ShapePreview kind={k} />
+            </button>
+          ))}
+        </div>
+      ))}
       <p className="settings-hint">{t('shapes.hint')}</p>
     </MenuButton>
   )

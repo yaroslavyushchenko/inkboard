@@ -3,14 +3,20 @@ import { viewportBBox } from './camera'
 import { bboxIntersects } from './geometry'
 import { getImage } from './images'
 import { drawGraph } from './graph'
-import { buildInkPath, drawStroke, fillInk, linePath, strokeLine, type InkStyle } from './ink'
+import { drawAngleLabel, drawProtractor, type Protractor } from './protractor'
+import { buildInkPath, drawCaps, drawStroke, fillInk, linePath, strokeLine, type InkStyle } from './ink'
 import { xformBBox, type Xform } from './transform'
-import type { BackgroundKind, BBox, Camera, Item, Point } from './types'
+import type { BackgroundKind, BBox, Camera, Item, LineCap, LineDash, Point } from './types'
 
 export interface LiveStroke extends InkStyle {
   color: string
   points: Point[]
   geom?: 'line'
+  dash?: LineDash
+  startCap?: LineCap
+  endCap?: LineCap
+  /** Multi-part preview (3D shapes: visible edges + dashed hidden edges). */
+  parts?: { points: Point[]; dash?: LineDash }[]
 }
 
 export interface CursorState {
@@ -96,10 +102,17 @@ export class BoardRenderer {
     drawItems(ctx, items, viewportBBox(cam, this.width, this.height), preview)
   }
 
-  renderOverlay(live: LiveStroke | null, cursor: CursorState | null, cam: Camera, sel: SelectionOverlay): void {
+  renderOverlay(
+    live: LiveStroke | null,
+    cursor: CursorState | null,
+    cam: Camera,
+    sel: SelectionOverlay,
+    extras: { protractor?: Protractor | null; angleLabel?: { sx: number; sy: number; text: string } | null } = {}
+  ): void {
     const ctx = this.overlay
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height)
+    if (extras.protractor) drawProtractor(ctx, cam, this.dpr, extras.protractor)
 
     if (sel.lasso && sel.lasso.length > 1) {
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
@@ -148,10 +161,17 @@ export class BoardRenderer {
       }
     }
 
-    if (live && live.points.length > 0) {
+    if (live && (live.points.length > 0 || live.parts?.length)) {
       this.applyCamera(ctx, cam)
-      if (live.geom === 'line') strokeLine(ctx, linePath(live.points), live.color, live.size, live.tool)
-      else fillInk(ctx, buildInkPath(live.points, live, false), live.color, live.tool)
+      if (live.parts) {
+        for (const part of live.parts) strokeLine(ctx, linePath(part.points), live.color, live.size, live.tool, part.dash ?? live.dash)
+        if (live.parts.length === 1 && (live.startCap || live.endCap)) drawCaps(ctx, { ...live, points: live.parts[0].points })
+      } else if (live.geom === 'line' || live.dash) {
+        strokeLine(ctx, linePath(live.points), live.color, live.size, live.tool, live.dash)
+        if (live.geom === 'line' && (live.startCap || live.endCap)) drawCaps(ctx, live)
+      } else {
+        fillInk(ctx, buildInkPath(live.points, live, false), live.color, live.tool)
+      }
     }
 
     if (cursor) {
@@ -191,6 +211,7 @@ export class BoardRenderer {
         ctx.stroke()
       }
     }
+    if (extras.angleLabel) drawAngleLabel(ctx, this.dpr, extras.angleLabel.sx, extras.angleLabel.sy, extras.angleLabel.text)
   }
 }
 

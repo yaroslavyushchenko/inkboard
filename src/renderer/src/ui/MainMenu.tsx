@@ -73,6 +73,7 @@ export function MainMenu() {
   const t = useT()
   const board = useUI((s) => s.board)
   const hasSelection = useUI((s) => s.selectedIds.length > 0)
+  const appVersion = useUI((s) => s.appVersion)
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const run = (fn: () => unknown) => () => {
@@ -125,6 +126,8 @@ export function MainMenu() {
           <button className="menu-item" onClick={run(() => editor.exportBoard('pdf'))}>
             <span>{t(hasSelection ? 'menu.exportSelPdf' : 'menu.exportPdf')}</span>
           </button>
+          <div className="menu-sep" />
+          <div className="menu-version">Inkboard {appVersion}</div>
         </Popover>
       )}
     </div>

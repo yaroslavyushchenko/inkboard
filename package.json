@@ -25,7 +25,8 @@
     "dist": "npm run build && electron-builder",
     "dist:linux": "npm run build && electron-builder --linux",
     "dist:win": "npm run build && electron-builder --win",
-    "dist:mac": "npm run build && electron-builder --mac"
+    "dist:mac": "npm run build && electron-builder --mac",
+    "test": "node --test tests/"
   },
   "allowScripts": {
     "electron@45.3.0": true,

@@ -50,7 +50,7 @@ export interface LibraryApi {
 }
 
 export interface UpdateState {
-  status: 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'
+  status: 'idle' | 'dev' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'
   version?: string
   percent?: number
   manual?: boolean
@@ -329,7 +329,7 @@ const browserApi: PlatformApi = {
   platform: 'browser',
   update: {
     async getState() {
-      return { status: 'idle' }
+      return { status: 'dev' }
     },
     async check() {},
     async install() {},

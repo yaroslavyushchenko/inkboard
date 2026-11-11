@@ -162,8 +162,15 @@ export const BookmarkIcon = (p: SVGProps<SVGSVGElement>) => (
 
 export const GearIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
-    <circle cx="12" cy="12" r="3" />
-    <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" />
+    <path d="M10.3 3h3.4l.5 2.4a7 7 0 0 1 1.7 1l2.3-.8 1.7 2.9-1.8 1.6a7 7 0 0 1 0 2l1.8 1.6-1.7 2.9-2.3-.8a7 7 0 0 1-1.7 1l-.5 2.4h-3.4l-.5-2.4a7 7 0 0 1-1.7-1l-2.3.8-1.7-2.9 1.8-1.6a7 7 0 0 1 0-2L4.1 8.5l1.7-2.9 2.3.8a7 7 0 0 1 1.7-1z" />
+    <circle cx="12" cy="12" r="2.8" />
+  </svg>
+)
+
+export const ProtractorIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M2.5 17.5a9.5 9.5 0 0 1 19 0z" />
+    <path d="M12 17.5V15M6.2 11.7l1.5 1.5M17.8 11.7l-1.5 1.5M12 9v1.6" strokeWidth="1.4" />
   </svg>
 )
 
@@ -195,6 +202,15 @@ export const KeyboardIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <rect x="2.5" y="6" width="19" height="12" rx="2" />
     <path d="M6 10h.01M9.5 10h.01M13 10h.01M16.5 10h.01M7.5 14h9" />
+  </svg>
+)
+
+export const StyleIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M4 6h16" strokeWidth="2.6" />
+    <path d="M4 12h16" strokeDasharray="4 3" />
+    <path d="M4 18h12" strokeDasharray="0.1 3.4" strokeWidth="2.2" />
+    <path d="M17 15.5l3 2.5-3 2.5z" fill="currentColor" />
   </svg>
 )
 

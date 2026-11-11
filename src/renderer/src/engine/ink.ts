@@ -1,5 +1,5 @@
 import { getStroke, type StrokeOptions } from 'perfect-freehand'
-import type { Point, StrokeItem } from './types'
+import type { LineCap, LineDash, Point, StrokeItem } from './types'
 
 export const HIGHLIGHTER_ALPHA = 0.38
 
@@ -117,11 +117,26 @@ export function strokeLinePath(s: StrokeItem): Path2D {
   return p
 }
 
-export function strokeLine(ctx: CanvasRenderingContext2D, path: Path2D, color: string, size: number, tool: InkStyle['tool']): void {
+/** Dash pattern in board units for a line of width `size`. */
+export function dashPattern(dash: LineDash | undefined, size: number): number[] {
+  if (dash === 'dashed') return [size * 3 + 5, size * 2 + 5]
+  if (dash === 'dotted') return [0.001, size * 2 + 3]
+  return []
+}
+
+export function strokeLine(
+  ctx: CanvasRenderingContext2D,
+  path: Path2D,
+  color: string,
+  size: number,
+  tool: InkStyle['tool'],
+  dash?: LineDash
+): void {
   ctx.lineWidth = size
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   ctx.strokeStyle = color
+  ctx.setLineDash(dashPattern(dash, size))
   if (tool === 'highlighter') {
     ctx.globalAlpha = HIGHLIGHTER_ALPHA
     ctx.globalCompositeOperation = 'multiply'
@@ -131,12 +146,119 @@ export function strokeLine(ctx: CanvasRenderingContext2D, path: Path2D, color: s
   } else {
     ctx.stroke(path)
   }
+  ctx.setLineDash([])
 }
 
-/** Draw any stroke item the way it's stored (freehand outline or exact polyline). */
+/** Direction at one end of a polyline: unit vector pointing outwards, from a point a little way back. */
+function endDirection(points: readonly Point[], atEnd: boolean, minDist: number): [number, number] | null {
+  if (points.length < 2) return null
+  const n = points.length
+  const tip = atEnd ? points[n - 1] : points[0]
+  for (let i = 1; i < n; i++) {
+    const q = atEnd ? points[n - 1 - i] : points[i]
+    const dx = tip[0] - q[0]
+    const dy = tip[1] - q[1]
+    const d = Math.hypot(dx, dy)
+    if (d >= minDist || i === n - 1) return d > 0 ? [dx / d, dy / d] : null
+  }
+  return null
+}
+
+export interface CapGeometry {
+  kind: LineCap
+  x: number
+  y: number
+  /** Outward unit direction. */
+  ux: number
+  uy: number
+  len: number
+}
+
+/** Geometry of the start/end decorations of a stroke. */
+export function capGeometry(s: Pick<StrokeItem, 'points' | 'size' | 'startCap' | 'endCap'>): CapGeometry[] {
+  const out: CapGeometry[] = []
+  const len = Math.max(10, s.size * 4.5)
+  for (const [cap, atEnd] of [
+    [s.startCap, false],
+    [s.endCap, true]
+  ] as const) {
+    if (!cap) continue
+    const dir = endDirection(s.points, atEnd, len)
+    if (!dir) continue
+    const tip = atEnd ? s.points[s.points.length - 1] : s.points[0]
+    out.push({ kind: cap, x: tip[0], y: tip[1], ux: dir[0], uy: dir[1], len })
+  }
+  return out
+}
+
+export function drawCaps(ctx: CanvasRenderingContext2D, s: Pick<StrokeItem, 'points' | 'size' | 'startCap' | 'endCap' | 'color'>): void {
+  for (const c of capGeometry(s)) {
+    const px = -c.uy
+    const py = c.ux
+    ctx.beginPath()
+    if (c.kind === 'arrow') {
+      ctx.moveTo(c.x + c.ux * s.size * 0.6, c.y + c.uy * s.size * 0.6)
+      ctx.lineTo(c.x - c.ux * c.len + px * c.len * 0.5, c.y - c.uy * c.len + py * c.len * 0.5)
+      ctx.lineTo(c.x - c.ux * c.len - px * c.len * 0.5, c.y - c.uy * c.len - py * c.len * 0.5)
+      ctx.closePath()
+      ctx.fillStyle = s.color
+      ctx.fill()
+    } else if (c.kind === 'dot') {
+      ctx.arc(c.x, c.y, Math.max(3, s.size * 1.6), 0, Math.PI * 2)
+      ctx.fillStyle = s.color
+      ctx.fill()
+    } else if (c.kind === 'circle') {
+      ctx.arc(c.x, c.y, Math.max(4, s.size * 2), 0, Math.PI * 2)
+      ctx.fillStyle = '#ffffff'
+      ctx.fill()
+      ctx.lineWidth = Math.max(1, s.size * 0.8)
+      ctx.strokeStyle = s.color
+      ctx.stroke()
+    } else {
+      const h = c.len * 0.5
+      ctx.moveTo(c.x + px * h, c.y + py * h)
+      ctx.lineTo(c.x - px * h, c.y - py * h)
+      ctx.lineWidth = s.size
+      ctx.lineCap = 'round'
+      ctx.strokeStyle = s.color
+      ctx.stroke()
+    }
+  }
+}
+
+/** Freehand ink with a dash pattern is drawn along its centre line (dashes can't be filled outlines). */
+export const usesLineRender = (s: Pick<StrokeItem, 'geom' | 'dash'>): boolean => s.geom === 'line' || !!s.dash
+
+/** Draw any stroke item the way it's stored (freehand outline or exact polyline + decorations). */
 export function drawStroke(ctx: CanvasRenderingContext2D, s: StrokeItem): void {
-  if (s.geom === 'line') strokeLine(ctx, strokeLinePath(s), s.color, s.size, s.tool)
+  if (usesLineRender(s)) strokeLine(ctx, strokeLinePath(s), s.color, s.size, s.tool, s.dash)
   else fillInk(ctx, strokePath(s), s.color, s.tool)
+  if (s.startCap || s.endCap) drawCaps(ctx, s)
+}
+
+const r2s = (v: number): string => (Math.round(v * 100) / 100).toString()
+
+/** SVG for the start/end decorations of a stroke. */
+export function capsSvg(s: StrokeItem): string {
+  return capGeometry(s)
+    .map((c) => {
+      const px = -c.uy
+      const py = c.ux
+      if (c.kind === 'arrow') {
+        const pts = [
+          [c.x + c.ux * s.size * 0.6, c.y + c.uy * s.size * 0.6],
+          [c.x - c.ux * c.len + px * c.len * 0.5, c.y - c.uy * c.len + py * c.len * 0.5],
+          [c.x - c.ux * c.len - px * c.len * 0.5, c.y - c.uy * c.len - py * c.len * 0.5]
+        ]
+        return `<path d="M${pts.map(([x, y]) => `${r2s(x)},${r2s(y)}`).join('L')}Z" fill="${s.color}"/>`
+      }
+      if (c.kind === 'dot') return `<circle cx="${r2s(c.x)}" cy="${r2s(c.y)}" r="${r2s(Math.max(3, s.size * 1.6))}" fill="${s.color}"/>`
+      if (c.kind === 'circle')
+        return `<circle cx="${r2s(c.x)}" cy="${r2s(c.y)}" r="${r2s(Math.max(4, s.size * 2))}" fill="#fff" stroke="${s.color}" stroke-width="${r2s(Math.max(1, s.size * 0.8))}"/>`
+      const h = c.len * 0.5
+      return `<line x1="${r2s(c.x + px * h)}" y1="${r2s(c.y + py * h)}" x2="${r2s(c.x - px * h)}" y2="${r2s(c.y - py * h)}" stroke="${s.color}" stroke-width="${r2s(s.size)}" stroke-linecap="round"/>`
+    })
+    .join('')
 }
 
 export function lineSvgPath(points: readonly Point[]): string {

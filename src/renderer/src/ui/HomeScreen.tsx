@@ -249,6 +249,7 @@ export function HomeScreen() {
   const t = useT()
   const { boards, tags } = useUI((s) => s.library)
   const current = useUI((s) => s.board)
+  const appVersion = useUI((s) => s.appVersion)
   const [query, setQuery] = useState('')
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [manage, setManage] = useState(false)
@@ -290,6 +291,7 @@ export function HomeScreen() {
             </button>
           )}
           <h1>{t('home.title')}</h1>
+          <span className="home-version">Inkboard {appVersion}</span>
         </div>
         <div className="home-actions">
           <label className="search">

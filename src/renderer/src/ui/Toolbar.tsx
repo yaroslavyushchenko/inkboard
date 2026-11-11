@@ -2,8 +2,9 @@ import { useCallback, useRef, useState } from 'react'
 import { editor } from '../editor'
 import { useT } from '../i18n'
 import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useUI, type InkSlot } from '../store'
-import { EraserIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, RedoIcon, UndoIcon } from './icons'
+import { EraserIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, ProtractorIcon, RedoIcon, UndoIcon } from './icons'
 import { GraphMenu, ShapesMenu, TemplatesMenu } from './InsertMenus'
+import { LineStyleControls } from './LineStyle'
 import { Popover } from './Popover'
 
 type Open = { kind: 'pen'; index: number } | { kind: 'highlighter' } | null
@@ -19,6 +20,7 @@ function InkOptions({
   sizes: number[]
   onChange: (patch: Partial<InkSlot>) => void
 }) {
+  const t = useT()
   const maxSize = Math.max(...sizes)
   return (
     <>
@@ -45,12 +47,15 @@ function InkOptions({
           </button>
         ))}
       </div>
+      <LineStyleControls value={slot} onChange={onChange} showCaps />
+      <p className="settings-hint line-hint">{t('line.endsHint')}</p>
     </>
   )
 }
 
 export function Toolbar() {
   const { tool, activePen, pens, highlighter, canUndo, canRedo } = useUI()
+  const protractor = useUI((s) => s.protractor !== null)
   const { selectPen, setTool, updatePen, updateHighlighter } = useUI.getState()
   const [open, setOpen] = useState<Open>(null)
   const close = useCallback(() => setOpen(null), [])
@@ -130,6 +135,9 @@ export function Toolbar() {
         <div className="sep" />
         <ShapesMenu />
         <GraphMenu />
+        <button className={`icon-btn ${protractor ? 'active' : ''}`} title={t('tool.protractor')} onClick={() => editor.toggleProtractor()}>
+          <ProtractorIcon />
+        </button>
         <TemplatesMenu />
         <button
           className={`icon-btn ${tool === 'pan' ? 'active' : ''}`}

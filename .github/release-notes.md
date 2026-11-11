@@ -2,10 +2,17 @@
 
 ## What's new in 0.3.1
 
-- **Move tool (M):** hover over anything — it lights up — and just drag it. Works with mouse and pen; dragging empty space moves the board.
-- **Pen buttons:** Settings → *Pen buttons* — choose what the lower / upper side button and the eraser end do
-  (eraser, lasso, move items, move the board). A tester shows what your pen sends.
-- **Keyboard shortcuts & Wacom ExpressKeys** guide in Settings; **X** swaps pen ↔ eraser (great for a tablet button).
+- **Protractor** (button in the toolbar or **T**): drag to move, ↻ to rotate and resize. Draw along its edge for an arc with
+  the angle shown, from the centre for a ray at an exact angle, along the bottom for a straight line.
+- **3D shapes** with dashed hidden edges: cube, prism, pyramid, cylinder, cone, sphere (Shapes menu, below the flat shapes).
+- **Line styles:** solid, dashed or dotted lines, and line ends — arrow, dot, circle, bar (pen menu).
+  Select lines and press **Style** to change colour, width, pattern or ends afterwards.
+- **Move tool (M):** hover over anything — it lights up — and just drag it. Dragging empty space moves the board.
+- **Pen buttons:** Settings → *Pen buttons* — choose what the side buttons and the eraser end do, with a tester.
+- **Keyboard shortcuts work on any keyboard layout** (e.g. Ukrainian). Full list: Settings → *Keyboard shortcuts & Wacom ExpressKeys*.
+- **X** swaps pen ↔ eraser (great for a tablet ExpressKey).
+- Coordinates: shorter preset names; a clear **Settings** button on a selected coordinate system.
+- The app version is shown in the menu and on the board list; after an update you see "Updated to …".
 
 ## Also in 0.3
 

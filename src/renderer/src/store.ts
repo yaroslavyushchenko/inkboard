@@ -3,7 +3,8 @@ import { persist } from 'zustand/middleware'
 import type { LibraryState } from '../../shared/library'
 import type { GraphPreset } from './engine/graph'
 import type { ShapeKind } from './engine/shapes'
-import type { BackgroundKind, Camera, GraphParams } from './engine/types'
+import type { Protractor } from './engine/protractor'
+import type { BackgroundKind, Camera, GraphParams, LineCap, LineDash } from './engine/types'
 import { detectLanguage, type Lang } from './i18n'
 
 export type Tool = 'select' | 'move' | 'pen' | 'highlighter' | 'eraser' | 'pan' | 'shape'
@@ -24,6 +25,11 @@ export interface InkSlot {
   color: string
   /** Width in world units (= screen px at 100% zoom). */
   size: number
+  /** Line pattern for new strokes. */
+  dash?: LineDash
+  /** Ends of straight lines (Shift lines and the Line shape). */
+  startCap?: LineCap
+  endCap?: LineCap
 }
 
 export const PEN_COLORS = [
@@ -67,6 +73,11 @@ interface UIState {
   library: LibraryState
   historyOpen: boolean
   shortcutsOpen: boolean
+  /** Set for one launch after the app was updated (shows "Updated to X"). */
+  justUpdatedTo: string | null
+  appVersion: string
+  /** On-board protractor, or null when hidden. */
+  protractor: Protractor | null
   setTool: (tool: Tool) => void
   selectPen: (index: number) => void
   updatePen: (index: number, patch: Partial<InkSlot>) => void
@@ -106,6 +117,9 @@ export const useUI = create<UIState>()(
       library: { boards: [], tags: [], templates: [], lastOpenedId: null, backupDir: null },
       historyOpen: false,
       shortcutsOpen: false,
+      protractor: null,
+      justUpdatedTo: null,
+      appVersion: '',
       setTool: (tool) => set({ tool }),
       selectPen: (index) => set({ tool: 'pen', activePen: index }),
       updatePen: (index, patch) =>

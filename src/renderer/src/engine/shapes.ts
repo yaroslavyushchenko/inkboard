@@ -1,6 +1,6 @@
 import type { Point } from './types'
 
-export const SHAPES = [
+export const SHAPES_2D = [
   'line',
   'arrow',
   'doubleArrow',
@@ -13,10 +13,17 @@ export const SHAPES = [
   'trapezoid',
   'pentagon',
   'hexagon',
-  'star',
-  'cube'
+  'star'
 ] as const
+export const SHAPES_3D = ['cube', 'prism', 'pyramid', 'cylinder', 'cone', 'sphere'] as const
+export const SHAPES = [...SHAPES_2D, ...SHAPES_3D] as const
 export type ShapeKind = (typeof SHAPES)[number]
+
+/** One polyline of a shape; 3D solids draw hidden edges dashed. */
+export interface ShapePart {
+  points: Point[]
+  dash?: 'dashed'
+}
 
 const LINEAR: ReadonlySet<ShapeKind> = new Set(['line', 'arrow', 'doubleArrow'])
 
@@ -112,13 +119,6 @@ export function shapeOutline(kind: ShapeKind, ax: number, ay: number, bx: number
       }
       return pts
     }
-    case 'cube': {
-      // Wireframe cube; one path that covers all 12 edges (some retraced).
-      const d = Math.min(w, h) * 0.3
-      const F = [P(x0, y0 + d), P(x1 - d, y0 + d), P(x1 - d, y1), P(x0, y1)]
-      const B = [P(x0 + d, y0), P(x1, y0), P(x1, y1 - d), P(x0 + d, y1 - d)]
-      return [F[0], F[1], F[2], F[3], F[0], B[0], B[1], F[1], B[1], B[2], F[2], B[2], B[3], F[3], B[3], B[0]]
-    }
     default:
       return [P(ax, ay), P(bx, by)]
   }
@@ -127,3 +127,106 @@ export function shapeOutline(kind: ShapeKind, ax: number, ay: number, bx: number
 /** Shapes for which a plain click (no drag) inserts a default-size shape. */
 export const DEFAULT_SHAPE_SIZE = 144
 export const isLinear = (k: ShapeKind): boolean => LINEAR.has(k)
+
+const is3D = (k: ShapeKind): boolean => (SHAPES_3D as readonly string[]).includes(k)
+
+/** Points along part of an ellipse (angles in radians, canvas orientation: y grows downwards). */
+function ellipseArc(cx: number, cy: number, rx: number, ry: number, a0: number, a1: number, n = 48): Point[] {
+  const pts: Point[] = []
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + ((a1 - a0) * i) / n
+    pts.push(P(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry))
+  }
+  return pts
+}
+
+/**
+ * All polylines of a shape dragged from (ax, ay) to (bx, by). Flat shapes are one part; solids are
+ * several parts, with the edges you can't see drawn dashed (like in a school geometry book).
+ */
+export function shapeParts(kind: ShapeKind, ax: number, ay: number, bx: number, by: number, keep: boolean, size: number): ShapePart[] {
+  if (!is3D(kind)) return [{ points: shapeOutline(kind, ax, ay, bx, by, keep, size) }]
+  if (keep) {
+    const sz = Math.max(Math.abs(bx - ax), Math.abs(by - ay))
+    bx = ax + Math.sign(bx - ax || 1) * sz
+    by = ay + Math.sign(by - ay || 1) * sz
+  }
+  const x0 = Math.min(ax, bx)
+  const y0 = Math.min(ay, by)
+  const x1 = Math.max(ax, bx)
+  const y1 = Math.max(ay, by)
+  const w = x1 - x0
+  const h = y1 - y0
+  const cx = (x0 + x1) / 2
+  const hidden = (...pts: Point[]): ShapePart => ({ points: pts, dash: 'dashed' })
+  const solid = (...pts: Point[]): ShapePart => ({ points: pts })
+
+  switch (kind) {
+    case 'cube': {
+      const d = Math.min(w, h) * 0.3
+      const F = [P(x0, y0 + d), P(x1 - d, y0 + d), P(x1 - d, y1), P(x0, y1)]
+      const B = F.map(([x, y]) => P(x + d, y - d))
+      return [
+        solid(F[0], F[1], F[2], F[3], F[0]),
+        solid(F[0], B[0], B[1], B[2], F[2]),
+        solid(F[1], B[1]),
+        hidden(B[0], B[3], B[2]),
+        hidden(B[3], F[3])
+      ]
+    }
+    case 'prism': {
+      // Triangular prism: front triangle, back triangle shifted up-right.
+      const d = Math.min(w, h) * 0.3
+      const F = [P(x0, y1), P(x1 - d, y1), P((x0 + x1 - d) / 2, y0 + d)]
+      const B = F.map(([x, y]) => P(x + d, y - d))
+      return [solid(F[0], F[1], F[2], F[0]), solid(F[2], B[2], B[1], F[1]), hidden(F[0], B[0], B[1]), hidden(B[0], B[2])]
+    }
+    case 'pyramid': {
+      // Square base seen in perspective (parallelogram) and an apex above its centre.
+      const o = w * 0.3
+      const e = h * 0.22
+      const FL = P(x0, y1)
+      const FR = P(x1 - o, y1)
+      const BR = P(x1, y1 - e)
+      const BL = P(x0 + o, y1 - e)
+      const T = P((x0 + x1) / 2, y0)
+      return [solid(FL, FR, BR, T, FL), solid(T, FR), hidden(FL, BL, BR), hidden(BL, T)]
+    }
+    case 'cylinder': {
+      const ry = Math.min(h * 0.14, w * 0.25)
+      const rx = w / 2
+      const ty = y0 + ry
+      const byy = y1 - ry
+      return [
+        solid(...ellipseArc(cx, ty, rx, ry, 0, Math.PI * 2, 72)),
+        solid(P(x0, ty), P(x0, byy)),
+        solid(P(x1, ty), P(x1, byy)),
+        solid(...ellipseArc(cx, byy, rx, ry, 0, Math.PI)),
+        hidden(...ellipseArc(cx, byy, rx, ry, Math.PI, Math.PI * 2))
+      ]
+    }
+    case 'cone': {
+      const ry = Math.min(h * 0.14, w * 0.25)
+      const rx = w / 2
+      const byy = y1 - ry
+      return [
+        solid(P(x0, byy), P(cx, y0), P(x1, byy)),
+        solid(...ellipseArc(cx, byy, rx, ry, 0, Math.PI)),
+        hidden(...ellipseArc(cx, byy, rx, ry, Math.PI, Math.PI * 2))
+      ]
+    }
+    case 'sphere': {
+      const cy = (y0 + y1) / 2
+      const rx = w / 2
+      const ry = h / 2
+      const ery = ry * 0.28
+      return [
+        solid(...ellipseArc(cx, cy, rx, ry, 0, Math.PI * 2, 96)),
+        solid(...ellipseArc(cx, cy, rx, ery, 0, Math.PI)),
+        hidden(...ellipseArc(cx, cy, rx, ery, Math.PI, Math.PI * 2))
+      ]
+    }
+    default:
+      return [{ points: shapeOutline(kind, ax, ay, bx, by, keep, size) }]
+  }
+}

@@ -3,7 +3,9 @@ import { editor } from '../editor'
 import { SELECTION_PAD } from '../engine/renderer'
 import { useT } from '../i18n'
 import { useUI } from '../store'
-import { BookmarkIcon, DuplicateIcon, GearIcon, GroupIcon, TrashIcon, UngroupIcon } from './icons'
+import { PEN_COLORS, PEN_SIZES } from '../store'
+import { BookmarkIcon, DuplicateIcon, GearIcon, GroupIcon, StyleIcon, TrashIcon, UngroupIcon } from './icons'
+import { LineStyleControls } from './LineStyle'
 import { Popover } from './Popover'
 
 /** Small floating action bar above the current selection (like Whiteboard's context menu). */
@@ -15,8 +17,10 @@ export function SelectionToolbar() {
   useUI((s) => s.camera)
   useUI((s) => s.sceneVersion)
   const [saving, setSaving] = useState(false)
+  const [styling, setStyling] = useState(false)
   const [name, setName] = useState('')
   const close = useCallback(() => setSaving(false), [])
+  const closeStyle = useCallback(() => setStyling(false), [])
   if (!selectedIds.length || view !== 'board') return null
   const box = editor.selectionBBox()
   if (!box) return null
@@ -26,6 +30,9 @@ export function SelectionToolbar() {
   const oneGroup = !!firstGroup && items.every((i) => i.groupId === firstGroup)
   const canGroup = items.length >= 2 && !oneGroup
   const canUngroup = items.some((i) => i.groupId)
+  const strokes = items.filter((i) => i.type === 'stroke')
+  const first = strokes[0]
+  const hasStraight = strokes.some((s) => s.geom === 'line' && s.points.length === 2)
   const cam = editor.camera
   const left = ((box.minX + box.maxX) / 2 - cam.x) * cam.zoom
   const top = (box.minY - cam.y) * cam.zoom - SELECTION_PAD
@@ -38,13 +45,48 @@ export function SelectionToolbar() {
       onPointerDown={(e) => e.stopPropagation()}
     >
       {graph && (
-        <button
-          className="icon-btn"
-          title={t('graph.editTitle')}
-          onClick={() => useUI.setState({ graphDialog: { mode: 'edit', id: graph.id, params: { ...graph } } })}
-        >
-          <GearIcon />
-        </button>
+        <>
+          <button
+            className="labeled-btn"
+            title={t('graph.editTitle')}
+            onClick={() => useUI.setState({ graphDialog: { mode: 'edit', id: graph.id, params: { ...graph } } })}
+          >
+            <GearIcon />
+            <span>{t('sel.settings')}</span>
+          </button>
+          <div className="sep" />
+        </>
+      )}
+      {first && (
+        <div className="menu-anchor">
+          <button data-popover-anchor className="labeled-btn" title={t('sel.style')} onClick={() => setStyling((v) => !v)}>
+            <StyleIcon />
+            <span>{t('sel.style')}</span>
+          </button>
+          {styling && (
+            <Popover onClose={closeStyle} className="sel-popover style-popover">
+              <div className="swatches">
+                {PEN_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    className={`swatch ${first.color === c ? 'active' : ''}`}
+                    style={{ background: c }}
+                    title={c}
+                    onClick={() => editor.restyleSelection({ color: c })}
+                  />
+                ))}
+              </div>
+              <div className="sizes">
+                {PEN_SIZES.map((sz) => (
+                  <button key={sz} className={`size ${first.size === sz ? 'active' : ''}`} onClick={() => editor.restyleSelection({ size: sz })}>
+                    <span style={{ width: 6 + (sz / 12) * 20, height: 6 + (sz / 12) * 20, background: first.color }} />
+                  </button>
+                ))}
+              </div>
+              <LineStyleControls value={first} onChange={(p) => editor.restyleSelection(p)} showCaps={hasStraight} />
+            </Popover>
+          )}
+        </div>
       )}
       {canGroup && (
         <button className="labeled-btn" title={`${t('sel.group')} (Ctrl+G)`} onClick={() => editor.groupSelection()}>
