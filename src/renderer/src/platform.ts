@@ -51,7 +51,7 @@ export interface LibraryApi {
 }
 
 export interface UpdateState {
-  status: 'idle' | 'dev' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'
+  status: 'idle' | 'dev' | 'store' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'
   version?: string
   percent?: number
   manual?: boolean

@@ -3,8 +3,11 @@ import { autoUpdater } from 'electron-updater'
 
 /** What the renderer shows in the update banner / settings. */
 export interface UpdateState {
-  /** 'dev' = running from source (npm run dev): updates only work in the installed app. */
-  status: 'idle' | 'dev' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'
+  /**
+   * 'dev' = running from source (npm run dev): updates only work in the installed app.
+   * 'store' = installed from the Snap Store: snapd updates the app, so we never check GitHub.
+   */
+  status: 'idle' | 'dev' | 'store' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'
   version?: string
   percent?: number
   /** No silent install on this platform (macOS without signing, .deb): offer a download link. */
@@ -28,9 +31,11 @@ function newer(a: string, b: string): boolean {
  * Auto-update from GitHub Releases.
  * Windows (NSIS) and Linux AppImage download in the background and install on restart / quit.
  * macOS (not code-signed yet) and .deb only get a "new version available → Download" notice.
+ * Snap: snapd updates the app in the background, so there is nothing to check.
  */
 export function initUpdater(getWindow: () => BrowserWindow | null, beforeInstall: () => void): void {
-  let state: UpdateState = { status: app.isPackaged ? 'idle' : 'dev' }
+  const fromStore = process.platform === 'linux' && !!process.env['SNAP']
+  let state: UpdateState = { status: !app.isPackaged ? 'dev' : fromStore ? 'store' : 'idle' }
   const canAutoInstall = process.platform === 'win32' || (process.platform === 'linux' && !!process.env['APPIMAGE'])
   const set = (s: UpdateState): void => {
     state = s
@@ -75,6 +80,7 @@ export function initUpdater(getWindow: () => BrowserWindow | null, beforeInstall
     // Never interrupt a download / ready-to-install update with a new check.
     if (state.status === 'downloading' || state.status === 'ready') return
     if (!app.isPackaged) return set({ status: 'dev' })
+    if (fromStore) return set({ status: 'store' })
     if (canAutoInstall) {
       try {
         await autoUpdater.checkForUpdates()
@@ -97,7 +103,7 @@ export function initUpdater(getWindow: () => BrowserWindow | null, beforeInstall
   ipcMain.handle('update:open-download', () => shell.openExternal(state.url ?? RELEASES_URL))
   ipcMain.handle('app:version', () => app.getVersion())
 
-  if (app.isPackaged) {
+  if (app.isPackaged && !fromStore) {
     setTimeout(() => void check(), 5000)
     setInterval(() => void check(), CHECK_EVERY_MS)
   }

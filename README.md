@@ -162,7 +162,7 @@ npm run build
 ### Building installers
 
 ```bash
-npm run dist:linux   # AppImage + .deb
+npm run dist:linux   # AppImage + .deb + snap (needs snapcraft, see docs/SNAP.md)
 npm run dist:win     # Windows NSIS installer (best built on Windows / CI)
 npm run dist:mac     # macOS .dmg (must be built on a Mac / CI)
 ```

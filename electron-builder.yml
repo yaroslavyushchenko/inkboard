@@ -50,7 +50,7 @@ dmg:
       path: /Applications
 
 linux:
-  target: [AppImage, deb]
+  target: [AppImage, deb, snap]
   syncDesktopName: true
   category: Education
   maintainer: Yaroslav Yushchenko <contact@yaroslavyushchenko.com>
@@ -61,6 +61,33 @@ linux:
     pyramids and prisms, number lines, coordinate planes and formatted text.
     Every board saves itself within seconds, so nothing is lost even if the power
     goes out. Works offline, needs no account. English and Ukrainian interface.
+
+# Snap for the Snap Store / Ubuntu App Center (see docs/SNAP.md).
+# Strict confinement: pen input arrives through the normal Wayland/X11 plugs, and file
+# dialogs go through the XDG desktop portal (the gnome extension enables it), so the
+# app can open and save files anywhere the user picks, not only in the home folder.
+# License, screenshots and links are not part of the snap: they are set once on the
+# store listing page (electron-builder's core24 target has no fields for them).
+snapcraft:
+  base: core24
+  core24:
+    confinement: strict
+    grade: stable
+    summary: Free infinite whiteboard for teachers with a pen tablet
+    title: Inkboard
+    # The gnome extension adds the GNOME runtime, themes and the desktop/wayland/x11/opengl
+    # plugs; listing them here too keeps the intent explicit. browser-support is needed
+    # by Electron itself (electron-builder only adds it when no plugs are given).
+    plugs:
+      - desktop
+      - desktop-legacy
+      - wayland
+      - x11
+      - opengl
+      - home
+      - removable-media
+      - network
+      - browser-support
 
 # Static AppImage runtime: runs on Ubuntu 22.04+ without installing libfuse2.
 toolsets:

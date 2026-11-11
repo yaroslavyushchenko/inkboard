@@ -88,6 +88,8 @@ export function AboutSection() {
   const status =
     s.status === 'dev'
       ? t('update.dev')
+      : s.status === 'store'
+      ? t('update.store')
       : s.status === 'checking'
       ? t('update.checking')
       : s.status === 'none'
@@ -106,9 +108,11 @@ export function AboutSection() {
       <div className="popover-title section">{t('settings.about')}</div>
       <div className="about-row">
         <span className="about-version">Inkboard {version}</span>
+        {s.status !== 'store' && (
         <button className="text-btn outline" disabled={s.status === 'checking' || s.status === 'downloading'} onClick={() => void platform.update.check()}>
           {t('update.check')}
         </button>
+        )}
       </div>
       {status && <p className="settings-hint">{status}</p>}
     </>

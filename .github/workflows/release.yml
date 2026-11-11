@@ -33,6 +33,15 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # The Linux build also makes the snap, which needs snapcraft and an LXD container.
+      - name: Set up LXD for snapcraft
+        if: runner.os == 'Linux'
+        uses: canonical/setup-lxd@v1
+      # snapcraft 9 looks for the desktop file before copying snap/gui into the snap, which
+      # breaks electron-builder 26's core24 snaps; 8.x builds them fine.
+      - name: Install snapcraft
+        if: runner.os == 'Linux'
+        run: sudo snap install snapcraft --classic --channel=8.x/stable
       - name: Package
         run: npx electron-builder ${{ matrix.target }} --publish never
         env:
@@ -50,6 +59,12 @@ jobs:
             dist/*.deb
             dist/*.blockmap
             dist/latest*.yml
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'Linux'
+        with:
+          name: snap
+          if-no-files-found: error
+          path: dist/*.snap
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -60,6 +75,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: artifacts
+          pattern: installers-*
           merge-multiple: true
       - name: Create GitHub Release
         env:
@@ -69,3 +85,30 @@ jobs:
             --title "Inkboard $GITHUB_REF_NAME" \
             --notes-file .github/release-notes.md \
             --latest
+
+  # Upload the snap to the Snap Store (stable channel), which is what Ubuntu App Center shows.
+  # Skipped until the SNAPCRAFT_STORE_CREDENTIALS secret is added (see docs/SNAP.md).
+  snap:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+    steps:
+      - name: Check for store credentials
+        if: env.SNAPCRAFT_STORE_CREDENTIALS == ''
+        run: echo "::notice::SNAPCRAFT_STORE_CREDENTIALS is not set, skipping the Snap Store upload. See docs/SNAP.md."
+      - uses: actions/download-artifact@v8
+        if: env.SNAPCRAFT_STORE_CREDENTIALS != ''
+        with:
+          name: snap
+          path: snap
+      - name: Install snapcraft
+        if: env.SNAPCRAFT_STORE_CREDENTIALS != ''
+        run: sudo snap install snapcraft --classic
+      - name: Upload to the Snap Store
+        if: env.SNAPCRAFT_STORE_CREDENTIALS != ''
+        run: |
+          for f in snap/*.snap; do
+            snapcraft upload "$f" --release=stable
+          done
