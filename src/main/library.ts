@@ -8,6 +8,7 @@ import {
   type BoardEntry,
   type LibraryState,
   type Tag,
+  type TemplateEntry,
   type VersionInfo
 } from '../shared/library'
 import { isValidBoard, readDurable, removeWithBackup, safeFileName, writeDurable } from './fsutil'
@@ -27,7 +28,7 @@ const DAY = 24 * 60 * 60 * 1000
  *   index.json, boards/<id>.inkboard, thumbs/<id>.webp, history/<id>/<ts>.inkboard
  */
 export class Library {
-  private index: IndexFile = { version: 1, boards: [], tags: [], lastOpenedId: null, backupDir: null }
+  private index: IndexFile = { version: 1, boards: [], tags: [], templates: [], lastOpenedId: null, backupDir: null }
   private lastBackup = new Map<string, number>()
   /** Serialises index writes so concurrent IPC calls can't interleave. */
   private writeChain: Promise<void> = Promise.resolve()
@@ -44,7 +45,9 @@ export class Library {
     index: (): string => join(this.root, 'index.json'),
     board: (id: string): string => join(this.root, 'boards', `${id}.inkboard`),
     thumb: (id: string): string => join(this.root, 'thumbs', `${id}.webp`),
-    history: (id: string): string => join(this.root, 'history', id)
+    history: (id: string): string => join(this.root, 'history', id),
+    template: (id: string): string => join(this.root, 'templates', `${id}.inkboard`),
+    templateThumb: (id: string): string => join(this.root, 'templates', `${id}.webp`)
   }
 
   // ------------------------------------------------------------------ lifecycle
@@ -53,6 +56,7 @@ export class Library {
     await mkdir(join(this.root, 'boards'), { recursive: true })
     await mkdir(join(this.root, 'thumbs'), { recursive: true })
     await mkdir(join(this.root, 'history'), { recursive: true })
+    await mkdir(join(this.root, 'templates'), { recursive: true })
     try {
       const buf = await readDurable(this.p.index(), (b) => {
         try {
@@ -62,6 +66,7 @@ export class Library {
         }
       })
       this.index = { ...this.index, ...JSON.parse(buf.toString('utf8')) }
+      this.index.templates ??= []
     } catch {
       // First run (or unreadable index): start empty, then migrate the 0.1 autosave if present.
       if (legacyRecovery) await this.migrateLegacy(legacyRecovery.bytes, legacyRecovery.meta)
@@ -392,6 +397,42 @@ export class Library {
 
   async loadVersion(id: string, ts: number): Promise<Uint8Array> {
     return new Uint8Array(await readDurable(join(this.p.history(id), `${ts}.inkboard`), isValidBoard))
+  }
+
+  // ------------------------------------------------------------------ templates
+
+  async saveTemplate(name: string, bytes: Uint8Array, thumb: Uint8Array | null): Promise<TemplateEntry> {
+    const entry: TemplateEntry = { id: randomUUID(), name: name.trim() || 'Template', createdAt: Date.now() }
+    await writeDurable(this.p.template(entry.id), bytes)
+    if (thumb) await writeDurable(this.p.templateThumb(entry.id), thumb)
+    this.index.templates.push(entry)
+    await this.writeIndex()
+    return entry
+  }
+
+  async loadTemplate(id: string): Promise<Uint8Array> {
+    return new Uint8Array(await readDurable(this.p.template(id), isValidBoard))
+  }
+
+  async templateThumb(id: string): Promise<Uint8Array | null> {
+    try {
+      return new Uint8Array(await readFile(this.p.templateThumb(id)))
+    } catch {
+      return null
+    }
+  }
+
+  async renameTemplate(id: string, name: string): Promise<void> {
+    const t = this.index.templates.find((x) => x.id === id)
+    if (t && name.trim()) t.name = name.trim()
+    await this.writeIndex()
+  }
+
+  async deleteTemplate(id: string): Promise<void> {
+    this.index.templates = this.index.templates.filter((t) => t.id !== id)
+    await removeWithBackup(this.p.template(id))
+    await rm(this.p.templateThumb(id), { force: true })
+    await this.writeIndex()
   }
 
   // ------------------------------------------------------------------ backup mirror

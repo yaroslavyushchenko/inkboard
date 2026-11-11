@@ -1,0 +1,88 @@
+import { useEffect, useState } from 'react'
+import { editor } from '../editor'
+import { useT } from '../i18n'
+import { platform, type UpdateState } from '../platform'
+
+/** Bottom-left notice when a new version is downloading / ready / available. */
+export function UpdateBanner() {
+  const t = useT()
+  const [s, setS] = useState<UpdateState>({ status: 'idle' })
+  const [hidden, setHidden] = useState<string | null>(null)
+  useEffect(() => {
+    void platform.update.getState().then(setS)
+    platform.update.onState(setS)
+  }, [])
+  const key = `${s.status}:${s.version}`
+  if (hidden === key) return null
+  if (s.status === 'ready') {
+    return (
+      <div className="panel update-banner">
+        <span>{t('update.ready', { version: s.version ?? '' })}</span>
+        <button className="text-btn" onClick={() => setHidden(key)}>
+          {t('update.later')}
+        </button>
+        <button
+          className="text-btn primary"
+          onClick={async () => {
+            await editor.flush(true)
+            await platform.update.install()
+          }}
+        >
+          {t('update.restart')}
+        </button>
+      </div>
+    )
+  }
+  if (s.status === 'available' && s.manual) {
+    return (
+      <div className="panel update-banner">
+        <span>{t('update.available', { version: s.version ?? '' })}</span>
+        <button className="text-btn" onClick={() => setHidden(key)}>
+          {t('update.later')}
+        </button>
+        <button className="text-btn primary" onClick={() => void platform.update.openDownload()}>
+          {t('update.download')}
+        </button>
+      </div>
+    )
+  }
+  return null
+}
+
+/** "About" block for the settings popover: version + manual check. */
+export function AboutSection() {
+  const t = useT()
+  const [version, setVersion] = useState('')
+  const [s, setS] = useState<UpdateState>({ status: 'idle' })
+  useEffect(() => {
+    void platform.update.version().then(setVersion)
+    void platform.update.getState().then(setS)
+    platform.update.onState(setS)
+  }, [])
+  const status =
+    s.status === 'checking'
+      ? t('update.checking')
+      : s.status === 'none'
+        ? t('update.upToDate')
+        : s.status === 'downloading'
+          ? `${t('update.downloading', { version: s.version ?? '' })} ${s.percent ?? 0}%`
+          : s.status === 'ready'
+            ? t('update.ready', { version: s.version ?? '' })
+            : s.status === 'available'
+              ? t('update.available', { version: s.version ?? '' })
+              : s.status === 'error'
+                ? t('update.error')
+                : ''
+  return (
+    <>
+      <div className="popover-title section">{t('settings.about')}</div>
+      <div className="about-row">
+        <span>Inkboard · {t('settings.version', { version })}</span>
+        <button className="text-btn outline" disabled={s.status === 'checking' || s.status === 'downloading'} onClick={() => void platform.update.check()}>
+          {t('update.check')}
+        </button>
+      </div>
+      {status && <p className="settings-hint">{status}</p>}
+    </>
+  )
+}

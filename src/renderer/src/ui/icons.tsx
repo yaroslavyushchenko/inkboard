@@ -132,6 +132,41 @@ export const ArrowLeftIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
+export const ShapesIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="3.5" y="12.5" width="8" height="8" rx="1" />
+    <circle cx="16.5" cy="16.5" r="4" />
+    <path d="M12 3.5l4.5 7.5h-9z" />
+  </svg>
+)
+
+export const AxesIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M3 13h17M18 11l2 2-2 2M10 21V4M8 6l2-2 2 2" />
+    <path d="M6 12v2M14 12v2M9 17h2M9 9h2" strokeWidth="1.2" />
+  </svg>
+)
+
+export const StampIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="4" y="3.5" width="16" height="17" rx="2" />
+    <path d="M8 8h8M8 12h5M8 16h3" />
+  </svg>
+)
+
+export const BookmarkIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M7 3.5h10a1 1 0 0 1 1 1V20l-6-4-6 4V4.5a1 1 0 0 1 1-1z" />
+  </svg>
+)
+
+export const GearIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" />
+  </svg>
+)
+
 export const ImageIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <rect x="3" y="4" width="18" height="16" rx="2.5" />

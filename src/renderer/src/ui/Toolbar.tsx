@@ -3,6 +3,7 @@ import { editor } from '../editor'
 import { useT } from '../i18n'
 import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useUI, type InkSlot } from '../store'
 import { EraserIcon, HandIcon, ImageIcon, LassoIcon, PenIcon, RedoIcon, UndoIcon } from './icons'
+import { GraphMenu, ShapesMenu, TemplatesMenu } from './InsertMenus'
 import { Popover } from './Popover'
 
 type Open = { kind: 'pen'; index: number } | { kind: 'highlighter' } | null
@@ -117,6 +118,9 @@ export function Toolbar() {
           </button>
         </div>
         <div className="sep" />
+        <ShapesMenu />
+        <GraphMenu />
+        <TemplatesMenu />
         <button
           className={`icon-btn ${tool === 'pan' ? 'active' : ''}`}
           title={t('tool.pan')}

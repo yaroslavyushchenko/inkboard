@@ -45,4 +45,8 @@ linux:
   maintainer: Yaroslav Yushchenko <contact@yaroslavyushchenko.com>
   synopsis: Infinite whiteboard for pen tablets
 
-publish: null
+# Auto-update feed: electron-updater reads latest*.yml from GitHub Releases.
+publish:
+  provider: github
+  owner: yaroslavyushchenko
+  repo: inkboard

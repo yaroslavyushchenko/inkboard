@@ -25,9 +25,17 @@ export interface BoardEntry {
   missing?: boolean
 }
 
+/** A reusable piece of a board ("Given / Find / Solution", a diagram…) inserted into any board. */
+export interface TemplateEntry {
+  id: string
+  name: string
+  createdAt: number
+}
+
 export interface LibraryState {
   boards: BoardEntry[]
   tags: Tag[]
+  templates: TemplateEntry[]
   lastOpenedId: string | null
   backupDir: string | null
 }

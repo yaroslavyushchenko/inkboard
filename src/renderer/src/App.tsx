@@ -2,11 +2,13 @@ import { useEffect } from 'react'
 import { editor } from './editor'
 import { useUI } from './store'
 import { BackgroundPicker } from './ui/BackgroundPicker'
+import { GraphDialog } from './ui/GraphDialog'
 import { Board } from './ui/Board'
 import { HomeScreen } from './ui/HomeScreen'
 import { MainMenu } from './ui/MainMenu'
 import { SelectionToolbar } from './ui/SelectionToolbar'
 import { Toolbar } from './ui/Toolbar'
+import { UpdateBanner } from './ui/UpdateBanner'
 import { VersionHistory } from './ui/VersionHistory'
 import { ZoomControls } from './ui/ZoomControls'
 
@@ -25,6 +27,8 @@ export function App() {
       <BackgroundPicker />
       <ZoomControls />
       <VersionHistory />
+      <GraphDialog />
+      <UpdateBanner />
       {view === 'home' && <HomeScreen />}
     </div>
   )

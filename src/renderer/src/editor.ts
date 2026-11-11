@@ -1,6 +1,7 @@
-import type { BoardEntry } from '../../shared/library'
+import type { BoardEntry, TemplateEntry } from '../../shared/library'
 import { clampZoom, screenToWorld, zoomAt } from './engine/camera'
 import { renderPng, renderSvg, renderThumbnail } from './engine/export'
+import { graphBBox, sanitizeGraph } from './engine/graph'
 import { newId } from './engine/geometry'
 import { loadImage, readFileAsDataURL } from './engine/images'
 import { Scene } from './engine/scene'
@@ -13,7 +14,7 @@ import {
   type BoardFile
 } from './engine/serialize'
 import { applyXform, unionBBox, type Xform } from './engine/transform'
-import type { BBox, Camera, ImageItem, Item } from './engine/types'
+import type { BBox, Camera, GraphItem, GraphParams, ImageItem, Item } from './engine/types'
 import { translate, type MessageKey } from './i18n'
 import { platform } from './platform'
 import { useUI } from './store'
@@ -219,14 +220,7 @@ class Editor {
     if (json) {
       try {
         const { items } = deserializeBoard(JSON.parse(json) as BoardFile)
-        const box = unionBBox(items)
-        if (box) {
-          const c = screenToWorld(this.camera, this.viewport.width / 2, this.viewport.height / 2)
-          const copies = this.cloneItems(items, c.x - (box.minX + box.maxX) / 2, c.y - (box.minY + box.maxY) / 2)
-          this.scene.add(copies)
-          useUI.setState({ tool: 'select' })
-          this.setSelection(copies)
-        }
+        this.placeAtCenter(items)
         return true
       } catch {
         // Not our data after all; fall through to images.
@@ -238,6 +232,91 @@ class Editor {
       return true
     }
     return false
+  }
+
+  /** Add copies of `items` centred in the viewport, selected (paste, templates). */
+  private placeAtCenter(items: Item[]): void {
+    const box = unionBBox(items)
+    if (!box) return
+    const c = screenToWorld(this.camera, this.viewport.width / 2, this.viewport.height / 2)
+    // Keep the dot-paper alignment: shift by whole 24-unit cells.
+    const snap = (v: number): number => Math.round(v / 24) * 24
+    const copies = this.cloneItems(items, snap(c.x - (box.minX + box.maxX) / 2), snap(c.y - (box.minY + box.maxY) / 2))
+    this.scene.add(copies)
+    useUI.setState({ tool: 'select' })
+    this.setSelection(copies)
+  }
+
+  // ---------------------------------------------------------------- coordinate graphs
+
+  /** Insert a coordinate line/plane centred in the view, origin on a dot-paper point. */
+  insertGraph(params: GraphParams): void {
+    const p = sanitizeGraph(params)
+    const c = screenToWorld(this.camera, this.viewport.width / 2, this.viewport.height / 2)
+    const midX = ((p.xMin + p.xMax) / 2) * p.unit
+    const midY = p.kind === 'plane' ? ((p.yMin + p.yMax) / 2) * p.unit : 0
+    const snap = (v: number): number => Math.round(v / 24) * 24
+    const g: GraphItem = {
+      ...p,
+      type: 'graph',
+      id: newId(),
+      z: this.scene.allocZ(),
+      ox: snap(c.x - midX),
+      oy: snap(c.y + midY),
+      color: '#1e1e1e',
+      bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 }
+    }
+    g.bbox = graphBBox(g)
+    this.scene.add([g])
+    useUI.setState({ tool: 'select' })
+    this.setSelection([g])
+  }
+
+  /** Re-configure an inserted graph (undoable). */
+  updateGraph(id: string, params: GraphParams): void {
+    const old = this.scene.getById([id])[0]
+    if (!old || old.type !== 'graph') return
+    const next: GraphItem = { ...old, ...sanitizeGraph(params) }
+    next.bbox = graphBBox(next)
+    this.scene.replace([old], [next])
+  }
+
+  // ---------------------------------------------------------------- templates
+
+  /** Save the selection as a reusable template. */
+  async saveSelectionAsTemplate(name: string): Promise<TemplateEntry | null> {
+    const items = this.selectedItems()
+    if (!items.length) return null
+    const bg = useUI.getState().background
+    const bytes = await encodeBoard({ items, background: bg, camera: this.camera })
+    const thumb = await renderThumbnail(items, bg)
+    const entry = await platform.library.saveTemplate(name, bytes, thumb)
+    await this.refreshLibrary()
+    return entry
+  }
+
+  async insertTemplate(id: string): Promise<void> {
+    const { items } = await decodeBoard(await platform.library.loadTemplate(id))
+    this.placeAtCenter(items)
+  }
+
+  async renameTemplate(id: string, name: string): Promise<void> {
+    await platform.library.renameTemplate(id, name)
+    await this.refreshLibrary()
+  }
+
+  async deleteTemplate(id: string): Promise<void> {
+    await platform.library.deleteTemplate(id)
+    await this.refreshLibrary()
+  }
+
+  private templateUrls = new Map<string, string | null>()
+  async templateThumbUrl(id: string): Promise<string | null> {
+    if (this.templateUrls.has(id)) return this.templateUrls.get(id) ?? null
+    const bytes = await platform.library.templateThumb(id)
+    const url = bytes ? URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/webp' })) : null
+    this.templateUrls.set(id, url)
+    return url
   }
 
   // ---------------------------------------------------------------- images
@@ -448,10 +527,23 @@ class Editor {
 
   async newBoard(): Promise<void> {
     await this.flush(true)
-    const bytes = await encodeBoard({ items: [], background: useUI.getState().background, camera: DEFAULT_CAMERA })
-    const entry = await platform.library.create(this.newBoardTitle(), bytes)
-    await this.refreshLibrary()
-    await this.openBoard(entry.id)
+    // Show the empty board immediately; anything drawn while the library entry is being
+    // created counts as an unsaved change of the new board (nothing gets lost).
+    const empty: BoardData = { items: [], background: useUI.getState().background, camera: { ...DEFAULT_CAMERA } }
+    this.ready = false
+    useUI.setState({ board: null, view: 'board', historyOpen: false })
+    this.loadData(empty)
+    const loadedVersion = this.scene.version
+    const loadedMeta = this.metaVersion
+    const entry = await platform.library.create(this.newBoardTitle(), await encodeBoard(empty))
+    this.saved = { version: loadedVersion, meta: loadedMeta, camera: empty.camera }
+    this.thumbVersion = loadedVersion
+    this.lastThumbAt = 0
+    useUI.setState({ board: { id: entry.id, title: entry.title, kind: entry.kind }, saveStatus: 'saved' })
+    this.ready = true
+    if (this.hasChanges()) this.markChanged()
+    await platform.library.setLastOpened(entry.id)
+    void this.refreshLibrary()
   }
 
   async goHome(): Promise<void> {

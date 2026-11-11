@@ -81,12 +81,20 @@ in progress and the pen cursor (so drawing never forces a full board redraw).
 - [x] Optional backup folder (USB stick / cloud-synced folder), mirrored automatically
 - [x] Migration of the 0.1 autosave into the library
 
+### Stage 3.5 — teaching tools & updates (v0.3)
+- [x] Shift = straight line (snaps to 0°/45°/90°), for pen and highlighter
+- [x] Shapes menu: line, arrows, rectangle, ellipse, triangles, rhombus, parallelogram, trapezoid,
+      pentagon, hexagon, star, cube (drag to size, click = default size, Shift = proportional)
+- [x] Coordinate line / plane: presets with previews, custom ranges & unit length, own presets,
+      editable after insertion; axes only (the paper background is the grid)
+- [x] Templates: save any selection (e.g. "Given / Find / Solution") and insert it into any board
+- [x] Auto-update from GitHub Releases (Windows, AppImage); "new version" notice on macOS / .deb
+
 ### Stage 4 — content
 - [ ] **Hold-to-snap shapes** (like Procreate's QuickShape): draw and keep the pen down ~0.7 s
       (configurable) → the stroke becomes a clean line / circle / ellipse / rectangle / triangle / arrow.
       While still holding, the shape can be dragged to resize/rotate. The result stays a vector stroke.
       On/off in settings.
-- [ ] Shapes from a menu (rectangle, ellipse, arrow, line)
 - [ ] Text, sticky notes
 - [ ] Import PDF pages as backgrounds (worksheets for students)
 - [ ] Templates (math grid, handwriting practice, etc.)

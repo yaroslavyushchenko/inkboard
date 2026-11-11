@@ -2,13 +2,15 @@ import { drawBackground } from './background'
 import { viewportBBox } from './camera'
 import { bboxIntersects } from './geometry'
 import { getImage } from './images'
-import { buildInkPath, fillInk, strokePath, type InkStyle } from './ink'
+import { drawGraph } from './graph'
+import { buildInkPath, drawStroke, fillInk, linePath, strokeLine, type InkStyle } from './ink'
 import { xformBBox, type Xform } from './transform'
 import type { BackgroundKind, BBox, Camera, Item, Point } from './types'
 
 export interface LiveStroke extends InkStyle {
   color: string
   points: Point[]
+  geom?: 'line'
 }
 
 export interface CursorState {
@@ -134,7 +136,8 @@ export class BoardRenderer {
 
     if (live && live.points.length > 0) {
       this.applyCamera(ctx, cam)
-      fillInk(ctx, buildInkPath(live.points, live, false), live.color, live.tool)
+      if (live.geom === 'line') strokeLine(ctx, linePath(live.points), live.color, live.size, live.tool)
+      else fillInk(ctx, buildInkPath(live.points, live, false), live.color, live.tool)
     }
 
     if (cursor) {
@@ -198,7 +201,9 @@ export function drawItems(
       c.translate(-moving.ax, -moving.ay)
     }
     if (item.type === 'stroke') {
-      fillInk(c, strokePath(item), item.color, item.tool)
+      drawStroke(c, item)
+    } else if (item.type === 'graph') {
+      drawGraph(c, item)
     } else {
       const img = getImage(item.src)
       if (img.complete && img.naturalWidth > 0) c.drawImage(img, item.x, item.y, item.w, item.h)

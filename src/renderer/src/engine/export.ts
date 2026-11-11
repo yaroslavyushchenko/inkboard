@@ -1,6 +1,7 @@
 import { BACKGROUND_STYLE, drawBackground, PAPER_COLOR } from './background'
 import { loadImage } from './images'
-import { HIGHLIGHTER_ALPHA, inkOutlineSvg } from './ink'
+import { graphSvg } from './graph'
+import { HIGHLIGHTER_ALPHA, inkOutlineSvg, lineSvgPath } from './ink'
 import { drawItems } from './renderer'
 import { unionBBox } from './transform'
 import type { BackgroundKind, BBox, Camera, Item } from './types'
@@ -103,8 +104,15 @@ export function renderSvg(items: readonly Item[], bg: BackgroundKind): { svg: st
   parts.push(`<rect x="${r2(box.minX)}" y="${r2(box.minY)}" width="${r2(bw)}" height="${r2(bh)}" fill="${PAPER_COLOR}"/>`)
   if (bg !== 'blank') parts.push(`<rect x="${r2(box.minX)}" y="${r2(box.minY)}" width="${r2(bw)}" height="${r2(bh)}" fill="url(#paper)"/>`)
   for (const it of items) {
-    if (it.type === 'image') {
+    if (it.type === 'graph') {
+      parts.push(graphSvg(it))
+    } else if (it.type === 'image') {
       parts.push(`<image href="${esc(it.src)}" x="${r2(it.x)}" y="${r2(it.y)}" width="${r2(it.w)}" height="${r2(it.h)}" preserveAspectRatio="none"/>`)
+    } else if (it.geom === 'line') {
+      const hl = it.tool === 'highlighter' ? ` stroke-opacity="${HIGHLIGHTER_ALPHA}" style="mix-blend-mode:multiply"` : ''
+      parts.push(
+        `<path d="${lineSvgPath(it.points)}" fill="none" stroke="${esc(it.color)}" stroke-width="${r2(it.size)}" stroke-linecap="round" stroke-linejoin="round"${hl}/>`
+      )
     } else {
       const d = inkOutlineSvg(it)
       if (!d) continue

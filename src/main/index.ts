@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import type { ExportKind } from '../shared/library'
 import { safeFileName, writeDurable } from './fsutil'
 import { Library } from './library'
+import { initUpdater } from './updater'
 
 const FILE_FILTERS = [{ name: 'Inkboard', extensions: ['inkboard'] }]
 
@@ -14,6 +15,8 @@ if (process.env['INKBOARD_USER_DATA']) app.setPath('userData', process.env['INKB
 
 let mainWindow: BrowserWindow | null = null
 let library: Library
+/** Set right before an update installs: the page already saved, skip the close handshake. */
+let installingUpdate = false
 /** Board files passed on the command line / via "Open with" before the window was ready. */
 const pendingPaths: string[] = []
 
@@ -106,6 +109,11 @@ function registerIpc(): void {
   h('library:list-versions', (_e, id: string) => library.listVersions(id))
   h('library:load-version', (_e, id: string, ts: number) => library.loadVersion(id, ts))
   h('library:snapshot', (_e, id: string, bytes: Uint8Array) => library.snapshotNow(id, bytes))
+  h('template:save', (_e, name: string, bytes: Uint8Array, thumb: Uint8Array | null) => library.saveTemplate(name, bytes, thumb))
+  h('template:load', (_e, id: string) => library.loadTemplate(id))
+  h('template:thumb', (_e, id: string) => library.templateThumb(id))
+  h('template:rename', (_e, id: string, name: string) => library.renameTemplate(id, name))
+  h('template:delete', (_e, id: string) => library.deleteTemplate(id))
 
   h('library:save-as-file', async (e, id: string, bytes: Uint8Array, suggestedName: string) => {
     const path = await askSavePath(e, suggestedName, 'inkboard', 'Inkboard')
@@ -197,7 +205,7 @@ function createWindow(): void {
   // Before closing, let the page flush its autosave so the board reopens exactly as it was left.
   let flushed = false
   win.on('close', (e) => {
-    if (flushed) return
+    if (flushed || installingUpdate) return
     e.preventDefault()
     const done = (): void => {
       if (flushed) return
@@ -242,6 +250,12 @@ app.whenReady().then(async () => {
   if (argPath) pendingPaths.push(argPath)
 
   registerIpc()
+  initUpdater(
+    () => mainWindow,
+    () => {
+      installingUpdate = true
+    }
+  )
   createWindow()
 
   // Sleep / shutdown: flush the autosave right away.

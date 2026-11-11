@@ -92,3 +92,55 @@ export function fillInk(ctx: CanvasRenderingContext2D, path: Path2D, color: stri
     ctx.fill(path)
   }
 }
+
+// ---------------------------------------------------------------------------- straight lines & shapes
+
+/** Polyline through the exact points (Shift lines and shapes): uniform width, crisp corners. */
+export function linePath(points: readonly Point[]): Path2D {
+  const p = new Path2D()
+  if (points.length === 0) return p
+  p.moveTo(points[0][0], points[0][1])
+  // A single point still needs a visible dot: a tiny segment with round caps.
+  if (points.length === 1) p.lineTo(points[0][0] + 0.01, points[0][1])
+  for (let i = 1; i < points.length; i++) p.lineTo(points[i][0], points[i][1])
+  return p
+}
+
+const linePathCache = new WeakMap<StrokeItem, Path2D>()
+
+export function strokeLinePath(s: StrokeItem): Path2D {
+  let p = linePathCache.get(s)
+  if (!p) {
+    p = linePath(s.points)
+    linePathCache.set(s, p)
+  }
+  return p
+}
+
+export function strokeLine(ctx: CanvasRenderingContext2D, path: Path2D, color: string, size: number, tool: InkStyle['tool']): void {
+  ctx.lineWidth = size
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.strokeStyle = color
+  if (tool === 'highlighter') {
+    ctx.globalAlpha = HIGHLIGHTER_ALPHA
+    ctx.globalCompositeOperation = 'multiply'
+    ctx.stroke(path)
+    ctx.globalAlpha = 1
+    ctx.globalCompositeOperation = 'source-over'
+  } else {
+    ctx.stroke(path)
+  }
+}
+
+/** Draw any stroke item the way it's stored (freehand outline or exact polyline). */
+export function drawStroke(ctx: CanvasRenderingContext2D, s: StrokeItem): void {
+  if (s.geom === 'line') strokeLine(ctx, strokeLinePath(s), s.color, s.size, s.tool)
+  else fillInk(ctx, strokePath(s), s.color, s.tool)
+}
+
+export function lineSvgPath(points: readonly Point[]): string {
+  const f = (v: number): string => (Math.round(v * 100) / 100).toString()
+  if (points.length === 1) return `M${f(points[0][0])},${f(points[0][1])}l0.01,0`
+  return points.map(([x, y], i) => `${i ? 'L' : 'M'}${f(x)},${f(y)}`).join('')
+}

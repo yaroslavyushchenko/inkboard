@@ -5,6 +5,7 @@ import { LANGUAGES, useT, type Lang, type MessageKey } from '../i18n'
 import { platform } from '../platform'
 import { useUI } from '../store'
 import { PaperIcon } from './icons'
+import { AboutSection } from './UpdateBanner'
 import { Popover } from './Popover'
 
 const OPTIONS: { kind: BackgroundKind; label: MessageKey }[] = [
@@ -86,6 +87,7 @@ export function BackgroundPicker() {
               </div>
             </>
           )}
+          <AboutSection />
         </Popover>
       )}
     </div>

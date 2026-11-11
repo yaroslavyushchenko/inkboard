@@ -1,7 +1,7 @@
 {
   "name": "inkboard",
   "productName": "Inkboard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Free infinite whiteboard for pen tablets",
   "license": "GPL-3.0-or-later",
   "author": {
@@ -31,12 +31,6 @@
     "electron@45.3.0": true,
     "electron-winstaller": false
   },
-  "dependencies": {
-    "perfect-freehand": "^1.2.3",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "zustand": "^5.1.0"
-  },
   "devDependencies": {
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
@@ -45,7 +39,14 @@
     "electron": "^45.3.0",
     "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
+    "perfect-freehand": "^1.2.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "typescript": "^7.0.2",
-    "vite": "^8.3.8"
+    "vite": "^8.3.8",
+    "zustand": "^5.1.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
   }
 }

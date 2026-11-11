@@ -33,11 +33,26 @@ contextBridge.exposeInMainWorld('inkboard', {
     importFile: invoke('library:import-file'),
     locate: invoke('library:locate'),
     showInFolder: invoke('library:show-in-folder'),
-    takePendingOpen: invoke('library:take-pending-open')
+    takePendingOpen: invoke('library:take-pending-open'),
+    saveTemplate: invoke('template:save'),
+    loadTemplate: invoke('template:load'),
+    templateThumb: invoke('template:thumb'),
+    renameTemplate: invoke('template:rename'),
+    deleteTemplate: invoke('template:delete')
   },
   chooseBackupDir: invoke('backup:choose'),
   disableBackup: invoke('backup:disable'),
   exportFile: invoke('export:save'),
+  update: {
+    getState: invoke('update:get-state'),
+    check: invoke('update:check'),
+    install: invoke('update:install'),
+    openDownload: invoke('update:open-download'),
+    version: invoke('app:version'),
+    onState: (handler: (s: unknown) => void) => {
+      ipcRenderer.on('update:state', (_e, s) => handler(s))
+    }
+  },
   setTitle: (title: string) => ipcRenderer.send('window:title', title),
   onOpenBoard: (handler: (id: string) => void) => {
     ipcRenderer.on('library:open', (_e, id: string) => handler(id))

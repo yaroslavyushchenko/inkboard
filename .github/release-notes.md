@@ -1,15 +1,15 @@
-Test build of **Inkboard** — a free infinite whiteboard for pen tablets.
+**Inkboard** — a free infinite whiteboard for pen tablets.
 
-## What's new in 0.2
+## What's new in 0.3
 
-- **Your work is always saved.** Every board autosaves within a few seconds — also safe if the power goes out.
-- **All boards** screen (Ctrl+H) with previews, search, pinned boards and colour **tags** (e.g. "5A", "Math").
-- **Version history** — go back to how the board looked earlier (snapshot every 10 minutes of work).
-- **Recently deleted** — deleted boards can be restored for 30 days.
-- **Save as file…** puts a board in any folder; it keeps saving itself there automatically.
-- **Export** to PNG or PDF (the whole board or just the selection) — e.g. to send to students.
-- **Backup folder** (Settings ⚙): every board is also copied to a USB stick or Google Drive / OneDrive folder.
-- Double-clicking an `.inkboard` file opens it in Inkboard.
+- **Straight lines:** hold **Shift** while drawing (snaps to horizontal / vertical / 45°).
+- **Shapes** menu: lines, arrows, rectangle, circle, triangles, rhombus, parallelogram, trapezoid, polygons, star, cube.
+  Drag to draw, click for a default size, Shift keeps proportions.
+- **Coordinates:** number lines and coordinate planes with previews; set your own ranges and unit length,
+  save your own presets, change them after inserting (gear button on the selection).
+- **Templates:** select anything (e.g. "Given / Find / Solution"), press the bookmark button — and insert it into any board later.
+- **Automatic updates:** from this version on, Inkboard updates itself on Windows and Linux (AppImage).
+  On macOS and .deb you get a notice with a download link.
 
 ## Download
 
@@ -17,7 +17,7 @@ Test build of **Inkboard** — a free infinite whiteboard for pen tablets.
 |---|---|
 | Windows | `Inkboard-Setup-…-x64.exe` |
 | macOS (Intel and Apple Silicon) | `Inkboard-…-mac-universal.dmg` |
-| Linux | `.AppImage` (any distro) or `.deb` (Ubuntu / Debian) |
+| Linux | `.AppImage` (any distro, auto-updates) or `.deb` (Ubuntu / Debian) |
 
 ## First launch
 
@@ -27,7 +27,5 @@ The builds are not code-signed yet, so the system will warn you once:
 - **macOS:** open the `.dmg`, drag Inkboard to Applications, then **right-click the app → Open → Open**.
   If macOS says the app is damaged, run `xattr -cr /Applications/Inkboard.app` in Terminal.
 - **Linux AppImage:** `chmod +x Inkboard-*.AppImage` and run it.
-
-Boards from 0.1 are moved into the new board list automatically.
 
 Feedback and bug reports: open an issue in this repository.

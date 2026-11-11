@@ -13,6 +13,9 @@ Built for teachers who write and draw with a stylus.
 - **Never lose work:** every board autosaves within seconds (power-cut safe), with version history
 - Board library with thumbnails, search, pins and colour tags; Recently deleted
 - Export to PNG or vector PDF; optional automatic backup folder
+- Shift for straight lines, a shapes menu, coordinate lines / planes for maths
+- Templates: save any part of a board and insert it into other boards
+- Automatic updates
 - English and Ukrainian UI
 
 Status: early development. See [docs/PLAN.md](docs/PLAN.md) for the roadmap.
@@ -44,6 +47,7 @@ npm run build
 | Undo / Redo | Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) |
 | Insert image | Ctrl+V, drag a file in, or the toolbar button |
 | Lasso select | V; Del deletes, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy & paste |
+| Straight line | hold Shift while drawing |
 | All boards | Ctrl+H |
 | New board / Open file | Ctrl+N / Ctrl+O |
 | Save as file | Ctrl+S (draft) or Ctrl+Shift+S |

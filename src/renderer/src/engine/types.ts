@@ -28,6 +28,11 @@ export interface StrokeItem extends ItemBase {
   /** true when the points carry real pen pressure (stylus); false for mouse / touch. */
   pressure: boolean
   points: Point[]
+  /**
+   * 'line' = drawn exactly through the points with a uniform width and crisp corners
+   * (Shift straight lines and shapes). Absent = freehand ink.
+   */
+  geom?: 'line'
 }
 
 /** A raster image placed on the board. Kept at its original resolution. */
@@ -40,7 +45,34 @@ export interface ImageItem extends ItemBase {
   h: number
 }
 
-export type Item = StrokeItem | ImageItem
+/**
+ * A coordinate line (number line) or coordinate plane. Stored as parameters, drawn procedurally,
+ * so it stays vector-sharp and can be re-configured after insertion.
+ */
+export interface GraphParams {
+  kind: 'line' | 'plane'
+  xMin: number
+  xMax: number
+  /** Plane only. */
+  yMin: number
+  yMax: number
+  /** Board units per 1 on the axis (24 = one dot-paper cell). */
+  unit: number
+  /** Number labels every N units. */
+  labelStep: number
+  /** Kept for file compatibility; always false (the paper background is the grid). */
+  grid: boolean
+}
+
+export interface GraphItem extends ItemBase, GraphParams {
+  type: 'graph'
+  /** World position of the origin (0, 0). */
+  ox: number
+  oy: number
+  color: string
+}
+
+export type Item = StrokeItem | ImageItem | GraphItem
 
 export type BackgroundKind = 'blank' | 'dots' | 'grid' | 'lines'
 

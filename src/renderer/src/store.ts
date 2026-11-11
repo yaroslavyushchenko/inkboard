@@ -1,10 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { LibraryState } from '../../shared/library'
-import type { BackgroundKind, Camera } from './engine/types'
+import type { GraphPreset } from './engine/graph'
+import type { ShapeKind } from './engine/shapes'
+import type { BackgroundKind, Camera, GraphParams } from './engine/types'
 import { detectLanguage, type Lang } from './i18n'
 
-export type Tool = 'select' | 'pen' | 'highlighter' | 'eraser' | 'pan'
+export type Tool = 'select' | 'pen' | 'highlighter' | 'eraser' | 'pan' | 'shape'
 
 export interface InkSlot {
   color: string
@@ -22,6 +24,12 @@ export const HIGHLIGHTER_SIZES = [12, 18, 26, 36]
 
 interface UIState {
   tool: Tool
+  /** Shape drawn by the shape tool. */
+  shape: ShapeKind
+  /** The user's own coordinate-plane/line presets. */
+  graphPresets: GraphPreset[]
+  /** Coordinate settings dialog: insert a new graph or edit the selected one. */
+  graphDialog: { mode: 'insert' | 'edit'; id?: string; params: GraphParams } | null
   activePen: number
   pens: InkSlot[]
   highlighter: InkSlot
@@ -54,6 +62,9 @@ export const useUI = create<UIState>()(
   persist(
     (set) => ({
       tool: 'pen',
+      shape: 'rectangle',
+      graphPresets: [],
+      graphDialog: null,
       activePen: 0,
       pens: [
         { color: '#1e1e1e', size: 3 },
@@ -72,7 +83,7 @@ export const useUI = create<UIState>()(
       view: 'board',
       board: null,
       saveStatus: 'saved',
-      library: { boards: [], tags: [], lastOpenedId: null, backupDir: null },
+      library: { boards: [], tags: [], templates: [], lastOpenedId: null, backupDir: null },
       historyOpen: false,
       setTool: (tool) => set({ tool }),
       selectPen: (index) => set({ tool: 'pen', activePen: index }),
@@ -91,7 +102,8 @@ export const useUI = create<UIState>()(
         highlighter: s.highlighter,
         eraserRadius: s.eraserRadius,
         background: s.background,
-        lang: s.lang
+        lang: s.lang,
+        graphPresets: s.graphPresets
       })
     }
   )

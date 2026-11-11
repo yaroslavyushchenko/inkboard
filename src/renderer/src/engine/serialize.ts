@@ -1,4 +1,5 @@
-import type { BackgroundKind, Camera, Item, Point } from './types'
+import { graphBBox, sanitizeGraph } from './graph'
+import type { BackgroundKind, Camera, GraphItem, GraphParams, Item, Point } from './types'
 
 /**
  * `.inkboard` file format: gzip-compressed JSON.
@@ -6,7 +7,8 @@ import type { BackgroundKind, Camera, Item, Point } from './types'
  * byte-for-byte as they were inserted, and referenced by key.
  */
 export const FORMAT = 'inkboard'
-export const FORMAT_VERSION = 1
+/** 2 = adds straight-line strokes (`geom`) and coordinate graphs. Readers accept ≤ this. */
+export const FORMAT_VERSION = 2
 
 interface SerializedStroke {
   type: 'stroke'
@@ -18,6 +20,16 @@ interface SerializedStroke {
   pressure: boolean
   /** Flattened [x, y, pressure, x, y, pressure, ...]. */
   pts: number[]
+  geom?: 'line'
+}
+
+interface SerializedGraph extends GraphParams {
+  type: 'graph'
+  id: string
+  z: number
+  ox: number
+  oy: number
+  color: string
 }
 
 interface SerializedImage {
@@ -37,7 +49,7 @@ export interface BoardFile {
   background: BackgroundKind
   camera: Camera
   assets: Record<string, string>
-  items: (SerializedStroke | SerializedImage)[]
+  items: (SerializedStroke | SerializedImage | SerializedGraph)[]
 }
 
 export interface BoardData {
@@ -52,7 +64,7 @@ const r3 = (v: number): number => Math.round(v * 1000) / 1000
 export function serializeBoard(data: BoardData): BoardFile {
   const assetKeys = new Map<string, string>()
   const assets: Record<string, string> = {}
-  const items = data.items.map((it): SerializedStroke | SerializedImage => {
+  const items = data.items.map((it): SerializedStroke | SerializedImage | SerializedGraph => {
     if (it.type === 'stroke') {
       const pts: number[] = new Array(it.points.length * 3)
       it.points.forEach(([x, y, p], i) => {
@@ -60,8 +72,12 @@ export function serializeBoard(data: BoardData): BoardFile {
         pts[i * 3 + 1] = r2(y)
         pts[i * 3 + 2] = r3(p)
       })
-      const { id, z, tool, color, size, pressure } = it
-      return { type: 'stroke', id, z, tool, color, size, pressure, pts }
+      const { id, z, tool, color, size, pressure, geom } = it
+      return { type: 'stroke', id, z, tool, color, size, pressure, pts, ...(geom ? { geom } : {}) }
+    }
+    if (it.type === 'graph') {
+      const { bbox: _bbox, ...rest } = it
+      return rest
     }
     let key = assetKeys.get(it.src)
     if (!key) {
@@ -94,8 +110,13 @@ export function deserializeBoard(file: BoardFile): BoardData {
       const pad = s.size
       items.push({
         type: 'stroke', id: s.id, z: s.z, tool: s.tool, color: s.color, size: s.size, pressure: s.pressure, points,
+        ...(s.geom === 'line' ? { geom: 'line' as const } : {}),
         bbox: { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad }
       })
+    } else if (s.type === 'graph') {
+      const g: GraphItem = { ...sanitizeGraph(s), type: 'graph', id: s.id, z: s.z, ox: s.ox, oy: s.oy, color: s.color, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
+      g.bbox = graphBBox(g)
+      items.push(g)
     } else if (s.type === 'image') {
       const src = file.assets[s.asset]
       if (!src) continue

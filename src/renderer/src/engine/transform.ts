@@ -1,4 +1,5 @@
 import { circleHitsPolyline } from './geometry'
+import { graphBBox } from './graph'
 import type { BBox, Item } from './types'
 
 /** Uniform scale `s` about anchor (ax, ay), then translate by (dx, dy): p' = a + (p - a) * s + d */
@@ -32,6 +33,10 @@ export function applyXform(item: Item, t: Xform): Item {
       points: item.points.map(([x, y, p]) => [tx(t, x), ty(t, y), p]),
       bbox: xformBBox(item.bbox, t)
     }
+  }
+  if (item.type === 'graph') {
+    const g = { ...item, ox: tx(t, item.ox), oy: ty(t, item.oy), unit: item.unit * t.s }
+    return { ...g, bbox: graphBBox(g) }
   }
   const x = tx(t, item.x)
   const y = ty(t, item.y)
@@ -67,8 +72,9 @@ export function itemsInLasso(items: readonly Item[], lasso: readonly (readonly [
   if (lasso.length < 3) return []
   const out: Item[] = []
   for (const it of items) {
-    if (it.type === 'image') {
-      if (pointInPolygon(it.x + it.w / 2, it.y + it.h / 2, lasso)) out.push(it)
+    if (it.type !== 'stroke') {
+      const b = it.bbox
+      if (pointInPolygon((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, lasso)) out.push(it)
       continue
     }
     const step = Math.max(1, Math.floor(it.points.length / 40))
@@ -88,7 +94,7 @@ export function hitTest(items: readonly Item[], x: number, y: number, tol: numbe
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i]
     if (x < it.bbox.minX - tol || x > it.bbox.maxX + tol || y < it.bbox.minY - tol || y > it.bbox.maxY + tol) continue
-    if (it.type === 'image') return it
+    if (it.type !== 'stroke') return it
     if (circleHitsPolyline(x, y, it.size / 2 + tol, it.points)) return it
   }
   return null

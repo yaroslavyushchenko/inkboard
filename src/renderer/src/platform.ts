@@ -5,6 +5,7 @@ import {
   type ExportKind,
   type LibraryState,
   type Tag,
+  type TemplateEntry,
   type VersionInfo
 } from '../../shared/library'
 
@@ -41,10 +42,34 @@ export interface LibraryApi {
   showInFolder(id: string): Promise<void>
   /** A board file the app was launched with ("Open with Inkboard"), already imported. */
   takePendingOpen(): Promise<string | null>
+  saveTemplate(name: string, bytes: Uint8Array, thumb: Uint8Array | null): Promise<TemplateEntry>
+  loadTemplate(id: string): Promise<Uint8Array>
+  templateThumb(id: string): Promise<Uint8Array | null>
+  renameTemplate(id: string, name: string): Promise<void>
+  deleteTemplate(id: string): Promise<void>
+}
+
+export interface UpdateState {
+  status: 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'
+  version?: string
+  percent?: number
+  manual?: boolean
+  url?: string
+}
+
+export interface UpdateApi {
+  getState(): Promise<UpdateState>
+  check(): Promise<void>
+  /** Restart into the downloaded update (the board must be saved first). */
+  install(): Promise<void>
+  openDownload(): Promise<void>
+  version(): Promise<string>
+  onState(handler: (s: UpdateState) => void): void
 }
 
 export interface PlatformApi {
   platform: string
+  update: UpdateApi
   capabilities: { backup: boolean; showInFolder: boolean }
   library: LibraryApi
   /** Returns the chosen backup folder (or the current one if cancelled). */
@@ -109,7 +134,7 @@ function readIndex(): LibraryState {
   try {
     return JSON.parse(store.get('index') ?? '') as LibraryState
   } catch {
-    return { boards: [], tags: [], lastOpenedId: null, backupDir: null }
+    return { boards: [], tags: [], templates: [], lastOpenedId: null, backupDir: null }
   }
 }
 
@@ -134,6 +159,7 @@ function browserLibrary(): LibraryApi {
   const api: LibraryApi = {
     async list() {
       idx = readIndex()
+      idx.templates ??= []
       return structuredClone(idx)
     },
     async thumb(id) {
@@ -258,6 +284,34 @@ function browserLibrary(): LibraryApi {
     async showInFolder() {},
     async takePendingOpen() {
       return null
+    },
+    async saveTemplate(name, bytes, thumb) {
+      const entry: TemplateEntry = { id: uid(), name: name.trim() || 'Template', createdAt: Date.now() }
+      store.set(`tpl:${entry.id}`, toB64(bytes))
+      if (thumb) store.set(`tplthumb:${entry.id}`, toB64(thumb))
+      ;(idx.templates ??= []).push(entry)
+      save()
+      return entry
+    },
+    async loadTemplate(id) {
+      const b = store.get(`tpl:${id}`)
+      if (!b) throw new Error('Template not found')
+      return fromB64(b)
+    },
+    async templateThumb(id) {
+      const b = store.get(`tplthumb:${id}`)
+      return b ? fromB64(b) : null
+    },
+    async renameTemplate(id, name) {
+      const t = idx.templates.find((x) => x.id === id)
+      if (t && name.trim()) t.name = name.trim()
+      save()
+    },
+    async deleteTemplate(id) {
+      idx.templates = idx.templates.filter((t) => t.id !== id)
+      store.del(`tpl:${id}`)
+      store.del(`tplthumb:${id}`)
+      save()
     }
   }
   return api
@@ -273,6 +327,18 @@ function download(data: Uint8Array | string, name: string): void {
 
 const browserApi: PlatformApi = {
   platform: 'browser',
+  update: {
+    async getState() {
+      return { status: 'idle' }
+    },
+    async check() {},
+    async install() {},
+    async openDownload() {},
+    async version() {
+      return 'dev'
+    },
+    onState() {}
+  },
   capabilities: { backup: false, showInFolder: false },
   library: browserLibrary(),
   async chooseBackupDir() {

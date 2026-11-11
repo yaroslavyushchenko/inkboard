@@ -10,15 +10,17 @@ import {
   type CursorState,
   type LiveStroke
 } from '../engine/renderer'
+import { DEFAULT_SHAPE_SIZE, isLinear, shapeOutline, snapAngle, type ShapeKind } from '../engine/shapes'
 import { hitTest, itemsInLasso } from '../engine/transform'
 import type { BBox, Item, Point, StrokeItem } from '../engine/types'
 import { editor } from '../editor'
 import { useUI, type Tool } from '../store'
 
-type Effective = 'ink' | 'eraser' | 'pan' | 'select'
+type Effective = 'ink' | 'eraser' | 'pan' | 'select' | 'shape'
 
 type Gesture =
-  | { kind: 'ink'; pointerId: number; live: LiveStroke }
+  | { kind: 'ink'; pointerId: number; live: LiveStroke; start: Point }
+  | { kind: 'shape'; pointerId: number; shape: ShapeKind; ax: number; ay: number; sx: number; sy: number; moved: boolean; live: LiveStroke }
   | { kind: 'eraser'; pointerId: number; removed: Item[]; lastX: number; lastY: number }
   | { kind: 'pan'; pointerId: number; lastX: number; lastY: number }
   | { kind: 'pinch'; dist: number; cx: number; cy: number }
@@ -62,7 +64,7 @@ export function Board() {
       const ui = useUI.getState()
       if (baseDirty) renderer.renderBase(scene.getItems(), editor.camera, ui.background, editor.preview)
       if (overlayDirty) {
-        const live = gesture?.kind === 'ink' ? gesture.live : null
+        const live = gesture?.kind === 'ink' || gesture?.kind === 'shape' ? gesture.live : null
         renderer.renderOverlay(live, cursorState(), editor.camera, {
           box: ui.selectedIds.length ? editor.selectionBBox() : null,
           lasso: gesture?.kind === 'lasso' ? gesture.points : null
@@ -94,7 +96,7 @@ export function Board() {
     }
 
     const toolEffect = (tool: Tool): Effective =>
-      tool === 'eraser' ? 'eraser' : tool === 'pan' ? 'pan' : tool === 'select' ? 'select' : 'ink'
+      tool === 'eraser' ? 'eraser' : tool === 'pan' ? 'pan' : tool === 'select' ? 'select' : tool === 'shape' ? 'shape' : 'ink'
 
     /** What a press at screen point (sx, sy) would grab on the current selection. */
     const selectionHit = (sx: number, sy: number): { kind: 'handle'; corner: number; box: BBox } | { kind: 'body' } | null => {
@@ -129,7 +131,7 @@ export function Board() {
       const penHover = hover.pointerType === 'pen' && hover.buttons === 0
       const eraserButton = hover.pointerType === 'pen' && (hover.buttons & 32) !== 0
       const eff = eraserButton ? 'eraser' : toolEffect(ui.tool)
-      if (eff === 'pan' || eff === 'select') return null
+      if (eff === 'pan' || eff === 'select' || eff === 'shape') return null
       // While actually inking, the ink itself is the feedback.
       if (gesture?.kind === 'ink') return null
       if (eff === 'eraser') {
@@ -151,6 +153,7 @@ export function Board() {
       let c = 'none'
       if (gesture?.kind === 'pan' || gesture?.kind === 'pinch') c = 'grabbing'
       else if (spaceDown || tool === 'pan') c = 'grab'
+      else if (tool === 'shape') c = 'crosshair'
       else if (gesture?.kind === 'move') c = 'move'
       else if (gesture?.kind === 'scale') c = gesture.cx > gesture.ax === gesture.cy > gesture.ay ? 'nwse-resize' : 'nesw-resize'
       else if (tool === 'select') {
@@ -202,7 +205,30 @@ export function Board() {
       const g = gesture
       gesture = null
       if (!g) return
-      if (g.kind === 'ink' && g.live.points.length > 0) {
+      if (g.kind === 'shape') {
+        let pts = g.live.points
+        if (!g.moved) {
+          // A plain click drops a default-size shape centred on the click.
+          const d = DEFAULT_SHAPE_SIZE / editor.camera.zoom
+          pts = isLinear(g.shape)
+            ? shapeOutline(g.shape, g.ax - d / 2, g.ay, g.ax + d / 2, g.ay, false, g.live.size)
+            : shapeOutline(g.shape, g.ax - d / 2, g.ay - d / 2, g.ax + d / 2, g.ay + d / 2, false, g.live.size)
+        }
+        scene.add([
+          {
+            type: 'stroke',
+            id: newId(),
+            z: scene.allocZ(),
+            tool: 'pen',
+            color: g.live.color,
+            size: g.live.size,
+            pressure: false,
+            geom: 'line',
+            points: pts,
+            bbox: bboxOfPoints(pts, g.live.size)
+          }
+        ])
+      } else if (g.kind === 'ink' && g.live.points.length > 0) {
         const { live } = g
         const stroke: StrokeItem = {
           type: 'stroke',
@@ -213,7 +239,8 @@ export function Board() {
           size: live.size,
           pressure: live.pressure,
           points: live.points,
-          bbox: bboxOfPoints(live.points, live.size)
+          bbox: bboxOfPoints(live.points, live.size),
+          ...(live.geom ? { geom: live.geom } : {})
         }
         scene.add([stroke])
       } else if (g.kind === 'eraser') {
@@ -321,6 +348,22 @@ export function Board() {
             gesture = { kind: 'lasso', pointerId: e.pointerId, points: [[w.x, w.y]], startX: p.x, startY: p.y, moved: false }
           }
         }
+      } else if (eff === 'shape') {
+        editor.clearSelection()
+        const ui = useUI.getState()
+        const w = screenToWorld(editor.camera, p.x, p.y)
+        const slot = ui.pens[ui.activePen]
+        gesture = {
+          kind: 'shape',
+          pointerId: e.pointerId,
+          shape: ui.shape,
+          ax: w.x,
+          ay: w.y,
+          sx: p.x,
+          sy: p.y,
+          moved: false,
+          live: { tool: 'pen', color: slot.color, size: slot.size, pressure: false, geom: 'line', points: [] }
+        }
       } else if (eff === 'eraser') {
         const w = screenToWorld(editor.camera, p.x, p.y)
         const g: Gesture = { kind: 'eraser', pointerId: e.pointerId, removed: [], lastX: w.x, lastY: w.y }
@@ -332,11 +375,15 @@ export function Board() {
         const isHl = ui.tool === 'highlighter'
         const slot = isHl ? ui.highlighter : ui.pens[ui.activePen]
         const pressure = e.pointerType === 'pen' && !isHl
+        const start = pointFrom(e, pressure)
         gesture = {
           kind: 'ink',
           pointerId: e.pointerId,
-          live: { tool: isHl ? 'highlighter' : 'pen', color: slot.color, size: slot.size, pressure, points: [pointFrom(e, pressure)] }
+          start,
+          live: { tool: isHl ? 'highlighter' : 'pen', color: slot.color, size: slot.size, pressure, points: [start] }
         }
+        // Shift held from the start: straight line.
+        if (e.shiftKey) gesture.live = { ...gesture.live, geom: 'line', pressure: false }
       }
       hover = { sx: p.x, sy: p.y, pointerType: e.pointerType, buttons: e.buttons }
       updateCssCursor()
@@ -374,7 +421,18 @@ export function Board() {
           const samples = e.getCoalescedEvents?.() ?? []
           const events = samples.length ? samples : [e]
           if (g.kind === 'ink') {
-            for (const ev of events) g.live.points.push(pointFrom(ev, g.live.pressure))
+            if (e.shiftKey || g.live.geom === 'line') {
+              // Shift = straight line from where the stroke started (snaps to 0°/45°/90°).
+              const w = screenToWorld(editor.camera, p.x, p.y)
+              const [ex, ey] = snapAngle(g.start[0], g.start[1], w.x, w.y)
+              g.live = { ...g.live, geom: 'line', pressure: false, points: [[g.start[0], g.start[1], 0.5], [ex, ey, 0.5]] }
+            } else {
+              for (const ev of events) g.live.points.push(pointFrom(ev, g.live.pressure))
+            }
+          } else if (g.kind === 'shape') {
+            const w = screenToWorld(editor.camera, p.x, p.y)
+            if (Math.hypot(p.x - g.sx, p.y - g.sy) > 4) g.moved = true
+            if (g.moved) g.live.points = shapeOutline(g.shape, g.ax, g.ay, w.x, w.y, e.shiftKey, g.live.size)
           } else if (g.kind === 'eraser') {
             for (const ev of events) {
               const lp = local(ev)

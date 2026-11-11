@@ -82,7 +82,6 @@ button:disabled {
   gap: 2px;
   padding: 0 8px;
   height: 56px;
-  overflow: hidden;
 }
 
 .pens {
@@ -90,6 +89,7 @@ button:disabled {
   align-items: flex-start;
   height: 100%;
   gap: 2px;
+  overflow: hidden;
 }
 
 .pen {
@@ -895,4 +895,316 @@ button:disabled {
   overflow: hidden;
   box-shadow: 0 0 0 1px #e3e5ea;
   border: none;
+}
+
+/* ---------- insert menus (shapes, coordinates, templates) ---------- */
+.menu-anchor {
+  position: relative;
+}
+
+.insert-popover {
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  min-width: 260px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.shape-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 40px);
+  gap: 4px;
+}
+
+.shape-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #3b3d43;
+}
+
+.shape-btn:hover {
+  background: #f1f2f5;
+}
+
+.shape-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.insert-popover .settings-hint {
+  margin-top: 10px;
+  max-width: 236px;
+}
+
+.menu-item-row {
+  display: flex;
+  align-items: center;
+}
+
+.menu-item-row .menu-item {
+  flex: 1;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 150px);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.template-card {
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px #e3e5ea;
+  overflow: hidden;
+  background: #fff;
+}
+
+.template-open {
+  display: block;
+  width: 100%;
+}
+
+.template-open:hover .card-thumb {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.template-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 2px 2px 2px 8px;
+}
+
+.template-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sel-popover {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  min-width: 300px;
+}
+
+.tag-new.flat {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* ---------- modal (coordinate settings) ---------- */
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  background: rgba(20, 22, 30, 0.25);
+  display: grid;
+  place-items: center;
+}
+
+.modal {
+  padding: 20px;
+  width: min(440px, calc(100vw - 32px));
+}
+
+.modal h3 {
+  margin: 0 0 14px;
+  font-size: 17px;
+}
+
+.seg {
+  display: inline-flex;
+  background: #f1f2f5;
+  border-radius: 9px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.seg button {
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+}
+
+.seg button.active {
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  color: var(--accent);
+}
+
+.seg.small button {
+  padding: 4px 10px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: center;
+  gap: 12px 10px;
+  margin: 16px 0;
+  font-size: 13px;
+}
+
+.range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.range input,
+.preset-save input {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid #d9dbe1;
+  border-radius: 6px;
+  outline: none;
+  width: 80px;
+}
+
+.range input:focus,
+.preset-save input:focus {
+  border-color: var(--accent);
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preset-save {
+  display: flex;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid #eceef2;
+}
+
+.preset-save input {
+  flex: 1;
+  width: auto;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.text-btn.primary {
+  background: var(--accent);
+  color: #fff;
+  padding: 8px 18px;
+}
+
+.text-btn.primary:hover {
+  background: #4058d6 !important;
+}
+
+/* ---------- updates ---------- */
+.update-banner {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 14px;
+  font-size: 13px;
+}
+
+.about-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  max-width: 300px;
+}
+
+.graph-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 132px);
+  gap: 8px;
+}
+
+.graph-card {
+  position: relative;
+}
+
+.graph-card-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px #e3e5ea;
+  background: #fff;
+}
+
+.graph-card-btn:hover {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.graph-preview {
+  width: 100%;
+  height: 84px;
+  background: radial-gradient(circle, #d6d9e0 0.8px, transparent 1px) 0 0 / 8px 8px;
+  border-radius: 6px;
+}
+
+.graph-card-label {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--muted);
+  text-align: left;
+}
+
+.graph-card-del {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  color: #c92a2a;
+  box-shadow: 0 0 0 1px #e3e5ea;
+  display: none;
+}
+
+.graph-card:hover .graph-card-del {
+  display: grid;
+  place-items: center;
+}
+
+/* Keep preview strokes readable at thumbnail size. */
+.graph-preview line,
+.graph-preview path {
+  vector-effect: non-scaling-stroke;
+}
+
+.graph-preview line {
+  stroke-width: 1.4px;
+}
+
+.graph-preview text {
+  font-size: 0;
 }
