@@ -2,21 +2,22 @@
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
-## What's new in 0.5.0
+## What's new in 0.5.1
 
-### New
-- **Compass (K):** drag ↔ to set the radius (shown in paper cells), then drag the pencil around the
-  needle for an arc or a full circle. It draws with the current pen.
-- **Protractor arcs get their angle written next to them** ("50°"). A short tip at the bottom explains
-  how to use the protractor and the compass (click "Got it" to hide it).
+- **The Linux AppImage starts on Ubuntu 24.04 and newer** without installing anything extra
+  (it used to need libfuse2).
+- **Version history** saves a snapshot every 5 minutes of editing and keeps the last 36 (about three hours).
+- **After restoring a version** the view moves to show the whole board, so it never looks empty.
+- New boards are named like "Board of 11 Nov 2026, 18:30".
+- Clearer wording in the interface (English and Ukrainian) and a fuller description of the `.deb` package.
+
+## Also in 0.5.0
+
+- **Compass (K):** set the radius, then drag the pencil around the needle for an arc or a full circle.
+- Protractor arcs get their angle written next to them ("50°").
 - **Formatted text:** select words (or right-click) → colour, size, **bold**, *italic*, underline.
-  Ctrl+B / Ctrl+I / Ctrl+U work too.
-- **Edit existing text:** double-click or double-tap with the pen, or select it and press **Edit text**.
-- **Any number of sides** (3–24) for the base of a pyramid or prism: type it in the "n =" box.
-
-### Changes
-- The hand (move the board) sits next to the selection tools; the Move tool has the usual four-arrow icon.
-- Fix: on the "All boards" screen several card menus could be open at once.
+  Double-click text to edit it.
+- Any number of sides (3–24) for the base of a pyramid or prism.
 
 Boards saved by 0.5 can't be opened by older versions, so update every computer you use.
 
@@ -38,8 +39,9 @@ Boards saved by 0.5 can't be opened by older versions, so update every computer 
 The builds are not code-signed yet, so the system will warn you once:
 
 - **Windows:** "Windows protected your PC" → click **More info** → **Run anyway**.
-- **macOS:** open the `.dmg`, drag Inkboard to Applications, then **right-click the app → Open → Open**.
+- **macOS:** open the `.dmg`, drag Inkboard to Applications and open it. macOS says it can't verify the app:
+  click **Done**, open **System Settings → Privacy & Security** and click **Open Anyway** at the bottom (once).
   If macOS says the app is damaged, run `xattr -cr /Applications/Inkboard.app` in Terminal.
-- **Linux AppImage:** `chmod +x Inkboard-*.AppImage` and run it. On Ubuntu 24.04+ install FUSE 2 first: `sudo apt install libfuse2t64`.
+- **Linux AppImage:** allow it to run (file Properties → *Executable as Program*, or `chmod +x Inkboard-*.AppImage`) and open it.
 
 Feedback and bug reports: open an issue in this repository.

@@ -3,7 +3,7 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
-## Unreleased
+## [0.5.1] (2026-11-11)
 
 ### Changed
 - Version history saves a snapshot every 5 minutes of editing (the last 36 are kept).
@@ -80,6 +80,7 @@ Boards saved by 0.5 can't be opened by older versions.
 First test build: infinite board, pressure-sensitive vector ink, eraser, paper backgrounds, images,
 lasso selection.
 
+[0.5.1]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.5.1
 [0.5.0]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.5.0
 [0.4.0]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.4.0
 [0.3.1]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.3.1
