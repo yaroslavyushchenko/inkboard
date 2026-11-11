@@ -7,10 +7,24 @@ import type { Protractor } from './engine/protractor'
 import type { BackgroundKind, Camera, GraphParams, LineCap, LineDash } from './engine/types'
 import { detectLanguage, type Lang } from './i18n'
 
-export type Tool = 'select' | 'move' | 'pen' | 'highlighter' | 'eraser' | 'pan' | 'shape'
+export type Tool = 'select' | 'move' | 'pen' | 'highlighter' | 'eraser' | 'pan' | 'shape' | 'text'
 
-/** What a pen button does while it's held (the Wacom driver decides which button the browser sees). */
-export type PenAction = 'eraser' | 'select' | 'move' | 'pan' | 'tool'
+/** Text being typed on the board (a new one, or an existing item while it's edited). */
+export interface TextEdit {
+  id?: string
+  x: number
+  y: number
+  text: string
+  size: number
+  color: string
+}
+
+/**
+ * What a pen button does while it's held (the Wacom driver decides which button the browser sees).
+ * No "move" actions: a stuck button state must never leave the pen dragging things around.
+ */
+export type PenAction = 'eraser' | 'select' | 'tool'
+const PEN_ACTIONS: readonly PenAction[] = ['eraser', 'select', 'tool']
 
 export interface PenButtons {
   /** Lower side switch — arrives as the right button (button 2). */
@@ -21,13 +35,23 @@ export interface PenButtons {
   eraserEnd: PenAction
 }
 
+export const DEFAULT_PEN_BUTTONS: PenButtons = { lower: 'eraser', upper: 'tool', eraserEnd: 'eraser' }
+
+/** Saved settings from older versions may hold actions that no longer exist ("pan", "move"). */
+export function cleanPenButtons(v: unknown): PenButtons {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+  const pick = (k: keyof PenButtons): PenAction =>
+    PEN_ACTIONS.includes(o[k] as PenAction) ? (o[k] as PenAction) : DEFAULT_PEN_BUTTONS[k]
+  return { lower: pick('lower'), upper: pick('upper'), eraserEnd: pick('eraserEnd') }
+}
+
 export interface InkSlot {
   color: string
   /** Width in world units (= screen px at 100% zoom). */
   size: number
   /** Line pattern for new strokes. */
   dash?: LineDash
-  /** Ends of straight lines (Shift lines and the Line shape). */
+  /** Line ends (arrow, dot…) of everything drawn with this pen. */
   startCap?: LineCap
   endCap?: LineCap
 }
@@ -46,6 +70,11 @@ interface UIState {
   shape: ShapeKind
   penButtons: PenButtons
   setPenButton: (which: keyof PenButtons, action: PenAction) => void
+  /** Colour and font size of new text. */
+  textStyle: { color: string; size: number }
+  textEdit: TextEdit | null
+  /** Chosen base (number of sides) for pyramids and prisms. */
+  shapeBases: Partial<Record<ShapeKind, number>>
   /** The user's own coordinate-plane/line presets. */
   graphPresets: GraphPreset[]
   /** Coordinate settings dialog: insert a new graph or edit the selected one. */
@@ -91,8 +120,11 @@ export const useUI = create<UIState>()(
     (set) => ({
       tool: 'pen',
       shape: 'rectangle',
-      penButtons: { lower: 'eraser', upper: 'pan', eraserEnd: 'eraser' },
+      shapeBases: {},
+      penButtons: DEFAULT_PEN_BUTTONS,
       setPenButton: (which, action) => set((s) => ({ penButtons: { ...s.penButtons, [which]: action } })),
+      textStyle: { color: '#1e1e1e', size: 24 },
+      textEdit: null,
       graphPresets: [],
       graphDialog: null,
       activePen: 0,
@@ -132,6 +164,10 @@ export const useUI = create<UIState>()(
       // Only user preferences survive restarts; the board itself is restored from the autosave file.
       name: 'inkboard-settings',
       version: 1,
+      merge: (saved, current) => {
+        const p = (saved ?? {}) as Partial<UIState>
+        return { ...current, ...p, penButtons: cleanPenButtons(p.penButtons) }
+      },
       partialize: (s) => ({
         pens: s.pens,
         highlighter: s.highlighter,
@@ -139,7 +175,9 @@ export const useUI = create<UIState>()(
         background: s.background,
         lang: s.lang,
         graphPresets: s.graphPresets,
-        penButtons: s.penButtons
+        shapeBases: s.shapeBases,
+        penButtons: s.penButtons,
+        textStyle: s.textStyle
       })
     }
   )

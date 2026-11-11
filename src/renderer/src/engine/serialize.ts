@@ -1,5 +1,7 @@
 import { graphBBox, sanitizeGraph } from './graph'
-import type { BackgroundKind, Camera, GraphItem, GraphParams, Item, LineCap, LineDash, Point } from './types'
+import { isShapeKind } from './shapes'
+import { textBBox } from './text'
+import type { BackgroundKind, Camera, GraphItem, GraphParams, Item, LineCap, LineDash, Point, ShapeSpec, TextItem } from './types'
 
 /**
  * `.inkboard` file format: gzip-compressed JSON.
@@ -10,9 +12,10 @@ export const FORMAT = 'inkboard'
 /**
  * 2 = straight-line strokes (`geom`), coordinate graphs, groups.
  * 3 = line patterns (`dash`) and line ends (`startCap` / `endCap`).
+ * 4 = editable shapes (`shape` spec on shape strokes), locked items (`locked`), text items.
  * Readers accept ≤ this; older apps refuse newer files instead of silently dropping data.
  */
-export const FORMAT_VERSION = 3
+export const FORMAT_VERSION = 4
 
 interface SerializedStroke {
   type: 'stroke'
@@ -29,10 +32,13 @@ interface SerializedStroke {
   dash?: LineDash
   startCap?: LineCap
   endCap?: LineCap
+  shape?: ShapeSpec
+  locked?: boolean
 }
 
 interface SerializedGraph extends GraphParams {
   groupId?: string
+  locked?: boolean
   type: 'graph'
   id: string
   z: number
@@ -43,6 +49,7 @@ interface SerializedGraph extends GraphParams {
 
 interface SerializedImage {
   groupId?: string
+  locked?: boolean
   type: 'image'
   id: string
   z: number
@@ -53,13 +60,26 @@ interface SerializedImage {
   h: number
 }
 
+interface SerializedText {
+  type: 'text'
+  id: string
+  z: number
+  x: number
+  y: number
+  text: string
+  size: number
+  color: string
+  groupId?: string
+  locked?: boolean
+}
+
 export interface BoardFile {
   format: typeof FORMAT
   version: number
   background: BackgroundKind
   camera: Camera
   assets: Record<string, string>
-  items: (SerializedStroke | SerializedImage | SerializedGraph)[]
+  items: (SerializedStroke | SerializedImage | SerializedGraph | SerializedText)[]
 }
 
 export interface BoardData {
@@ -74,7 +94,7 @@ const r3 = (v: number): number => Math.round(v * 1000) / 1000
 export function serializeBoard(data: BoardData): BoardFile {
   const assetKeys = new Map<string, string>()
   const assets: Record<string, string> = {}
-  const items = data.items.map((it): SerializedStroke | SerializedImage | SerializedGraph => {
+  const items = data.items.map((it): SerializedStroke | SerializedImage | SerializedGraph | SerializedText => {
     if (it.type === 'stroke') {
       const pts: number[] = new Array(it.points.length * 3)
       it.points.forEach(([x, y, p], i) => {
@@ -82,17 +102,19 @@ export function serializeBoard(data: BoardData): BoardFile {
         pts[i * 3 + 1] = r2(y)
         pts[i * 3 + 2] = r3(p)
       })
-      const { id, z, tool, color, size, pressure, geom, groupId, dash, startCap, endCap } = it
+      const { id, z, tool, color, size, pressure, geom, groupId, dash, startCap, endCap, shape, locked } = it
       return {
         type: 'stroke', id, z, tool, color, size, pressure, pts,
         ...(geom ? { geom } : {}),
         ...(groupId ? { groupId } : {}),
         ...(dash ? { dash } : {}),
         ...(startCap ? { startCap } : {}),
-        ...(endCap ? { endCap } : {})
+        ...(endCap ? { endCap } : {}),
+        ...(shape ? { shape } : {}),
+        ...(locked ? { locked } : {})
       }
     }
-    if (it.type === 'graph') {
+    if (it.type === 'graph' || it.type === 'text') {
       const { bbox: _bbox, ...rest } = it
       return rest
     }
@@ -102,7 +124,11 @@ export function serializeBoard(data: BoardData): BoardFile {
       assetKeys.set(it.src, key)
       assets[key] = it.src
     }
-    return { type: 'image', id: it.id, z: it.z, asset: key, x: it.x, y: it.y, w: it.w, h: it.h, ...(it.groupId ? { groupId: it.groupId } : {}) }
+    return {
+      type: 'image', id: it.id, z: it.z, asset: key, x: it.x, y: it.y, w: it.w, h: it.h,
+      ...(it.groupId ? { groupId: it.groupId } : {}),
+      ...(it.locked ? { locked: true } : {})
+    }
   })
   return { format: FORMAT, version: FORMAT_VERSION, background: data.background, camera: data.camera, assets, items }
 }
@@ -132,19 +158,33 @@ export function deserializeBoard(file: BoardFile): BoardData {
         ...(s.dash ? { dash: s.dash } : {}),
         ...(s.startCap ? { startCap: s.startCap } : {}),
         ...(s.endCap ? { endCap: s.endCap } : {}),
+        ...(readSpec(s.shape) ? { shape: readSpec(s.shape)! } : {}),
+        ...(s.locked ? { locked: true } : {}),
         bbox: { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad }
       })
     } else if (s.type === 'graph') {
       const g: GraphItem = { ...sanitizeGraph(s), type: 'graph', id: s.id, z: s.z, ox: s.ox, oy: s.oy, color: s.color, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
       if (s.groupId) g.groupId = s.groupId
+      if (s.locked) g.locked = true
       g.bbox = graphBBox(g)
       items.push(g)
+    } else if (s.type === 'text') {
+      if (typeof s.text !== 'string' || !s.text || !(s.size > 0)) continue
+      const t: TextItem = {
+        type: 'text', id: s.id, z: s.z, x: s.x, y: s.y, text: s.text, size: s.size, color: s.color,
+        ...(s.groupId ? { groupId: s.groupId } : {}),
+        ...(s.locked ? { locked: true } : {}),
+        bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 }
+      }
+      t.bbox = textBBox(t)
+      items.push(t)
     } else if (s.type === 'image') {
       const src = file.assets[s.asset]
       if (!src) continue
       items.push({
         type: 'image', id: s.id, z: s.z, src, x: s.x, y: s.y, w: s.w, h: s.h,
         ...(s.groupId ? { groupId: s.groupId } : {}),
+        ...(s.locked ? { locked: true } : {}),
         bbox: { minX: s.x, minY: s.y, maxX: s.x + s.w, maxY: s.y + s.h }
       })
     }
@@ -171,4 +211,16 @@ export async function decodeBoard(bytes: Uint8Array): Promise<BoardData> {
   const isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b
   const raw = isGzip ? await pipe(bytes, new DecompressionStream('gzip')) : bytes
   return deserializeBoard(JSON.parse(new TextDecoder().decode(raw)) as BoardFile)
+}
+
+/** Validate a stored shape spec (ignored if malformed, the strokes themselves still load). */
+function readSpec(v: unknown): ShapeSpec | null {
+  if (!v || typeof v !== 'object') return null
+  const o = v as Record<string, unknown>
+  if (!isShapeKind(o.kind)) return null
+  const nums = [o.ax, o.ay, o.bx, o.by]
+  if (!nums.every((n) => typeof n === 'number' && Number.isFinite(n))) return null
+  const spec: ShapeSpec = { kind: o.kind, ax: o.ax as number, ay: o.ay as number, bx: o.bx as number, by: o.by as number }
+  if (typeof o.base === 'number' && Number.isInteger(o.base) && o.base >= 3 && o.base <= 8) spec.base = o.base
+  return spec
 }

@@ -3,6 +3,7 @@ import { viewportBBox } from './camera'
 import { bboxIntersects } from './geometry'
 import { getImage } from './images'
 import { drawGraph } from './graph'
+import { drawText } from './text'
 import { drawAngleLabel, drawProtractor, type Protractor } from './protractor'
 import { buildInkPath, drawCaps, drawStroke, fillInk, linePath, strokeLine, type InkStyle } from './ink'
 import { xformBBox, type Xform } from './transform'
@@ -44,9 +45,19 @@ export interface SelectionOverlay {
   lasso: readonly (readonly [number, number])[] | null
   /** Item (or whole group) under the pointer in select / move mode. */
   hover?: BBox | null
+  /** Selection contains locked items: plain frame with a padlock, no handles. */
+  locked?: boolean
+  /** Corner (resize) handles; off for a single straight line, which shows its end points instead. */
+  corners?: boolean
+  /** Edge-midpoint handles that stretch an editable shape. */
+  sides?: boolean
+  /** End points of a straight line that can be dragged (world units). */
+  ends?: readonly (readonly [number, number])[] | null
 }
 
 export const HANDLE_SIZE = 10
+/** Radius of the round end-point handles of straight lines (screen px). */
+export const END_HANDLE_R = 7
 export const SELECTION_PAD = 6
 
 const ACCENT = '#4f6bed'
@@ -148,16 +159,52 @@ export class BoardRenderer {
     if (sel.box) {
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
       const r = selectionScreenRect(sel.box, cam)
-      ctx.setLineDash([6, 4])
+      ctx.setLineDash(sel.locked ? [] : [6, 4])
       ctx.lineWidth = 1.5
-      ctx.strokeStyle = ACCENT
+      ctx.strokeStyle = sel.locked ? 'rgba(90, 96, 120, 0.8)' : ACCENT
       ctx.strokeRect(r.x, r.y, r.w, r.h)
       ctx.setLineDash([])
-      const hs = HANDLE_SIZE
-      for (const [hx, hy] of selectionCorners(r)) {
+      if (sel.locked) {
+        drawPadlock(ctx, r.x + r.w, r.y)
+      } else {
+        const hs = HANDLE_SIZE
+        if (sel.corners !== false) {
+          for (const [hx, hy] of selectionCorners(r)) {
+            ctx.fillStyle = '#fff'
+            ctx.fillRect(hx - hs / 2, hy - hs / 2, hs, hs)
+            ctx.strokeRect(hx - hs / 2, hy - hs / 2, hs, hs)
+          }
+        }
+        if (sel.sides) {
+          for (const [hx, hy] of selectionSides(r)) {
+            ctx.beginPath()
+            ctx.roundRect(hx - hs / 2, hy - hs / 2, hs, hs, 3)
+            ctx.fillStyle = ACCENT
+            ctx.fill()
+            ctx.strokeStyle = '#fff'
+            ctx.stroke()
+            ctx.strokeStyle = ACCENT
+          }
+        }
+      }
+    }
+
+    if (sel.ends?.length) {
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+      for (const [x, y] of sel.ends) {
+        const sx = (x - cam.x) * cam.zoom
+        const sy = (y - cam.y) * cam.zoom
+        ctx.beginPath()
+        ctx.arc(sx, sy, END_HANDLE_R, 0, Math.PI * 2)
         ctx.fillStyle = '#fff'
-        ctx.fillRect(hx - hs / 2, hy - hs / 2, hs, hs)
-        ctx.strokeRect(hx - hs / 2, hy - hs / 2, hs, hs)
+        ctx.fill()
+        ctx.lineWidth = 2
+        ctx.strokeStyle = ACCENT
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(sx, sy, 2.2, 0, Math.PI * 2)
+        ctx.fillStyle = ACCENT
+        ctx.fill()
       }
     }
 
@@ -168,9 +215,10 @@ export class BoardRenderer {
         if (live.parts.length === 1 && (live.startCap || live.endCap)) drawCaps(ctx, { ...live, points: live.parts[0].points })
       } else if (live.geom === 'line' || live.dash) {
         strokeLine(ctx, linePath(live.points), live.color, live.size, live.tool, live.dash)
-        if (live.geom === 'line' && (live.startCap || live.endCap)) drawCaps(ctx, live)
+        if (live.startCap || live.endCap) drawCaps(ctx, live)
       } else {
         fillInk(ctx, buildInkPath(live.points, live, false), live.color, live.tool)
+        if (live.startCap || live.endCap) drawCaps(ctx, live)
       }
     }
 
@@ -239,6 +287,8 @@ export function drawItems(
       drawStroke(c, item)
     } else if (item.type === 'graph') {
       drawGraph(c, item)
+    } else if (item.type === 'text') {
+      drawText(c, item)
     } else {
       const img = getImage(item.src)
       if (img.complete && img.naturalWidth > 0) c.drawImage(img, item.x, item.y, item.w, item.h)
@@ -267,4 +317,35 @@ export function selectionCorners(r: { x: number; y: number; w: number; h: number
     [r.x + r.w, r.y + r.h],
     [r.x, r.y + r.h]
   ]
+}
+
+/** Edge-midpoint handles: top, right, bottom, left. */
+export function selectionSides(r: { x: number; y: number; w: number; h: number }): [number, number][] {
+  return [
+    [r.x + r.w / 2, r.y],
+    [r.x + r.w, r.y + r.h / 2],
+    [r.x + r.w / 2, r.y + r.h],
+    [r.x, r.y + r.h / 2]
+  ]
+}
+
+/** Small padlock badge at a corner of a locked selection (ctx in screen px). */
+function drawPadlock(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.beginPath()
+  ctx.arc(0, 0, 11, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgb(90, 96, 120)'
+  ctx.fill()
+  ctx.strokeStyle = '#fff'
+  ctx.lineWidth = 1.6
+  ctx.beginPath()
+  ctx.arc(0, -2, 3, Math.PI, 0)
+  ctx.lineTo(3, 0)
+  ctx.moveTo(-3, 0)
+  ctx.lineTo(-3, -2)
+  ctx.stroke()
+  ctx.fillStyle = '#fff'
+  ctx.fillRect(-4.5, -0.5, 9, 6.5)
+  ctx.restore()
 }

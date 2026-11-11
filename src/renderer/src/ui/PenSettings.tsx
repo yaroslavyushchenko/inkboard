@@ -3,7 +3,7 @@ import { useT, type MessageKey } from '../i18n'
 import { useUI, type PenAction, type PenButtons } from '../store'
 import { KeyboardIcon } from './icons'
 
-const ACTIONS: PenAction[] = ['eraser', 'select', 'move', 'pan', 'tool']
+const ACTIONS: PenAction[] = ['eraser', 'select', 'tool']
 const BUTTONS: { key: keyof PenButtons; label: MessageKey }[] = [
   { key: 'lower', label: 'pen.lower' },
   { key: 'upper', label: 'pen.upper' },

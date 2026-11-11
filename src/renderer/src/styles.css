@@ -1409,3 +1409,75 @@ button:disabled {
 .update-banner.success {
   border-color: rgba(47, 158, 68, 0.35);
 }
+
+/* base of a pyramid / prism */
+.base-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #eceef2;
+}
+
+.base-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.shape-btn.small {
+  width: 34px;
+  height: 34px;
+}
+
+.shape-popover {
+  min-width: 230px;
+  padding: 10px;
+}
+
+.labeled-btn.locked {
+  color: var(--accent);
+}
+
+.size-row input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.size-value {
+  min-width: 30px;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* typing text on the board */
+.text-editor {
+  position: absolute;
+  z-index: 5;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: 1.5px dashed var(--accent);
+  outline-offset: 4px;
+  background: transparent;
+  resize: none;
+  overflow: hidden;
+  white-space: pre;
+  field-sizing: content;
+  min-width: 1ch;
+  min-height: 1lh;
+}
+
+.size.text-size span {
+  width: auto !important;
+  height: auto !important;
+  background: none !important;
+  font-weight: 600;
+  color: #3b3d43;
+  line-height: 1;
+  box-shadow: none !important;
+}

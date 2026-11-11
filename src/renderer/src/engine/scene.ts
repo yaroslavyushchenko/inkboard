@@ -53,12 +53,16 @@ export class Scene {
     this.emit()
   }
 
-  /** Swap items for updated versions with the same ids (move / scale). */
-  replace(oldItems: Item[], newItems: Item[]): void {
+  /**
+   * Swap items for updated versions (move / scale / edit). `record = false` is for live previews
+   * during a drag; the gesture records one entry from the original items when it ends.
+   */
+  replace(oldItems: Item[], newItems: Item[], record = true): void {
     if (oldItems.length === 0) return
     this.delete(oldItems)
     this.insert(newItems)
-    this.record({ added: newItems, removed: oldItems })
+    if (record) this.record({ added: newItems, removed: oldItems })
+    else this.emit()
   }
 
   /** Replace the whole board (open file / new board). Clears history. */

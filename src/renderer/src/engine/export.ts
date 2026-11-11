@@ -3,6 +3,7 @@ import { loadImage } from './images'
 import { graphSvg } from './graph'
 import { capsSvg, dashPattern, HIGHLIGHTER_ALPHA, inkOutlineSvg, lineSvgPath, usesLineRender } from './ink'
 import { drawItems } from './renderer'
+import { textSvg } from './text'
 import { unionBBox } from './transform'
 import type { BackgroundKind, BBox, Camera, Item } from './types'
 
@@ -106,6 +107,8 @@ export function renderSvg(items: readonly Item[], bg: BackgroundKind): { svg: st
   for (const it of items) {
     if (it.type === 'graph') {
       parts.push(graphSvg(it))
+    } else if (it.type === 'text') {
+      parts.push(textSvg(it))
     } else if (it.type === 'image') {
       parts.push(`<image href="${esc(it.src)}" x="${r2(it.x)}" y="${r2(it.y)}" width="${r2(it.w)}" height="${r2(it.h)}" preserveAspectRatio="none"/>`)
     } else if (usesLineRender(it)) {

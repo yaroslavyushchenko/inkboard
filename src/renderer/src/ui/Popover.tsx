@@ -17,7 +17,7 @@ export function Popover({
       if (ref.current && !ref.current.contains(t) && !(t as HTMLElement).closest?.('[data-popover-anchor]')) onClose()
     }
     const key = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
+      if (e.code === 'Escape') onClose()
     }
     window.addEventListener('pointerdown', down, true)
     window.addEventListener('keydown', key)

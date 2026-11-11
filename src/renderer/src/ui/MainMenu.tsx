@@ -29,8 +29,8 @@ function BoardTitle() {
       onChange={(e) => setValue(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') commit()
-        if (e.key === 'Escape') setEditing(false)
+        if ((e.code === 'Enter' || e.code === 'NumpadEnter')) commit()
+        if (e.code === 'Escape') setEditing(false)
       }}
     />
   ) : (

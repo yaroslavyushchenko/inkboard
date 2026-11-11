@@ -63,3 +63,13 @@ depend on them. New shortcuts: add to `shortcuts.ts`, this file, the test and bo
 | Pen eraser end | Eraser by default |
 | Mouse middle / right button drag | Move the board |
 | Mouse wheel / touchpad | Scroll; Ctrl + wheel or pinch zooms |
+
+## While typing text
+
+Text tool: **T** button in the toolbar (no keyboard shortcut — T is the protractor).
+
+| Keys | Action |
+|---|---|
+| Enter | New line |
+| Esc or Ctrl+Enter | Done |
+| Double-click on text (V / M) | Edit it |

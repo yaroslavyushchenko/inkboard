@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { editor } from '../editor'
 import { BUILTIN_GRAPHS, graphBBox, graphSvg, type GraphPreset } from '../engine/graph'
 import { lineSvgPath } from '../engine/ink'
-import { SHAPES_2D, SHAPES_3D, shapeParts, type ShapeKind } from '../engine/shapes'
+import { SHAPE_BASES, SHAPES_2D, SHAPES_3D, shapeParts, type ShapeKind } from '../engine/shapes'
 import type { GraphItem, GraphParams } from '../engine/types'
 import { useT, type MessageKey } from '../i18n'
 import { useUI } from '../store'
-import { AxesIcon, ShapesIcon, StampIcon } from './icons'
+import { AxesIcon, PolygonIcon, ShapesIcon, StampIcon } from './icons'
 import { Popover } from './Popover'
 
 /** Toolbar button that opens a popover below the toolbar. */
@@ -41,9 +41,9 @@ function MenuButton({
 }
 
 /** Tiny SVG preview of a shape, drawn with the real outline code. */
-export function ShapePreview({ kind }: { kind: ShapeKind }) {
+export function ShapePreview({ kind, base }: { kind: ShapeKind; base?: number }) {
   const linear = kind === 'line' || kind === 'arrow' || kind === 'doubleArrow'
-  const parts = linear ? shapeParts(kind, 4, 20, 24, 8, false, 1.2) : shapeParts(kind, 4, 4, 24, 24, false, 1.2)
+  const parts = linear ? shapeParts(kind, 4, 20, 24, 8, false, 1.2) : shapeParts(kind, 4, 4, 24, 24, false, 1.2, base)
   return (
     <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
       {parts.map((part, i) => (
@@ -62,11 +62,30 @@ export function ShapePreview({ kind }: { kind: ShapeKind }) {
   )
 }
 
+/** "Base: △ □ ⬠ ⬡" — number of sides of a pyramid's / prism's base. */
+export function BaseRow({ kind, value, onChange }: { kind: ShapeKind; value: number; onChange: (n: number) => void }) {
+  const t = useT()
+  const opts = SHAPE_BASES[kind]
+  if (!opts) return null
+  return (
+    <div className="base-row">
+      <span className="base-label">{t('shapes.base')}</span>
+      {opts.options.map((n) => (
+        <button key={n} className={`shape-btn small ${value === n ? 'active' : ''}`} title={t(`shapes.base${n}` as MessageKey)} onClick={() => onChange(n)}>
+          <PolygonIcon n={n} />
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function ShapesMenu() {
   const t = useT()
   const [open, setOpen] = useState(false)
   const tool = useUI((s) => s.tool)
   const shape = useUI((s) => s.shape)
+  const bases = useUI((s) => s.shapeBases)
+  const baseOf = (k: ShapeKind): number | undefined => (SHAPE_BASES[k] ? (bases[k] ?? SHAPE_BASES[k]!.def) : undefined)
   return (
     <MenuButton icon={<ShapesIcon />} title={t('shapes.title')} active={tool === 'shape'} open={open} setOpen={setOpen}>
       <div className="popover-title">{t('shapes.title')}</div>
@@ -79,14 +98,22 @@ export function ShapesMenu() {
               title={t(`shape.${k}` as MessageKey)}
               onClick={() => {
                 useUI.setState({ tool: 'shape', shape: k })
-                setOpen(false)
+                // Solids with a choice of base keep the menu open so the base can be picked.
+                if (!SHAPE_BASES[k]) setOpen(false)
               }}
             >
-              <ShapePreview kind={k} />
+              <ShapePreview kind={k} base={baseOf(k)} />
             </button>
           ))}
         </div>
       ))}
+      {tool === 'shape' && SHAPE_BASES[shape] && (
+        <BaseRow
+          kind={shape}
+          value={baseOf(shape)!}
+          onChange={(n) => useUI.setState((s) => ({ shapeBases: { ...s.shapeBases, [shape]: n } }))}
+        />
+      )}
       <p className="settings-hint">{t('shapes.hint')}</p>
     </MenuButton>
   )
@@ -237,8 +264,8 @@ export function TemplatesMenu() {
                     void editor.renameTemplate(tp.id, e.target.value)
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-                    if (e.key === 'Escape') setEditing(null)
+                    if ((e.code === 'Enter' || e.code === 'NumpadEnter')) (e.target as HTMLInputElement).blur()
+                    if (e.code === 'Escape') setEditing(null)
                   }}
                 />
               ) : (

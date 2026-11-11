@@ -99,12 +99,24 @@ in progress and the pen cursor (so drawing never forces a full board redraw).
 - [x] Version shown in the menu, home screen and Settings; "Updated to X" notice; download progress
 - [x] Auto-update from GitHub Releases (Windows, AppImage); "new version" notice on macOS / .deb
 
+### Stage 3.6 — editing (v0.4)
+- [x] Fix: resize handles work in the Move tool too (they used to move instead)
+- [x] Fix: a pen release outside the board no longer leaves the board "stuck" panning
+- [x] Pen buttons: no "move" actions any more (use a Space keystroke in the Wacom driver to pan)
+- [x] Drag the end points of straight lines; snaps to whole degrees on the protractor, Shift = 15°
+- [x] Shapes remember how they were made: stretch with side handles, switch kind / base afterwards
+- [x] Pyramids and prisms with a 3-, 4-, 5- or 6-sided base
+- [x] Eraser removes a whole shape, not single edges
+- [x] Lock items / groups (no erase, delete, move, resize or restyle until unlocked)
+- [x] Line ends on freehand ink; any line width via a slider
+- [x] Text tool (click and type, double-click to edit, paste text); 3D coordinate axes
+
 ### Stage 4 — content
 - [ ] **Hold-to-snap shapes** (like Procreate's QuickShape): draw and keep the pen down ~0.7 s
       (configurable) → the stroke becomes a clean line / circle / ellipse / rectangle / triangle / arrow.
       While still holding, the shape can be dragged to resize/rotate. The result stays a vector stroke.
       On/off in settings.
-- [ ] Text, sticky notes
+- [ ] Sticky notes, text formatting (bold, lists)
 - [ ] Import PDF pages as backgrounds (worksheets for students)
 - [ ] Templates (math grid, handwriting practice, etc.)
 

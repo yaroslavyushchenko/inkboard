@@ -36,17 +36,21 @@ export function GraphDialog() {
     useUI.setState((s) => ({ graphPresets: [...s.graphPresets, preset] }))
     setPresetName('')
   }
-  const isPlane = p.kind === 'plane'
+  const isPlane = p.kind === 'plane' || p.kind === 'space'
 
   return (
     <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="panel modal graph-dialog" onKeyDown={(e) => e.key === 'Escape' && close()}>
+      <div className="panel modal graph-dialog" onKeyDown={(e) => e.code === 'Escape' && close()}>
         <h3>{t(dialog.mode === 'edit' ? 'graph.editTitle' : 'graph.customTitle')}</h3>
 
         <div className="seg">
-          {(['line', 'plane'] as const).map((k) => (
-            <button key={k} className={p.kind === k ? 'active' : ''} onClick={() => setP({ ...p, kind: k })}>
-              {t(k === 'line' ? 'graph.kindLine' : 'graph.kindPlane')}
+          {(['line', 'plane', 'space'] as const).map((k) => (
+            <button
+              key={k}
+              className={p.kind === k ? 'active' : ''}
+              onClick={() => setP(k === 'space' && p.kind !== 'space' ? { ...p, kind: k, zMin: p.zMin ?? 0, zMax: p.zMax ?? Math.max(1, p.yMax) } : { ...p, kind: k })}
+            >
+              {t(k === 'line' ? 'graph.kindLine' : k === 'plane' ? 'graph.kindPlane' : 'graph.kindSpace')}
             </button>
           ))}
         </div>
@@ -65,6 +69,16 @@ export function GraphDialog() {
                 <input type="number" value={p.yMin} onChange={num('yMin')} />
                 <span>…</span>
                 <input type="number" value={p.yMax} onChange={num('yMax')} />
+              </div>
+            </>
+          )}
+          {p.kind === 'space' && (
+            <>
+              <label>{t('graph.zRange')}</label>
+              <div className="range">
+                <input type="number" value={p.zMin ?? 0} onChange={num('zMin')} />
+                <span>…</span>
+                <input type="number" value={p.zMax ?? 5} onChange={num('zMax')} />
               </div>
             </>
           )}

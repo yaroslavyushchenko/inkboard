@@ -132,8 +132,8 @@ function BoardCard({ entry, tags }: { entry: BoardEntry; tags: Tag[] }) {
             onChange={(e) => setTitle(e.target.value)}
             onBlur={commitRename}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitRename()
-              if (e.key === 'Escape') setRenaming(false)
+              if ((e.code === 'Enter' || e.code === 'NumpadEnter')) commitRename()
+              if (e.code === 'Escape') setRenaming(false)
             }}
           />
         ) : (

@@ -13,13 +13,18 @@ import {
   type BoardData,
   type BoardFile
 } from './engine/serialize'
+import { editableShape, regenerateShape } from './engine/shapeItems'
 import { applyXform, unionBBox, type Xform } from './engine/transform'
-import type { BBox, Camera, GraphItem, GraphParams, ImageItem, Item, LineCap, LineDash, StrokeItem } from './engine/types'
+import { textBBox } from './engine/text'
+import type { BBox, Camera, GraphItem, GraphParams, ImageItem, Item, LineCap, LineDash, ShapeSpec, StrokeItem, TextItem } from './engine/types'
 import { translate, type MessageKey } from './i18n'
 import { platform } from './platform'
 import { useUI } from './store'
 
 const CLIPBOARD_MIME = 'application/x-inkboard'
+
+/** Line ends fit any open line: freehand ink, straight lines, the Line shape (not closed shapes or arrows). */
+export const canHaveEnds = (s: StrokeItem): boolean => !s.shape || s.shape.kind === 'line'
 /** Autosave: wait for a 1 s pause in editing, but never longer than 5 s after the first unsaved change. */
 const SAVE_DEBOUNCE_MS = 1000
 const SAVE_MAX_WAIT_MS = 5000
@@ -147,9 +152,9 @@ class Editor {
     useUI.setState({ selectedIds: all.map((i) => i.id) })
   }
 
-  /** Change colour / width / pattern / ends of the selected lines (undoable). Ends only go on straight lines. */
+  /** Change colour / width / pattern / ends of the selected lines (undoable). Ends don't go on closed shapes. */
   restyleSelection(patch: { color?: string; size?: number; dash?: LineDash; startCap?: LineCap; endCap?: LineCap }): void {
-    const strokes = this.selectedItems().filter((i): i is StrokeItem => i.type === 'stroke')
+    const strokes = this.selectedItems().filter((i): i is StrokeItem => i.type === 'stroke' && !i.locked)
     if (!strokes.length) return
     const next = strokes.map((s) => {
       const n: StrokeItem = { ...s }
@@ -162,15 +167,90 @@ class Editor {
         if (patch.dash) n.dash = patch.dash
         else delete n.dash
       }
-      const straight = n.geom === 'line' && n.points.length === 2
       for (const k of ['startCap', 'endCap'] as const) {
-        if (!(k in patch) || !straight) continue
+        if (!(k in patch) || !canHaveEnds(n)) continue
         if (patch[k]) n[k] = patch[k]
         else delete n[k]
       }
       return n
     })
     this.scene.replace(strokes, next)
+  }
+
+  // ---------------------------------------------------------------- text
+
+  /** Start typing new text with its top-left corner at a board point. */
+  startText(x: number, y: number): void {
+    this.commitText()
+    const { color, size } = useUI.getState().textStyle
+    useUI.setState({ textEdit: { x, y, text: '', size, color }, selectedIds: [] })
+  }
+
+  /** Edit an existing text item in place (it's hidden on the board meanwhile). */
+  editText(item: TextItem): void {
+    if (item.locked) return
+    this.commitText()
+    useUI.setState({ textEdit: { id: item.id, x: item.x, y: item.y, text: item.text, size: item.size, color: item.color }, selectedIds: [] })
+    this.invalidate(true)
+  }
+
+  /** Finish typing: add / update the text item (empty text removes it). Undoable. */
+  commitText(): void {
+    const te = useUI.getState().textEdit
+    if (!te) return
+    useUI.setState({ textEdit: null })
+    const text = te.text.replace(/\s+$/, '')
+    const old = te.id ? (this.scene.getById([te.id])[0] as TextItem | undefined) : undefined
+    if (!text) {
+      if (old) this.scene.remove([old])
+      else this.invalidate(true)
+      return
+    }
+    if (old && old.text === text) return this.invalidate(true)
+    const item: TextItem = {
+      type: 'text',
+      id: old?.id ?? newId(),
+      z: old?.z ?? this.scene.allocZ(),
+      x: te.x,
+      y: te.y,
+      text,
+      size: te.size,
+      color: te.color,
+      ...(old?.groupId ? { groupId: old.groupId } : {}),
+      bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 }
+    }
+    item.bbox = textBBox(item)
+    if (old) this.scene.replace([old], [item])
+    else this.scene.add([item])
+  }
+
+  /** Paste plain text as a text item in the middle of the view. */
+  insertText(text: string): void {
+    const clean = text.replace(/\r\n?/g, '\n').replace(/\t/g, '    ').trim()
+    if (!clean) return
+    const { color, size } = useUI.getState().textStyle
+    const item: TextItem = { type: 'text', id: newId(), z: this.scene.allocZ(), x: 0, y: 0, text: clean, size, color, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
+    const b = textBBox(item)
+    const c = screenToWorld(this.camera, this.view().width / 2, this.view().height / 2)
+    item.x = c.x - (b.maxX - b.minX) / 2
+    item.y = c.y - (b.maxY - b.minY) / 2
+    item.bbox = textBBox(item)
+    this.scene.add([item])
+    useUI.setState({ tool: 'select' })
+    this.setSelection([item])
+  }
+
+  /** Change colour / font size of the selected text items (undoable). */
+  restyleText(patch: { color?: string; size?: number }): void {
+    const texts = this.selectedItems().filter((i): i is TextItem => i.type === 'text' && !i.locked)
+    if (!texts.length) return
+    this.scene.replace(
+      texts,
+      texts.map((t) => {
+        const n = { ...t, ...(patch.color ? { color: patch.color } : {}), ...(patch.size ? { size: patch.size } : {}) }
+        return { ...n, bbox: textBBox(n) }
+      })
+    )
   }
 
   /** Ctrl+G: join the selection into one group (existing groups inside are merged). */
@@ -227,10 +307,47 @@ class Editor {
     this.scene.replace(old, old.map((i) => applyXform(i, p.t)))
   }
 
+  /** Delete the selection; locked items stay (and stay selected). */
   deleteSelection(): void {
-    const items = this.selectedItems()
-    this.clearSelection()
+    const all = this.selectedItems()
+    const items = all.filter((i) => !i.locked)
+    const kept = all.filter((i) => i.locked)
+    useUI.setState({ selectedIds: kept.map((i) => i.id) })
     this.scene.remove(items)
+  }
+
+  /** True when anything in the selection is locked (it can't be moved, resized or restyled). */
+  selectionLocked(): boolean {
+    return this.selectedItems().some((i) => i.locked)
+  }
+
+  /** Lock the selection (or unlock it, if all of it is locked already). Undoable. */
+  toggleLockSelection(): void {
+    const items = this.selectedItems()
+    if (!items.length) return
+    const lock = !items.every((i) => i.locked)
+    this.scene.replace(
+      items,
+      items.map((i) => {
+        const n = { ...i }
+        if (lock) n.locked = true
+        else delete n.locked
+        return n
+      })
+    )
+  }
+
+  /** Change the selected shape: another kind, another base, or another box (undoable). */
+  updateShape(patch: Partial<ShapeSpec>): void {
+    const sel = editableShape(this.selectedItems())
+    if (!sel || sel.parts.some((p) => p.locked)) return
+    const spec: ShapeSpec = { ...sel.spec, ...patch }
+    if (!patch.base && spec.kind !== sel.spec.kind) delete spec.base
+    const gid = sel.parts[0].groupId
+    const inUserGroup = !!gid && this.scene.getItems().some((i) => i.groupId === gid && !sel.parts.includes(i as StrokeItem))
+    const next = regenerateShape(sel.parts, spec, () => this.scene.allocZ(), inUserGroup)
+    this.scene.replace(sel.parts, next)
+    this.setSelection(next)
   }
 
   /** Copies of `items` with fresh ids, on top of everything, shifted by (dx, dy). */
@@ -246,6 +363,8 @@ class Editor {
       .sort((a, b) => a.z - b.z)
       .map((it) => {
         const copy = { ...applyXform(it, { s: 1, ax: 0, ay: 0, dx, dy }), id: newId(), z: this.scene.allocZ() }
+        // Copies start unlocked.
+        delete copy.locked
         const g = regroup(it.groupId)
         if (g) copy.groupId = g
         return copy
@@ -269,7 +388,12 @@ class Editor {
     if (!items.length || !e.clipboardData) return false
     const file = serializeBoard({ items, background: useUI.getState().background, camera: this.camera })
     e.clipboardData.setData(CLIPBOARD_MIME, JSON.stringify(file))
-    e.clipboardData.setData('text/plain', JSON.stringify(file))
+    // Only text selected: other apps get the words themselves.
+    const onlyText = items.every((i) => i.type === 'text')
+    e.clipboardData.setData(
+      'text/plain',
+      onlyText ? [...items].sort((a, b) => a.bbox.minY - b.bbox.minY).map((i) => (i as TextItem).text).join('\n') : JSON.stringify(file)
+    )
     if (cut) this.deleteSelection()
     return true
   }
@@ -297,6 +421,11 @@ class Editor {
       void this.insertImages(files)
       return true
     }
+    const text = data.getData('text/plain')
+    if (text.trim()) {
+      this.insertText(text)
+      return true
+    }
     return false
   }
 
@@ -319,8 +448,10 @@ class Editor {
   insertGraph(params: GraphParams): void {
     const p = sanitizeGraph(params)
     const c = screenToWorld(this.camera, this.view().width / 2, this.view().height / 2)
-    const midX = ((p.xMin + p.xMax) / 2) * p.unit
-    const midY = p.kind === 'plane' ? ((p.yMin + p.yMax) / 2) * p.unit : 0
+    // Centre the graph's box in the view.
+    const b0 = graphBBox({ ...p, ox: 0, oy: 0 })
+    const midX = (b0.minX + b0.maxX) / 2
+    const midY = -(b0.minY + b0.maxY) / 2
     const snap = (v: number): number => Math.round(v / 24) * 24
     const g: GraphItem = {
       ...p,
@@ -476,6 +607,8 @@ class Editor {
    * also refresh the thumbnail and remember the view position.
    */
   async flush(final = false): Promise<void> {
+    // Text still being typed is part of the board.
+    if (final) this.commitText()
     if (this.saveTimer) clearTimeout(this.saveTimer)
     this.saveTimer = null
     this.firstPendingAt = null
@@ -746,3 +879,6 @@ class Editor {
 }
 
 export const editor = new Editor()
+
+// Dev builds only: lets UI tests in the browser inspect the board state.
+if (import.meta.env.DEV) (window as unknown as { __inkboard: Editor }).__inkboard = editor

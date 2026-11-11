@@ -1,3 +1,5 @@
+import type { ShapeKind } from './shapes'
+
 /** A sampled input point in world coordinates: x, y and pen pressure (0..1). */
 export type Point = [x: number, y: number, pressure: number]
 
@@ -15,6 +17,8 @@ interface ItemBase {
   bbox: BBox
   /** Items sharing a groupId are selected, moved and scaled together (Ctrl+G). */
   groupId?: string
+  /** Locked items can't be erased, deleted, moved, resized or restyled until unlocked. */
+  locked?: boolean
 }
 
 /**
@@ -40,6 +44,22 @@ export interface StrokeItem extends ItemBase {
   /** End decorations of straight lines. */
   startCap?: LineCap
   endCap?: LineCap
+  /**
+   * Set on strokes made by the shape tool (every part of a solid carries the same spec), so the shape
+   * can be re-generated later: stretched, switched to another shape, or given another base.
+   */
+  shape?: ShapeSpec
+}
+
+/** Parameters a shape was generated from: kind, the dragged box (a → b) and the base of a solid. */
+export interface ShapeSpec {
+  kind: ShapeKind
+  ax: number
+  ay: number
+  bx: number
+  by: number
+  /** Number of base sides for pyramids and prisms. */
+  base?: number
 }
 
 export type LineDash = 'dashed' | 'dotted'
@@ -60,12 +80,16 @@ export interface ImageItem extends ItemBase {
  * so it stays vector-sharp and can be re-configured after insertion.
  */
 export interface GraphParams {
-  kind: 'line' | 'plane'
+  /** 'space' = 3D axes (x towards the viewer, y to the right, z up), drawn in oblique projection. */
+  kind: 'line' | 'plane' | 'space'
   xMin: number
   xMax: number
   /** Plane only. */
   yMin: number
   yMax: number
+  /** 3D axes only. */
+  zMin?: number
+  zMax?: number
   /** Board units per 1 on the axis (24 = one dot-paper cell). */
   unit: number
   /** Number labels every N units. */
@@ -82,7 +106,17 @@ export interface GraphItem extends ItemBase, GraphParams {
   color: string
 }
 
-export type Item = StrokeItem | ImageItem | GraphItem
+/** Typed text. Position is the top-left corner; `size` is the font size in board units. */
+export interface TextItem extends ItemBase {
+  type: 'text'
+  x: number
+  y: number
+  text: string
+  size: number
+  color: string
+}
+
+export type Item = StrokeItem | ImageItem | GraphItem | TextItem
 
 export type BackgroundKind = 'blank' | 'dots' | 'grid' | 'lines'
 

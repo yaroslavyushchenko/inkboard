@@ -8,6 +8,7 @@ import { HomeScreen } from './ui/HomeScreen'
 import { MainMenu } from './ui/MainMenu'
 import { SelectionToolbar } from './ui/SelectionToolbar'
 import { ShortcutsDialog } from './ui/ShortcutsDialog'
+import { TextEditor } from './ui/TextEditor'
 import { Toolbar } from './ui/Toolbar'
 import { UpdateBanner } from './ui/UpdateBanner'
 import { VersionHistory } from './ui/VersionHistory'
@@ -22,6 +23,7 @@ export function App() {
     <div className="app">
       {/* The board stays mounted under the home screen so switching back is instant. */}
       <Board />
+      <TextEditor />
       <SelectionToolbar />
       <MainMenu />
       <Toolbar />

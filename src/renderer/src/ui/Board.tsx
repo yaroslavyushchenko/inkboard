@@ -4,33 +4,78 @@ import { bboxIntersects, bboxOfPoints, circleHitsPolyline, newId } from '../engi
 import { setImageLoadListener } from '../engine/images'
 import {
   BoardRenderer,
+  END_HANDLE_R,
   HANDLE_SIZE,
   selectionCorners,
   selectionScreenRect,
+  selectionSides,
   type CursorState,
   type LiveStroke
 } from '../engine/renderer'
-import { arcStroke, baseStroke, hitProtractor, rayStroke, scaleAngle, toLocal, type ProtractorHit } from '../engine/protractor'
-import { DEFAULT_SHAPE_SIZE, isLinear, shapeParts, snapAngle, type ShapeKind } from '../engine/shapes'
+import { arcStroke, baseStroke, hitProtractor, rayStroke, scaleAngle, toLocal, toWorld, type ProtractorHit } from '../engine/protractor'
+import { buildShapeItems, editableShape, regenerateShape, shapeMembers } from '../engine/shapeItems'
+import { DEFAULT_SHAPE_SIZE, isLinear, SHAPE_BASES, shapeBox, shapeParts, snapAngle, type ShapeKind } from '../engine/shapes'
 import { hitTest, itemsInLasso } from '../engine/transform'
-import type { BBox, Item, Point, StrokeItem } from '../engine/types'
+import type { BBox, Item, Point, ShapeSpec, StrokeItem } from '../engine/types'
 import { editor } from '../editor'
 import { matchShortcut, type ShortcutId } from '../shortcuts'
 import { useUI, type PenAction, type Tool } from '../store'
 
-type Effective = 'ink' | 'eraser' | 'pan' | 'select' | 'shape' | 'move'
+type Effective = 'ink' | 'eraser' | 'pan' | 'select' | 'shape' | 'move' | 'text'
 
 type Gesture =
   | { kind: 'ink'; pointerId: number; live: LiveStroke; start: Point; snap?: { mode: 'arc'; startDeg: number } | { mode: 'center' } | { mode: 'base'; u0: number } }
   | { kind: 'protMove'; pointerId: number; lastX: number; lastY: number }
   | { kind: 'protRotate'; pointerId: number }
-  | { kind: 'shape'; pointerId: number; shape: ShapeKind; ax: number; ay: number; sx: number; sy: number; moved: boolean; live: LiveStroke }
+  | {
+      kind: 'shape'
+      pointerId: number
+      shape: ShapeKind
+      base?: number
+      ax: number
+      ay: number
+      bx: number
+      by: number
+      keep: boolean
+      sx: number
+      sy: number
+      moved: boolean
+      live: LiveStroke
+    }
+  | { kind: 'endpoint'; pointerId: number; original: StrokeItem; current: StrokeItem; which: 0 | 1 }
+  | {
+      kind: 'reshape'
+      pointerId: number
+      side: number
+      spec: ShapeSpec
+      parts: StrokeItem[]
+      current: StrokeItem[]
+      inUserGroup: boolean
+      startX: number
+      startY: number
+    }
   | { kind: 'eraser'; pointerId: number; removed: Item[]; lastX: number; lastY: number }
   | { kind: 'pan'; pointerId: number; lastX: number; lastY: number }
   | { kind: 'pinch'; dist: number; cx: number; cy: number }
   | { kind: 'lasso'; pointerId: number; points: [number, number][]; startX: number; startY: number; moved: boolean }
   | { kind: 'move'; pointerId: number; startX: number; startY: number }
   | { kind: 'scale'; pointerId: number; ax: number; ay: number; cx: number; cy: number }
+
+type End = [number, number]
+
+/** End points of a straight line that can be dragged (Shift lines, protractor rays, line / arrow shapes). */
+function lineEnds(it: Item): [End, End] | null {
+  if (it.type !== 'stroke' || it.locked) return null
+  if (it.shape) return isLinear(it.shape.kind) ? [[it.shape.ax, it.shape.ay], [it.shape.bx, it.shape.by]] : null
+  if (it.geom === 'line' && it.points.length === 2) return [[it.points[0][0], it.points[0][1]], [it.points[1][0], it.points[1][1]]]
+  return null
+}
+
+type SelHit =
+  | { kind: 'handle'; corner: number; box: BBox }
+  | { kind: 'side'; side: number }
+  | { kind: 'end'; which: 0 | 1; item: StrokeItem }
+  | { kind: 'body' }
 
 interface Hover {
   sx: number
@@ -66,13 +111,24 @@ export function Board() {
     const frame = (): void => {
       raf = 0
       const ui = useUI.getState()
-      if (baseDirty) renderer.renderBase(scene.getItems(), editor.camera, ui.background, editor.preview)
+      if (baseDirty) {
+        // Text being edited is shown by the text box instead.
+        const editing = ui.textEdit?.id
+        const items = editing ? scene.getItems().filter((i) => i.id !== editing) : scene.getItems()
+        renderer.renderBase(items, editor.camera, ui.background, editor.preview)
+      }
       if (overlayDirty) {
         const live = gesture?.kind === 'ink' || gesture?.kind === 'shape' ? gesture.live : null
+        const info = selInfo()
+        const hl = !gesture && hoverLine && hoverLine.id !== info?.line?.id ? hoverLine : null
         renderer.renderOverlay(live, cursorState(), editor.camera, {
-          box: ui.selectedIds.length ? editor.selectionBBox() : null,
+          box: info?.box ?? null,
           lasso: gesture?.kind === 'lasso' ? gesture.points : null,
-          hover: gesture ? null : hoverBox
+          hover: gesture ? null : hoverBox,
+          locked: info?.locked,
+          corners: !info?.line,
+          sides: !!info?.shape,
+          ends: info?.line ? lineEnds(info.line) : hl ? lineEnds(hl) : null
         }, { protractor: ui.protractor, angleLabel })
       }
       baseDirty = false
@@ -101,22 +157,93 @@ export function Board() {
     }
 
     const toolEffect = (tool: Tool): Effective =>
-      tool === 'eraser' ? 'eraser' : tool === 'pan' ? 'pan' : tool === 'select' ? 'select' : tool === 'shape' ? 'shape' : tool === 'move' ? 'move' : 'ink'
+      tool === 'eraser'
+        ? 'eraser'
+        : tool === 'pan'
+          ? 'pan'
+          : tool === 'select'
+            ? 'select'
+            : tool === 'shape'
+              ? 'shape'
+              : tool === 'move'
+                ? 'move'
+                : tool === 'text'
+                  ? 'text'
+                  : 'ink'
+
+    /** The current selection, with what can be done to it. */
+    const selInfo = (): {
+      box: BBox
+      locked: boolean
+      line: StrokeItem | null
+      shape: { spec: ShapeSpec; parts: StrokeItem[] } | null
+    } | null => {
+      if (!useUI.getState().selectedIds.length) return null
+      const items = editor.selectedItems()
+      const box = editor.selectionBBox()
+      if (!box || !items.length) return null
+      const locked = items.some((i) => i.locked)
+      const line = items.length === 1 && !locked && lineEnds(items[0]) ? (items[0] as StrokeItem) : null
+      const es = locked || line ? null : editableShape(items)
+      return { box, locked, line, shape: es && !isLinear(es.spec.kind) ? es : null }
+    }
+
+    const reach = (): number => (hover?.pointerType === 'mouse' ? 0 : 6)
+    const nearEnd = (item: StrokeItem, sx: number, sy: number): 0 | 1 | null => {
+      const ends = lineEnds(item)
+      if (!ends) return null
+      const cam = editor.camera
+      for (const which of [0, 1] as const) {
+        const ex = (ends[which][0] - cam.x) * cam.zoom
+        const ey = (ends[which][1] - cam.y) * cam.zoom
+        if (Math.hypot(sx - ex, sy - ey) <= END_HANDLE_R + 4 + reach()) return which
+      }
+      return null
+    }
 
     /** What a press at screen point (sx, sy) would grab on the current selection. */
-    const selectionHit = (sx: number, sy: number): { kind: 'handle'; corner: number; box: BBox } | { kind: 'body' } | null => {
-      if (!useUI.getState().selectedIds.length) return null
-      const box = editor.selectionBBox()
-      if (!box) return null
-      const r = selectionScreenRect(box, editor.camera)
-      const corners = selectionCorners(r)
-      const reach = HANDLE_SIZE + (hover?.pointerType === 'mouse' ? 0 : 6)
-      for (let i = 0; i < 4; i++) {
-        if (Math.abs(sx - corners[i][0]) <= reach && Math.abs(sy - corners[i][1]) <= reach) return { kind: 'handle', corner: i, box }
+    const selectionHit = (sx: number, sy: number): SelHit | null => {
+      const info = selInfo()
+      if (!info) return null
+      if (info.line) {
+        const which = nearEnd(info.line, sx, sy)
+        if (which !== null) return { kind: 'end', which, item: info.line }
+      }
+      const r = selectionScreenRect(info.box, editor.camera)
+      const near = (pt: [number, number]): boolean =>
+        Math.abs(sx - pt[0]) <= HANDLE_SIZE + reach() && Math.abs(sy - pt[1]) <= HANDLE_SIZE + reach()
+      if (!info.locked && !info.line) {
+        const corners = selectionCorners(r)
+        for (let i = 0; i < 4; i++) if (near(corners[i])) return { kind: 'handle', corner: i, box: info.box }
+      }
+      if (info.shape) {
+        const sides = selectionSides(r)
+        for (let i = 0; i < 4; i++) if (near(sides[i])) return { kind: 'side', side: i }
       }
       if (sx >= r.x && sx <= r.x + r.w && sy >= r.y && sy <= r.y + r.h) return { kind: 'body' }
       return null
     }
+
+    /** A lone straight line under the pointer (its ends can be grabbed without selecting it first). */
+    const lineAt = (sx: number, sy: number): StrokeItem | null => {
+      const t = hoverTarget(sx, sy)
+      return t && !t.item.groupId && lineEnds(t.item) ? (t.item as StrokeItem) : null
+    }
+    let hoverLine: StrokeItem | null = null
+
+    /** End point of the hovered line under (sx, sy). */
+    const hoverEndAt = (sx: number, sy: number): { which: 0 | 1; item: StrokeItem } | null => {
+      for (const cand of [hoverLine, lineAt(sx, sy)]) {
+        if (!cand || !scene.getById([cand.id]).length) continue
+        const which = nearEnd(cand, sx, sy)
+        if (which !== null) return { which, item: scene.getById([cand.id])[0] as StrokeItem }
+      }
+      return null
+    }
+
+    /** Is the item (or its group) locked? */
+    const isLocked = (item: Item): boolean =>
+      item.groupId ? scene.getItems().some((i) => i.groupId === item.groupId && i.locked) : !!item.locked
 
     /** Which action a pointer press performs, taking pen buttons and modifiers into account. */
     const effectiveFor = (e: PointerEvent): Effective => {
@@ -125,7 +252,7 @@ export function Board() {
       if (e.pointerType === 'pen') {
         // Pen buttons, as configured in Settings → Pen buttons.
         const pb = useUI.getState().penButtons
-        const act = (a: PenAction): Effective | null => (a === 'tool' ? null : a === 'eraser' ? 'eraser' : a)
+        const act = (a: PenAction): Effective | null => (a === 'tool' ? null : a)
         let mapped: Effective | null = null
         if (e.button === 5 || (e.buttons & 32) !== 0) mapped = act(pb.eraserEnd)
         else if (e.button === 2 || (e.buttons & 2) !== 0) mapped = act(pb.lower)
@@ -168,7 +295,7 @@ export function Board() {
       const penHover = hover.pointerType === 'pen' && hover.buttons === 0
       const eraserButton = hover.pointerType === 'pen' && (hover.buttons & 32) !== 0
       const eff = eraserButton ? 'eraser' : toolEffect(ui.tool)
-      if (eff === 'pan' || eff === 'select' || eff === 'shape' || eff === 'move') return null
+      if (eff === 'pan' || eff === 'select' || eff === 'shape' || eff === 'move' || eff === 'text') return null
       // While actually inking, the ink itself is the feedback.
       if (gesture?.kind === 'ink') return null
       if (eff === 'eraser') {
@@ -191,16 +318,31 @@ export function Board() {
       if (gesture?.kind === 'pan' || gesture?.kind === 'pinch') c = 'grabbing'
       else if (spaceDown || tool === 'pan') c = 'grab'
       else if (tool === 'shape') c = 'crosshair'
+      else if (tool === 'text') c = 'text'
       else if (gesture?.kind === 'protMove') c = 'grabbing'
       else if (gesture?.kind === 'protRotate') c = 'grabbing'
+      else if (gesture?.kind === 'endpoint') c = 'crosshair'
+      // A line end on top of the protractor wins over the protractor (same order as on press).
+      else if (
+        !gesture &&
+        hover &&
+        (tool === 'select' || tool === 'move') &&
+        (selectionHit(hover.sx, hover.sy)?.kind === 'end' || hoverEndAt(hover.sx, hover.sy))
+      )
+        c = 'crosshair'
       else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'body') c = 'move'
       else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'rotate') c = 'grab'
       else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'close') c = 'pointer'
       else if (gesture?.kind === 'move') c = 'move'
       else if (gesture?.kind === 'scale') c = gesture.cx > gesture.ax === gesture.cy > gesture.ay ? 'nwse-resize' : 'nesw-resize'
+      else if (gesture?.kind === 'reshape') c = gesture.side % 2 === 0 ? 'ns-resize' : 'ew-resize'
       else if (tool === 'select' || tool === 'move') {
         const h = hover ? selectionHit(hover.sx, hover.sy) : null
-        if (h) c = h.kind === 'body' ? 'move' : h.corner % 2 === 0 ? 'nwse-resize' : 'nesw-resize'
+        if (h?.kind === 'end') c = 'crosshair'
+        else if (h?.kind === 'side') c = h.side % 2 === 0 ? 'ns-resize' : 'ew-resize'
+        else if (h?.kind === 'handle') c = h.corner % 2 === 0 ? 'nwse-resize' : 'nesw-resize'
+        else if (h?.kind === 'body') c = editor.selectionLocked() ? 'default' : 'move'
+        else if (hover && hoverEndAt(hover.sx, hover.sy)) c = 'crosshair'
         else if (hoverBox) c = 'move'
         else c = tool === 'move' ? 'grab' : 'default'
       }
@@ -218,23 +360,51 @@ export function Board() {
       // Sample along the eraser movement so fast swipes don't skip strokes.
       const dist = Math.hypot(x1 - x0, y1 - y0)
       const steps = Math.max(1, Math.ceil(dist / (r * 0.5)))
-      const hit: StrokeItem[] = []
-      for (const item of scene.getItems()) {
-        // Like Whiteboard, the eraser only removes ink, never images.
-        if (item.type !== 'stroke' || !bboxIntersects(item.bbox, box)) continue
+      const hit = new Set<Item>()
+      const items = scene.getItems()
+      for (const item of items) {
+        // Like Whiteboard, the eraser only removes ink, never images. Locked items are skipped.
+        if (item.type !== 'stroke' || item.locked || hit.has(item) || !bboxIntersects(item.bbox, box)) continue
         const rr = r + item.size / 2
         for (let i = 0; i <= steps; i++) {
           const t = i / steps
           if (circleHitsPolyline(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, rr, item.points)) {
-            hit.push(item)
+            for (const m of eraseUnit(items, item)) hit.add(m)
             break
           }
         }
       }
-      if (hit.length) {
+      if (hit.size) {
         g.removed.push(...hit)
-        scene.remove(hit, false)
+        scene.remove([...hit], false)
       }
+    }
+
+    /**
+     * What one eraser touch removes: a whole shape (every edge of a solid), a group made only of
+     * straight lines (older shapes), otherwise just the stroke. Nothing if any of it is locked.
+     */
+    const eraseUnit = (items: readonly Item[], item: StrokeItem): Item[] => {
+      let unit: Item[] = [item]
+      if (item.shape) unit = shapeMembers(items, item)
+      else if (item.groupId) {
+        const group = items.filter((i) => i.groupId === item.groupId)
+        if (group.every((i) => i.type === 'stroke' && i.geom === 'line')) unit = group
+      }
+      return unit.some((i) => i.locked) ? [] : unit
+    }
+
+    /** A copy of a straight line with new end points (shapes are re-generated, e.g. arrow heads). */
+    const withEnds = (orig: StrokeItem, a: End, b: End): StrokeItem => {
+      if (orig.shape) {
+        const spec = { ...orig.shape, ax: a[0], ay: a[1], bx: b[0], by: b[1] }
+        return regenerateShape([orig], spec, () => scene.allocZ(), !!orig.groupId)[0]
+      }
+      const points: Point[] = [
+        [a[0], a[1], orig.points[0][2]],
+        [b[0], b[1], orig.points[1][2]]
+      ]
+      return { ...orig, points, bbox: bboxOfPoints(points, orig.size * 3) }
     }
 
     const pointFrom = (e: PointerEvent, pressure: boolean): Point => {
@@ -251,37 +421,22 @@ export function Board() {
       angleLabel = null
       if (!g) return
       if (g.kind === 'shape') {
-        let parts = g.live.parts ?? []
-        if (!g.moved) {
+        let box: [number, number, number, number]
+        if (g.moved) box = shapeBox(g.shape, g.ax, g.ay, g.bx, g.by, g.keep)
+        else {
           // A plain click drops a default-size shape centred on the click.
           const d = DEFAULT_SHAPE_SIZE / editor.camera.zoom
-          parts = isLinear(g.shape)
-            ? shapeParts(g.shape, g.ax - d / 2, g.ay, g.ax + d / 2, g.ay, false, g.live.size)
-            : shapeParts(g.shape, g.ax - d / 2, g.ay - d / 2, g.ax + d / 2, g.ay + d / 2, false, g.live.size)
+          box = isLinear(g.shape) ? [g.ax - d / 2, g.ay, g.ax + d / 2, g.ay] : [g.ax - d / 2, g.ay - d / 2, g.ax + d / 2, g.ay + d / 2]
         }
+        const spec: ShapeSpec = { kind: g.shape, ax: box[0], ay: box[1], bx: box[2], by: box[3], ...(g.base ? { base: g.base } : {}) }
+        const { live } = g
         // Solids are several lines (visible + dashed hidden edges) kept together as one group.
-        const groupId = parts.length > 1 ? newId() : undefined
-        const caps = g.shape === 'line' ? { startCap: g.live.startCap, endCap: g.live.endCap } : {}
         scene.add(
-          parts.map((part): StrokeItem => {
-            const dash = part.dash ?? g.live.dash
-            return {
-              type: 'stroke',
-              id: newId(),
-              z: scene.allocZ(),
-              tool: 'pen',
-              color: g.live.color,
-              size: g.live.size,
-              pressure: false,
-              geom: 'line',
-              points: part.points,
-              bbox: bboxOfPoints(part.points, g.live.size * 3),
-              ...(dash ? { dash } : {}),
-              ...(caps.startCap ? { startCap: caps.startCap } : {}),
-              ...(caps.endCap ? { endCap: caps.endCap } : {}),
-              ...(groupId ? { groupId } : {})
-            }
-          })
+          buildShapeItems(
+            spec,
+            { color: live.color, size: live.size, tool: 'pen', dash: live.dash, startCap: live.startCap, endCap: live.endCap },
+            () => ({ id: newId(), z: scene.allocZ() })
+          )
         )
       } else if (g.kind === 'ink' && g.live.points.length > 0) {
         const { live } = g
@@ -297,9 +452,9 @@ export function Board() {
           bbox: bboxOfPoints(live.points, live.geom ? live.size * 3 : live.size),
           ...(live.geom ? { geom: live.geom } : {}),
           ...(live.dash ? { dash: live.dash } : {}),
-          // Line ends only decorate straight lines.
-          ...(live.geom === 'line' && live.startCap ? { startCap: live.startCap } : {}),
-          ...(live.geom === 'line' && live.endCap ? { endCap: live.endCap } : {})
+          // Line ends (arrow, dot…) go on freehand ink as well as straight lines.
+          ...(live.startCap ? { startCap: live.startCap } : {}),
+          ...(live.endCap ? { endCap: live.endCap } : {})
         }
         scene.add([stroke])
       } else if (g.kind === 'eraser') {
@@ -316,6 +471,13 @@ export function Board() {
         }
       } else if (g.kind === 'move' || g.kind === 'scale') {
         editor.commitPreview()
+      } else if (g.kind === 'endpoint') {
+        if (g.current !== g.original) scene.record({ added: [g.current], removed: [g.original] })
+      } else if (g.kind === 'reshape') {
+        if (g.current !== g.parts) {
+          scene.record({ added: g.current, removed: g.parts })
+          editor.setSelection(g.current)
+        }
       }
       updateCssCursor()
       invalidate(false)
@@ -386,16 +548,30 @@ export function Board() {
     // ---------- pointer events ----------
     const onPointerDown = (e: PointerEvent): void => {
       if (e.pointerType === 'touch') return onTouchDown(e)
+      // The same pen / mouse pressing again means we missed its release: end that gesture first.
+      if (gesture && 'pointerId' in gesture && gesture.pointerId === e.pointerId) finishGesture()
       if (gesture) return
       if (e.pointerType === 'pen') lastPenTime = performance.now()
       e.preventDefault()
+      // A press anywhere on the board finishes the text being typed (that press does nothing else in text mode).
+      if (useUI.getState().textEdit) {
+        editor.commitText()
+        if (useUI.getState().tool === 'text' && e.button === 0) return
+      }
       capture(e.pointerId)
       const p = local(e)
       const eff = effectiveFor(e)
 
-      const pHit = eff === 'pan' ? null : protractorHitAt(p.x, p.y)
+      // Line end points win over the protractor: a ray drawn from its centre must stay adjustable.
+      const selH = eff === 'select' || eff === 'move' ? selectionHit(p.x, p.y) : null
+      const endGrab = selH?.kind === 'end' ? selH : eff === 'select' || eff === 'move' ? hoverEndAt(p.x, p.y) : null
+      const pHit = eff === 'pan' || endGrab ? null : protractorHitAt(p.x, p.y)
       const protGrab = pHit === 'body' || (pHit !== null && pHit !== 'close' && pHit !== 'rotate' && eff !== 'ink')
-      if (pHit === 'close') {
+      if (endGrab) {
+        editor.setSelection([endGrab.item])
+        gesture = { kind: 'endpoint', pointerId: e.pointerId, original: endGrab.item, current: endGrab.item, which: endGrab.which }
+        hoverBox = null
+      } else if (pHit === 'close') {
         useUI.setState({ protractor: null })
         try {
           overlay.releasePointerCapture(e.pointerId)
@@ -407,25 +583,26 @@ export function Board() {
       } else if (protGrab) {
         const w = screenToWorld(editor.camera, p.x, p.y)
         gesture = { kind: 'protMove', pointerId: e.pointerId, lastX: w.x, lastY: w.y }
-      } else if (eff === 'move') {
-        // Quick move: grab whatever is under the pointer (or the current selection) and drag it.
-        const w = screenToWorld(editor.camera, p.x, p.y)
-        const h = selectionHit(p.x, p.y)
-        const target = h ? null : hoverTarget(p.x, p.y)
-        if (h || target) {
-          if (target) editor.setSelection([target.item])
-          gesture = { kind: 'move', pointerId: e.pointerId, startX: w.x, startY: w.y }
-        } else {
-          // Empty space: drag the board instead.
-          editor.clearSelection()
-          gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
-        }
-        hoverBox = null
       } else if (eff === 'pan') {
         gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
-      } else if (eff === 'select') {
+      } else if (eff === 'text') {
+        // Click on text = edit it; anywhere else = start typing there.
         const w = screenToWorld(editor.camera, p.x, p.y)
-        const h = selectionHit(p.x, p.y)
+        const hit = hitTest(scene.getItems(), w.x, w.y, 4 / editor.camera.zoom)
+        if (hit?.type === 'text' && !hit.locked) editor.editText(hit)
+        else {
+          const size = useUI.getState().textStyle.size
+          editor.startText(w.x, w.y - (size * 1.25) / 2)
+        }
+        try {
+          overlay.releasePointerCapture(e.pointerId)
+        } catch {
+          // not captured
+        }
+      } else if (eff === 'select' || eff === 'move') {
+        const w = screenToWorld(editor.camera, p.x, p.y)
+        const h = selH
+        const locked = editor.selectionLocked()
         if (h?.kind === 'handle') {
           // Scale uniformly about the opposite corner.
           const b = h.box
@@ -433,29 +610,63 @@ export function Board() {
           const ys = [b.minY, b.minY, b.maxY, b.maxY]
           const o = (h.corner + 2) % 4
           gesture = { kind: 'scale', pointerId: e.pointerId, ax: xs[o], ay: ys[o], cx: xs[h.corner], cy: ys[h.corner] }
-        } else if (h?.kind === 'body') {
+        } else if (h?.kind === 'side') {
+          // Stretch a shape in one direction; it's re-generated, so line widths stay the same.
+          const sel = selInfo()?.shape
+          if (sel) {
+            const gid = sel.parts[0].groupId
+            const inUserGroup = !!gid && scene.getItems().some((i) => i.groupId === gid && !sel.parts.includes(i as StrokeItem))
+            gesture = {
+              kind: 'reshape',
+              pointerId: e.pointerId,
+              side: h.side,
+              spec: sel.spec,
+              parts: sel.parts,
+              current: sel.parts,
+              inUserGroup,
+              startX: w.x,
+              startY: w.y
+            }
+          }
+        } else if (h?.kind === 'body' && !locked) {
           gesture = { kind: 'move', pointerId: e.pointerId, startX: w.x, startY: w.y }
+        } else if (eff === 'move') {
+          // Quick move: grab whatever is under the pointer and drag it; empty space drags the board.
+          const target = h ? null : hoverTarget(p.x, p.y)
+          if (target) {
+            editor.setSelection([target.item])
+            if (!isLocked(target.item)) gesture = { kind: 'move', pointerId: e.pointerId, startX: w.x, startY: w.y }
+          } else if (!h) {
+            editor.clearSelection()
+            gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
+          }
         } else {
-          // Pressing on a highlighted item grabs it right away; empty space starts a lasso.
+          // Pressing on a highlighted item grabs it right away; empty space (or a locked item) starts a lasso.
           const hit = hitTest(scene.getItems(), w.x, w.y, 6 / editor.camera.zoom)
-          if (hit && (e.pointerType !== 'pen' || hoverBox)) {
+          if (hit && !isLocked(hit) && (e.pointerType !== 'pen' || hoverBox)) {
             editor.setSelection([hit])
             gesture = { kind: 'move', pointerId: e.pointerId, startX: w.x, startY: w.y }
           } else {
             gesture = { kind: 'lasso', pointerId: e.pointerId, points: [[w.x, w.y]], startX: p.x, startY: p.y, moved: false }
           }
         }
+        hoverBox = null
       } else if (eff === 'shape') {
         editor.clearSelection()
         const ui = useUI.getState()
         const w = screenToWorld(editor.camera, p.x, p.y)
         const slot = ui.pens[ui.activePen]
+        const base = SHAPE_BASES[ui.shape] ? (ui.shapeBases[ui.shape] ?? SHAPE_BASES[ui.shape]!.def) : undefined
         gesture = {
           kind: 'shape',
           pointerId: e.pointerId,
           shape: ui.shape,
+          base,
           ax: w.x,
           ay: w.y,
+          bx: w.x,
+          by: w.y,
+          keep: false,
           sx: p.x,
           sy: p.y,
           moved: false,
@@ -525,6 +736,9 @@ export function Board() {
       const p = local(e)
       hover = { sx: p.x, sy: p.y, pointerType: e.pointerType, buttons: e.buttons }
 
+      // No button held any more, but the gesture is still running: the release happened somewhere we
+      // didn't hear about (over a panel, outside the window). End it, or the pen would keep dragging.
+      if (gesture && 'pointerId' in gesture && gesture.pointerId === e.pointerId && e.buttons === 0) finishGesture()
       const g = gesture
       if (g && 'pointerId' in g && g.pointerId === e.pointerId) {
         if (g.kind === 'pan') {
@@ -556,6 +770,57 @@ export function Board() {
         } else if (g.kind === 'move') {
           const w = screenToWorld(editor.camera, p.x, p.y)
           editor.setPreview({ s: 1, ax: 0, ay: 0, dx: w.x - g.startX, dy: w.y - g.startY })
+        } else if (g.kind === 'endpoint') {
+          const w = screenToWorld(editor.camera, p.x, p.y)
+          const ends = lineEnds(g.original)!
+          let fixed: End = ends[1 - g.which]
+          let end: End = [w.x, w.y]
+          const prot = useUI.getState().protractor
+          const near = 20 / editor.camera.zoom
+          let deg: number
+          if (prot && Math.hypot(fixed[0] - prot.x, fixed[1] - prot.y) <= near) {
+            // The line starts at the protractor's centre: turn it in whole degrees of its scale.
+            fixed = [prot.x, prot.y]
+            const { u, v } = toLocal(prot, w.x, w.y)
+            deg = Math.round((Math.atan2(-v, u) * 180) / Math.PI)
+            if (deg < 0) deg += 360
+            const len = Math.hypot(u, v)
+            const a = (deg * Math.PI) / 180
+            const pt = toWorld(prot, Math.cos(a) * len, -Math.sin(a) * len)
+            end = [pt.x, pt.y]
+          } else {
+            if (prot && Math.hypot(w.x - prot.x, w.y - prot.y) <= near) end = [prot.x, prot.y]
+            else if (e.shiftKey) {
+              // Shift: 15° steps.
+              const len = Math.hypot(w.x - fixed[0], w.y - fixed[1])
+              const step = Math.PI / 12
+              const a = Math.round(Math.atan2(w.y - fixed[1], w.x - fixed[0]) / step) * step
+              end = [fixed[0] + Math.cos(a) * len, fixed[1] + Math.sin(a) * len]
+            }
+            deg = Math.round((Math.atan2(-(end[1] - fixed[1]), end[0] - fixed[0]) * 180) / Math.PI)
+            if (deg < 0) deg += 360
+          }
+          angleLabel = { sx: p.x, sy: p.y, text: `${deg % 360}°` }
+          const next = g.which === 0 ? withEnds(g.original, end, fixed) : withEnds(g.original, fixed, end)
+          scene.replace([g.current], [next], false)
+          g.current = next
+        } else if (g.kind === 'reshape') {
+          const w = screenToWorld(editor.camera, p.x, p.y)
+          const dx = w.x - g.startX
+          const dy = w.y - g.startY
+          const sp = g.spec
+          let x0 = Math.min(sp.ax, sp.bx)
+          let x1 = Math.max(sp.ax, sp.bx)
+          let y0 = Math.min(sp.ay, sp.by)
+          let y1 = Math.max(sp.ay, sp.by)
+          const m = 8 / editor.camera.zoom
+          if (g.side === 0) y0 = Math.min(y0 + dy, y1 - m)
+          else if (g.side === 1) x1 = Math.max(x1 + dx, x0 + m)
+          else if (g.side === 2) y1 = Math.max(y1 + dy, y0 + m)
+          else x0 = Math.min(x0 + dx, x1 - m)
+          const next = regenerateShape(g.parts, { ...sp, ax: x0, ay: y0, bx: x1, by: y1 }, () => scene.allocZ(), g.inUserGroup)
+          scene.replace(g.current, next, false)
+          g.current = next
         } else if (g.kind === 'scale') {
           const w = screenToWorld(editor.camera, p.x, p.y)
           const vx = g.cx - g.ax
@@ -596,7 +861,10 @@ export function Board() {
           } else if (g.kind === 'shape') {
             const w = screenToWorld(editor.camera, p.x, p.y)
             if (Math.hypot(p.x - g.sx, p.y - g.sy) > 4) g.moved = true
-            if (g.moved) g.live = { ...g.live, parts: shapeParts(g.shape, g.ax, g.ay, w.x, w.y, e.shiftKey, g.live.size) }
+            g.bx = w.x
+            g.by = w.y
+            g.keep = e.shiftKey
+            if (g.moved) g.live = { ...g.live, parts: shapeParts(g.shape, g.ax, g.ay, w.x, w.y, e.shiftKey, g.live.size, g.base) }
           } else if (g.kind === 'eraser') {
             for (const ev of events) {
               const lp = local(ev)
@@ -612,8 +880,12 @@ export function Board() {
         // Hover highlight in select / move mode (not over the current selection's frame).
         const tool = useUI.getState().tool
         const prev = hoverBox
-        hoverBox =
-          (tool === 'select' || tool === 'move') && !spaceDown && !selectionHit(p.x, p.y) ? (hoverTarget(p.x, p.y)?.box ?? null) : null
+        const picking = (tool === 'select' || tool === 'move') && !spaceDown
+        hoverBox = picking && !selectionHit(p.x, p.y) ? (hoverTarget(p.x, p.y)?.box ?? null) : null
+        // Show the end points of a straight line under the pointer (kept while the pointer is on one of them).
+        const prevLine = hoverLine
+        hoverLine = !picking ? null : hoverLine && nearEnd(hoverLine, p.x, p.y) !== null ? hoverLine : lineAt(p.x, p.y)
+        if (prevLine !== hoverLine) invalidate(false)
         if (prev !== hoverBox || tool === 'select' || tool === 'move') updateCssCursor()
       }
       invalidate(false)
@@ -631,6 +903,7 @@ export function Board() {
       if (e.pointerType !== 'touch' && !gesture) {
         hover = null
         hoverBox = null
+        hoverLine = null
         invalidate(false)
       }
     }
@@ -704,6 +977,15 @@ export function Board() {
       void actions[sc.id]()
     }
 
+    // A Space released while another window had focus never sends keyup: don't stay stuck in pan mode.
+    const onBlur = (): void => {
+      if (gesture && gesture.kind !== 'pinch') finishGesture()
+      if (!spaceDown) return
+      spaceDown = false
+      updateCssCursor()
+      invalidate(false)
+    }
+
     const onKeyUp = (e: KeyboardEvent): void => {
       if (e.code === 'Space') {
         spaceDown = false
@@ -747,11 +1029,31 @@ export function Board() {
 
     const unsubTool = useUI.subscribe((s, prev) => {
       if (s.protractor !== prev.protractor) invalidate(false)
-      if (s.tool !== prev.tool) hoverBox = null
+      if (s.textEdit?.id !== prev.textEdit?.id) invalidate(true)
+      if (s.tool !== prev.tool) {
+        hoverBox = null
+        hoverLine = null
+      }
       // Items changed under the pointer (delete, undo…): drop a stale highlight.
-      if (s.sceneVersion !== prev.sceneVersion && !gesture) hoverBox = null
+      if (s.sceneVersion !== prev.sceneVersion && !gesture) {
+        hoverBox = null
+        hoverLine = null
+      }
       if (s.tool !== prev.tool) updateCssCursor()
     })
+
+    // Double-click on text (select / move tool) edits it.
+    const onDoubleClick = (e: MouseEvent): void => {
+      const tool = useUI.getState().tool
+      if (tool !== 'select' && tool !== 'move') return
+      const p = local(e)
+      const w = screenToWorld(editor.camera, p.x, p.y)
+      const hit = hitTest(scene.getItems(), w.x, w.y, 4 / editor.camera.zoom)
+      if (hit?.type === 'text' && !isLocked(hit)) {
+        editor.commitPreview()
+        editor.editText(hit)
+      }
+    }
 
     const preventMenu = (e: Event): void => e.preventDefault()
     overlay.addEventListener('pointerdown', onPointerDown)
@@ -761,8 +1063,14 @@ export function Board() {
     overlay.addEventListener('pointerleave', onPointerLeave)
     overlay.addEventListener('wheel', onWheel, { passive: false })
     overlay.addEventListener('contextmenu', preventMenu)
+    overlay.addEventListener('dblclick', onDoubleClick)
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
+    // Releases outside the board (pointer capture lost, pen lifted over a panel) still end the gesture.
+    window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointercancel', onPointerUp)
+    overlay.addEventListener('lostpointercapture', onPointerUp)
     window.addEventListener('paste', onPaste)
     window.addEventListener('copy', onCopy)
     window.addEventListener('cut', onCut)
@@ -782,8 +1090,13 @@ export function Board() {
       overlay.removeEventListener('pointerleave', onPointerLeave)
       overlay.removeEventListener('wheel', onWheel)
       overlay.removeEventListener('contextmenu', preventMenu)
+      overlay.removeEventListener('dblclick', onDoubleClick)
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
+      window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('pointercancel', onPointerUp)
+      overlay.removeEventListener('lostpointercapture', onPointerUp)
       window.removeEventListener('paste', onPaste)
       window.removeEventListener('copy', onCopy)
       window.removeEventListener('cut', onCut)

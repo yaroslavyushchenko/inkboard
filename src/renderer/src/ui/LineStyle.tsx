@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { LineCap, LineDash } from '../engine/types'
 import { useT, type MessageKey } from '../i18n'
 
@@ -95,6 +96,45 @@ export function LineStyleControls({
           })}
         </>
       )}
+    </div>
+  )
+}
+
+const MIN_SIZE = 0.5
+
+/**
+ * Any width, not only the preset dots: a slider on a log scale (fine steps for thin lines).
+ * `live` = call onChange while dragging; otherwise only when the slider is let go (one undo step).
+ */
+export function SizeSlider({ value, max, onChange, live }: { value: number; max: number; onChange: (v: number) => void; live?: boolean }) {
+  const t = useT()
+  const [draft, setDraft] = useState<number | null>(null)
+  const toPos = (v: number): number => Math.round((Math.log(Math.max(MIN_SIZE, v) / MIN_SIZE) / Math.log(max / MIN_SIZE)) * 1000)
+  const fromPos = (p: number): number => Math.round(MIN_SIZE * Math.pow(max / MIN_SIZE, p / 1000) * 2) / 2
+  const shown = draft ?? value
+  const commit = (): void => {
+    if (draft !== null && !live) onChange(draft)
+    setDraft(null)
+  }
+  return (
+    <div className="line-row size-row">
+      <span className="line-label">{t('line.width')}</span>
+      <input
+        type="range"
+        min={0}
+        max={1000}
+        value={toPos(shown)}
+        aria-label={t('line.width')}
+        onChange={(e) => {
+          const v = fromPos(Number(e.target.value))
+          if (live) onChange(v)
+          else setDraft(v)
+        }}
+        onPointerUp={commit}
+        onKeyUp={commit}
+        onBlur={commit}
+      />
+      <span className="size-value">{Number.isInteger(shown) ? shown : shown.toFixed(1)}</span>
     </div>
   )
 }

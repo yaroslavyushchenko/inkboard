@@ -2,12 +2,43 @@ import { useCallback, useRef, useState } from 'react'
 import { editor } from '../editor'
 import { useT } from '../i18n'
 import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useUI, type InkSlot } from '../store'
-import { EraserIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, ProtractorIcon, RedoIcon, UndoIcon } from './icons'
+import { TEXT_SIZES } from '../engine/text'
+import { EraserIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, ProtractorIcon, RedoIcon, TextIcon, UndoIcon } from './icons'
 import { GraphMenu, ShapesMenu, TemplatesMenu } from './InsertMenus'
-import { LineStyleControls } from './LineStyle'
+import { LineStyleControls, SizeSlider } from './LineStyle'
 import { Popover } from './Popover'
 
-type Open = { kind: 'pen'; index: number } | { kind: 'highlighter' } | null
+type Open = { kind: 'pen'; index: number } | { kind: 'highlighter' } | { kind: 'text' } | null
+
+/** Colour and size of new text (text tool popover). */
+function TextOptions() {
+  const t = useT()
+  const style = useUI((s) => s.textStyle)
+  const set = (patch: Partial<typeof style>): void => {
+    useUI.setState((s) => ({ textStyle: { ...s.textStyle, ...patch } }))
+    // Also restyle the text being typed right now.
+    const te = useUI.getState().textEdit
+    if (te) useUI.setState({ textEdit: { ...te, ...patch } })
+  }
+  return (
+    <>
+      <div className="swatches">
+        {PEN_COLORS.map((c) => (
+          <button key={c} className={`swatch ${style.color === c ? 'active' : ''}`} style={{ background: c }} title={c} onClick={() => set({ color: c })} />
+        ))}
+      </div>
+      <div className="sizes">
+        {TEXT_SIZES.map((s) => (
+          <button key={s} className={`size text-size ${style.size === s ? 'active' : ''}`} title={`${s}`} onClick={() => set({ size: s })}>
+            <span style={{ fontSize: 9 + s / 4 }}>A</span>
+          </button>
+        ))}
+      </div>
+      <SizeSlider value={style.size} max={160} onChange={(size) => set({ size })} live />
+      <p className="settings-hint line-hint">{t('text.hint')}</p>
+    </>
+  )
+}
 
 function InkOptions({
   slot,
@@ -47,6 +78,7 @@ function InkOptions({
           </button>
         ))}
       </div>
+      <SizeSlider value={slot.size} max={maxSize * 3} onChange={(size) => onChange({ size })} live />
       <LineStyleControls value={slot} onChange={onChange} showCaps />
       <p className="settings-hint line-hint">{t('line.endsHint')}</p>
     </>
@@ -133,6 +165,20 @@ export function Toolbar() {
           </button>
         </div>
         <div className="sep" />
+        <button
+          data-popover-anchor
+          className={`icon-btn ${tool === 'text' ? 'active' : ''}`}
+          title={t('tool.text')}
+          onClick={() => {
+            if (tool === 'text') setOpen(open?.kind === 'text' ? null : { kind: 'text' })
+            else {
+              setTool('text')
+              setOpen(null)
+            }
+          }}
+        >
+          <TextIcon />
+        </button>
         <ShapesMenu />
         <GraphMenu />
         <button className={`icon-btn ${protractor ? 'active' : ''}`} title={t('tool.protractor')} onClick={() => editor.toggleProtractor()}>
@@ -178,6 +224,11 @@ export function Toolbar() {
             sizes={PEN_SIZES}
             onChange={(patch) => updatePen(open.index, patch)}
           />
+        </Popover>
+      )}
+      {open?.kind === 'text' && (
+        <Popover onClose={close} className="ink-popover">
+          <TextOptions />
         </Popover>
       )}
       {open?.kind === 'highlighter' && (

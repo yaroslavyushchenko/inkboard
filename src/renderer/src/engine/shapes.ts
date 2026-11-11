@@ -1,4 +1,4 @@
-import type { Point } from './types'
+import type { Point, ShapeSpec } from './types'
 
 export const SHAPES_2D = [
   'line',
@@ -26,6 +26,37 @@ export interface ShapePart {
 }
 
 const LINEAR: ReadonlySet<ShapeKind> = new Set(['line', 'arrow', 'doubleArrow'])
+
+/** Solids whose base can be chosen (number of sides) and the default. */
+export const SHAPE_BASES: Partial<Record<ShapeKind, { options: number[]; def: number }>> = {
+  pyramid: { options: [3, 4, 5, 6], def: 4 },
+  prism: { options: [3, 4, 5, 6], def: 3 }
+}
+
+export const isShapeKind = (k: unknown): k is ShapeKind => typeof k === 'string' && (SHAPES as readonly string[]).includes(k)
+
+/**
+ * The box a drag from a to b really produces: with `keep` (Shift) lines snap to 45° and boxes become
+ * squares. Stored in the shape spec so the shape can be re-generated later.
+ */
+export function shapeBox(kind: ShapeKind, ax: number, ay: number, bx: number, by: number, keep: boolean): [number, number, number, number] {
+  if (!keep) return [ax, ay, bx, by]
+  if (LINEAR.has(kind)) {
+    const [ex, ey] = snapAngle(ax, ay, bx, by, 45)
+    return [ax, ay, ex, ey]
+  }
+  const s = Math.max(Math.abs(bx - ax), Math.abs(by - ay))
+  return [ax, ay, ax + Math.sign(bx - ax || 1) * s, ay + Math.sign(by - ay || 1) * s]
+}
+
+/** All parts of a stored shape. */
+export function specParts(spec: ShapeSpec, size: number): ShapePart[] {
+  return shapeParts(spec.kind, spec.ax, spec.ay, spec.bx, spec.by, false, size, spec.base)
+}
+
+export function sameSpec(a: ShapeSpec | undefined, b: ShapeSpec | undefined): boolean {
+  return !!a && !!b && a.kind === b.kind && a.ax === b.ax && a.ay === b.ay && a.bx === b.bx && a.by === b.by && a.base === b.base
+}
 
 /** Snap an angle to multiples of 45° when it's within `tolDeg` of one (Shift lines). */
 export function snapAngle(ax: number, ay: number, bx: number, by: number, tolDeg = 6): [number, number] {
@@ -144,7 +175,16 @@ function ellipseArc(cx: number, cy: number, rx: number, ry: number, a0: number, 
  * All polylines of a shape dragged from (ax, ay) to (bx, by). Flat shapes are one part; solids are
  * several parts, with the edges you can't see drawn dashed (like in a school geometry book).
  */
-export function shapeParts(kind: ShapeKind, ax: number, ay: number, bx: number, by: number, keep: boolean, size: number): ShapePart[] {
+export function shapeParts(
+  kind: ShapeKind,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  keep: boolean,
+  size: number,
+  base?: number
+): ShapePart[] {
   if (!is3D(kind)) return [{ points: shapeOutline(kind, ax, ay, bx, by, keep, size) }]
   if (keep) {
     const sz = Math.max(Math.abs(bx - ax), Math.abs(by - ay))
@@ -174,24 +214,10 @@ export function shapeParts(kind: ShapeKind, ax: number, ay: number, bx: number, 
         hidden(B[3], F[3])
       ]
     }
-    case 'prism': {
-      // Triangular prism: front triangle, back triangle shifted up-right.
-      const d = Math.min(w, h) * 0.3
-      const F = [P(x0, y1), P(x1 - d, y1), P((x0 + x1 - d) / 2, y0 + d)]
-      const B = F.map(([x, y]) => P(x + d, y - d))
-      return [solid(F[0], F[1], F[2], F[0]), solid(F[2], B[2], B[1], F[1]), hidden(F[0], B[0], B[1]), hidden(B[0], B[2])]
-    }
-    case 'pyramid': {
-      // Square base seen in perspective (parallelogram) and an apex above its centre.
-      const o = w * 0.3
-      const e = h * 0.22
-      const FL = P(x0, y1)
-      const FR = P(x1 - o, y1)
-      const BR = P(x1, y1 - e)
-      const BL = P(x0 + o, y1 - e)
-      const T = P((x0 + x1) / 2, y0)
-      return [solid(FL, FR, BR, T, FL), solid(T, FR), hidden(FL, BL, BR), hidden(BL, T)]
-    }
+    case 'prism':
+      return polygonSolid('prism', x0, y0, x1, y1, base ?? SHAPE_BASES.prism!.def)
+    case 'pyramid':
+      return polygonSolid('pyramid', x0, y0, x1, y1, base ?? SHAPE_BASES.pyramid!.def)
     case 'cylinder': {
       const ry = Math.min(h * 0.14, w * 0.25)
       const rx = w / 2
@@ -229,4 +255,52 @@ export function shapeParts(kind: ShapeKind, ax: number, ay: number, bx: number, 
     default:
       return [{ points: shapeOutline(kind, ax, ay, bx, by, keep, size) }]
   }
+}
+
+/**
+ * Upright prism or pyramid over a regular n-gon base, seen slightly from above. Base edges facing the
+ * viewer are solid, the ones behind are dashed; a side edge is solid when it touches a visible face.
+ */
+function polygonSolid(kind: 'prism' | 'pyramid', x0: number, y0: number, x1: number, y1: number, n: number): ShapePart[] {
+  n = Math.max(3, Math.min(8, Math.round(n)))
+  const w = x1 - x0
+  const h = y1 - y0
+  const ry = Math.min(h * 0.16, w * 0.28)
+  // Unit polygon, turned a little so no edge is seen exactly edge-on.
+  const off = Math.PI / 2 - 0.17
+  const unit = Array.from({ length: n }, (_, i) => {
+    const a = off + (i / n) * Math.PI * 2
+    return [Math.cos(a), Math.sin(a)] as const
+  })
+  const minX = Math.min(...unit.map((u) => u[0]))
+  const maxX = Math.max(...unit.map((u) => u[0]))
+  const minY = Math.min(...unit.map((u) => u[1]))
+  const maxY = Math.max(...unit.map((u) => u[1]))
+  const mapX = (u: number): number => x0 + ((u - minX) / (maxX - minX)) * w
+  const mapY = (u: number, cy: number): number => cy - ry + ((u - minY) / (maxY - minY)) * 2 * ry
+  // Edge i joins vertex i and i+1; it faces the viewer when its outward normal points down the screen.
+  const front = unit.map((_, i) => {
+    const a = off + ((i + 0.5) / n) * Math.PI * 2
+    return Math.sin(a) > 1e-6
+  })
+  const vertVisible = (i: number): boolean => front[i] || front[(i - 1 + n) % n]
+  const bottomCy = y1 - ry
+  const bottom = unit.map(([ux, uy]) => P(mapX(ux), mapY(uy, bottomCy)))
+  const solid: ShapePart[] = []
+  const hidden: ShapePart[] = []
+  const edge = (a: Point, b: Point, visible: boolean): void => {
+    ;(visible ? solid : hidden).push(visible ? { points: [a, b] } : { points: [a, b], dash: 'dashed' })
+  }
+  for (let i = 0; i < n; i++) edge(bottom[i], bottom[(i + 1) % n], front[i])
+  if (kind === 'pyramid') {
+    const apex = P(mapX(0), y0)
+    for (let i = 0; i < n; i++) edge(apex, bottom[i], vertVisible(i))
+  } else {
+    const top = unit.map(([ux, uy]) => P(mapX(ux), mapY(uy, y0 + ry)))
+    // The top face is fully visible: one closed outline.
+    solid.unshift({ points: [...top, top[0]] })
+    for (let i = 0; i < n; i++) edge(top[i], bottom[i], vertVisible(i))
+  }
+  // Solid parts first: the first part's pattern is the shape's own line style.
+  return [...solid, ...hidden]
 }

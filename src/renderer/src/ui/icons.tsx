@@ -254,3 +254,36 @@ export const PaperIcon = (p: SVGProps<SVGSVGElement>) => (
     {[8, 12, 16].map((y) => [8, 12, 16].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="0.6" fill="currentColor" />))}
   </svg>
 )
+
+export const LockIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="5" y="10.5" width="14" height="10" rx="2" />
+    <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+  </svg>
+)
+
+export const UnlockIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="5" y="10.5" width="14" height="10" rx="2" />
+    <path d="M8 10.5V7.5a4 4 0 0 1 7.6-1.7" />
+  </svg>
+)
+
+export const TextIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M5 6.5V4.5h14v2M12 4.5v15M9 19.5h6" />
+  </svg>
+)
+
+/** Regular polygon with n sides (base of a pyramid / prism). */
+export function PolygonIcon({ n }: { n: number }) {
+  const pts = Array.from({ length: n }, (_, i) => {
+    const a = -Math.PI / 2 + (i / n) * Math.PI * 2 + (n % 2 === 0 ? Math.PI / n : 0)
+    return `${(12 + Math.cos(a) * 8).toFixed(2)},${(12.5 + Math.sin(a) * 8).toFixed(2)}`
+  }).join(' ')
+  return (
+    <svg {...base({})} width={20} height={20}>
+      <polygon points={pts} />
+    </svg>
+  )
+}
