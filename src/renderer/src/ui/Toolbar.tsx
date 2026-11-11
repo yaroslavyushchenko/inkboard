@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { editor } from '../editor'
 import { useT } from '../i18n'
 import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useUI, type InkSlot } from '../store'
-import { EraserIcon, HandIcon, ImageIcon, PenIcon, RedoIcon, UndoIcon } from './icons'
+import { EraserIcon, HandIcon, ImageIcon, LassoIcon, PenIcon, RedoIcon, UndoIcon } from './icons'
 import { Popover } from './Popover'
 
 type Open = { kind: 'pen'; index: number } | { kind: 'highlighter' } | null
@@ -74,6 +74,17 @@ export function Toolbar() {
   return (
     <div className="toolbar-wrap">
       <div className="panel toolbar">
+        <button
+          className={`icon-btn ${tool === 'select' ? 'active' : ''}`}
+          title={t('tool.select')}
+          onClick={() => {
+            setTool('select')
+            setOpen(null)
+          }}
+        >
+          <LassoIcon />
+        </button>
+        <div className="sep" />
         <div className="pens">
           {pens.map((p, i) => (
             <button

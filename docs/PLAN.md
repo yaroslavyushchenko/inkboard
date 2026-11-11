@@ -58,17 +58,18 @@ in progress and the pen cursor (so drawing never forces a full board redraw).
 - [x] Floating ink toolbar: 3 pens, highlighter, eraser, undo/redo
 - [x] Pen popover: colour palette + thickness
 - [x] Zoom control bottom-right
-- [ ] Lasso selection: move, scale, delete, copy (ink and images)
+- [x] Lasso selection: move, scale, delete, duplicate, copy/cut/paste (ink and images)
 - [ ] Point eraser (splits strokes), eraser size
 - [ ] Ruler (draw straight lines along it)
 - [ ] Laser pointer (fading trail — handy for showing things to students)
 - [ ] Dark board theme (classic green/black chalkboard)
 - [ ] Setting: mouse wheel = scroll or zoom
 - [ ] Settings menu (wheel behaviour, shape-snap delay)
+- [x] Pens, colours, language and background remembered between launches
 
 ### Stage 3 — files
-- [ ] Save / open a board (`.inkboard` — compressed JSON, images stored as assets)
-- [ ] Autosave, crash recovery
+- [x] Save / open a board (`.inkboard` — gzip JSON, images stored once as assets)
+- [x] Autosave: the app reopens the last board exactly as it was left (like Whiteboard)
 - [ ] Recent boards on a start screen
 - [ ] Export to PNG / SVG / PDF (selection or whole board)
 

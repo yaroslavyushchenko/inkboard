@@ -1,8 +1,9 @@
 import { create } from 'zustand'
-import type { BackgroundKind } from './engine/types'
+import { persist } from 'zustand/middleware'
+import type { BackgroundKind, Camera } from './engine/types'
 import { detectLanguage, type Lang } from './i18n'
 
-export type Tool = 'pen' | 'highlighter' | 'eraser' | 'pan'
+export type Tool = 'select' | 'pen' | 'highlighter' | 'eraser' | 'pan'
 
 export interface InkSlot {
   color: string
@@ -27,9 +28,15 @@ interface UIState {
   eraserRadius: number
   background: BackgroundKind
   lang: Lang
+  /** Mirrors editor.camera so React chrome (zoom label, selection toolbar) can follow it. */
+  camera: Camera
   zoom: number
   canUndo: boolean
   canRedo: boolean
+  selectedIds: string[]
+  /** File name of the open board, or null for an unsaved one. */
+  fileName: string | null
+  dirty: boolean
   setTool: (tool: Tool) => void
   selectPen: (index: number) => void
   updatePen: (index: number, patch: Partial<InkSlot>) => void
@@ -38,26 +45,46 @@ interface UIState {
   setLang: (lang: Lang) => void
 }
 
-export const useUI = create<UIState>((set) => ({
-  tool: 'pen',
-  activePen: 0,
-  pens: [
-    { color: '#1e1e1e', size: 3 },
-    { color: '#e03131', size: 3 },
-    { color: '#1971c2', size: 3 }
-  ],
-  highlighter: { color: '#ffe066', size: 18 },
-  eraserRadius: 12,
-  background: 'dots',
-  lang: detectLanguage(),
-  zoom: 1,
-  canUndo: false,
-  canRedo: false,
-  setTool: (tool) => set({ tool }),
-  selectPen: (index) => set({ tool: 'pen', activePen: index }),
-  updatePen: (index, patch) =>
-    set((s) => ({ pens: s.pens.map((p, i) => (i === index ? { ...p, ...patch } : p)) })),
-  updateHighlighter: (patch) => set((s) => ({ highlighter: { ...s.highlighter, ...patch } })),
-  setBackground: (background) => set({ background }),
-  setLang: (lang) => set({ lang })
-}))
+export const useUI = create<UIState>()(
+  persist(
+    (set) => ({
+      tool: 'pen',
+      activePen: 0,
+      pens: [
+        { color: '#1e1e1e', size: 3 },
+        { color: '#e03131', size: 3 },
+        { color: '#1971c2', size: 3 }
+      ],
+      highlighter: { color: '#ffe066', size: 18 },
+      eraserRadius: 12,
+      background: 'dots',
+      lang: detectLanguage(),
+      camera: { x: 0, y: 0, zoom: 1 },
+      zoom: 1,
+      canUndo: false,
+      canRedo: false,
+      selectedIds: [],
+      fileName: null,
+      dirty: false,
+      setTool: (tool) => set({ tool }),
+      selectPen: (index) => set({ tool: 'pen', activePen: index }),
+      updatePen: (index, patch) =>
+        set((s) => ({ pens: s.pens.map((p, i) => (i === index ? { ...p, ...patch } : p)) })),
+      updateHighlighter: (patch) => set((s) => ({ highlighter: { ...s.highlighter, ...patch } })),
+      setBackground: (background) => set({ background }),
+      setLang: (lang) => set({ lang })
+    }),
+    {
+      // Only user preferences survive restarts; the board itself is restored from the autosave file.
+      name: 'inkboard-settings',
+      version: 1,
+      partialize: (s) => ({
+        pens: s.pens,
+        highlighter: s.highlighter,
+        eraserRadius: s.eraserRadius,
+        background: s.background,
+        lang: s.lang
+      })
+    }
+  )
+)

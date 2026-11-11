@@ -17,7 +17,21 @@ const en = {
   'bg.blank': 'Blank',
   'bg.dots': 'Dots',
   'bg.grid': 'Grid',
-  'bg.lines': 'Lines'
+  'bg.lines': 'Lines',
+  'tool.select': 'Lasso select (V)',
+  'sel.delete': 'Delete (Del)',
+  'sel.duplicate': 'Duplicate (Ctrl+D)',
+  'menu.title': 'Menu',
+  'file.new': 'New board',
+  'file.open': 'Open…',
+  'file.save': 'Save',
+  'file.saveAs': 'Save as…',
+  'file.untitled': 'Untitled board',
+  'file.unsavedPrompt': 'This board has unsaved changes. Save them first?',
+  'file.dontSave': "Don't save",
+  'file.cancel': 'Cancel',
+  'file.openError': 'Could not open this file.',
+  'file.unsaved': 'Unsaved changes'
 }
 
 export type MessageKey = keyof typeof en
@@ -39,7 +53,21 @@ const uk: Record<MessageKey, string> = {
   'bg.blank': 'Порожньо',
   'bg.dots': 'Крапки',
   'bg.grid': 'Клітинка',
-  'bg.lines': 'Лінійка'
+  'bg.lines': 'Лінійка',
+  'tool.select': 'Виділення ласо (V)',
+  'sel.delete': 'Видалити (Del)',
+  'sel.duplicate': 'Дублювати (Ctrl+D)',
+  'menu.title': 'Меню',
+  'file.new': 'Нова дошка',
+  'file.open': 'Відкрити…',
+  'file.save': 'Зберегти',
+  'file.saveAs': 'Зберегти як…',
+  'file.untitled': 'Дошка без назви',
+  'file.unsavedPrompt': 'На дошці є незбережені зміни. Зберегти їх?',
+  'file.dontSave': 'Не зберігати',
+  'file.cancel': 'Скасувати',
+  'file.openError': 'Не вдалося відкрити цей файл.',
+  'file.unsaved': 'Незбережені зміни'
 }
 
 export const LANGUAGES = { en: 'English', uk: 'Українська' } as const

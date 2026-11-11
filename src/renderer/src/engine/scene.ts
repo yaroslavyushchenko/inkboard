@@ -15,6 +15,8 @@ export class Scene {
   private redoStack: HistoryEntry[] = []
   private listeners = new Set<() => void>()
   private nextZ = 1
+  /** Bumped on every change; used for dirty tracking. */
+  version = 0
 
   getItems(): readonly Item[] {
     return this.items
@@ -49,6 +51,28 @@ export class Scene {
     this.delete(items)
     if (record) this.record({ added: [], removed: items })
     this.emit()
+  }
+
+  /** Swap items for updated versions with the same ids (move / scale). */
+  replace(oldItems: Item[], newItems: Item[]): void {
+    if (oldItems.length === 0) return
+    this.delete(oldItems)
+    this.insert(newItems)
+    this.record({ added: newItems, removed: oldItems })
+  }
+
+  /** Replace the whole board (open file / new board). Clears history. */
+  load(items: Item[]): void {
+    this.items = [...items].sort((a, b) => a.z - b.z)
+    this.nextZ = this.items.reduce((m, i) => Math.max(m, i.z), 0) + 1
+    this.undoStack = []
+    this.redoStack = []
+    this.emit()
+  }
+
+  getById(ids: Iterable<string>): Item[] {
+    const set = new Set(ids)
+    return this.items.filter((i) => set.has(i.id))
   }
 
   /** Push an already-applied change (e.g. an eraser drag that removed items live). */
@@ -91,6 +115,7 @@ export class Scene {
   }
 
   private emit(): void {
+    this.version++
     for (const fn of this.listeners) fn()
   }
 }

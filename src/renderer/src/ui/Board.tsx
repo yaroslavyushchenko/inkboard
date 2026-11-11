@@ -2,18 +2,29 @@ import { useEffect, useRef } from 'react'
 import { panBy, screenToWorld, zoomAt } from '../engine/camera'
 import { bboxIntersects, bboxOfPoints, circleHitsPolyline, newId } from '../engine/geometry'
 import { setImageLoadListener } from '../engine/images'
-import { BoardRenderer, type CursorState, type LiveStroke } from '../engine/renderer'
-import type { Item, Point, StrokeItem } from '../engine/types'
+import {
+  BoardRenderer,
+  HANDLE_SIZE,
+  selectionCorners,
+  selectionScreenRect,
+  type CursorState,
+  type LiveStroke
+} from '../engine/renderer'
+import { hitTest, itemsInLasso } from '../engine/transform'
+import type { BBox, Item, Point, StrokeItem } from '../engine/types'
 import { editor } from '../editor'
 import { useUI, type Tool } from '../store'
 
-type Effective = 'ink' | 'eraser' | 'pan'
+type Effective = 'ink' | 'eraser' | 'pan' | 'select'
 
 type Gesture =
   | { kind: 'ink'; pointerId: number; live: LiveStroke }
   | { kind: 'eraser'; pointerId: number; removed: Item[]; lastX: number; lastY: number }
   | { kind: 'pan'; pointerId: number; lastX: number; lastY: number }
   | { kind: 'pinch'; dist: number; cx: number; cy: number }
+  | { kind: 'lasso'; pointerId: number; points: [number, number][]; startX: number; startY: number; moved: boolean }
+  | { kind: 'move'; pointerId: number; startX: number; startY: number }
+  | { kind: 'scale'; pointerId: number; ax: number; ay: number; cx: number; cy: number }
 
 interface Hover {
   sx: number
@@ -49,10 +60,13 @@ export function Board() {
     const frame = (): void => {
       raf = 0
       const ui = useUI.getState()
-      if (baseDirty) renderer.renderBase(scene.getItems(), editor.camera, ui.background)
+      if (baseDirty) renderer.renderBase(scene.getItems(), editor.camera, ui.background, editor.preview)
       if (overlayDirty) {
         const live = gesture?.kind === 'ink' ? gesture.live : null
-        renderer.renderOverlay(live, cursorState(), editor.camera)
+        renderer.renderOverlay(live, cursorState(), editor.camera, {
+          box: ui.selectedIds.length ? editor.selectionBBox() : null,
+          lasso: gesture?.kind === 'lasso' ? gesture.points : null
+        })
       }
       baseDirty = false
       overlayDirty = false
@@ -67,13 +81,35 @@ export function Board() {
     setImageLoadListener(() => invalidate(true))
 
     // ---------- helpers ----------
+    const capture = (id: number): void => {
+      try {
+        overlay.setPointerCapture(id)
+      } catch {
+        // Pointer already gone (or a synthetic event) — capture is best-effort.
+      }
+    }
     const local = (e: { clientX: number; clientY: number }): { x: number; y: number } => {
       const r = overlay.getBoundingClientRect()
       return { x: e.clientX - r.left, y: e.clientY - r.top }
     }
 
     const toolEffect = (tool: Tool): Effective =>
-      tool === 'eraser' ? 'eraser' : tool === 'pan' ? 'pan' : 'ink'
+      tool === 'eraser' ? 'eraser' : tool === 'pan' ? 'pan' : tool === 'select' ? 'select' : 'ink'
+
+    /** What a press at screen point (sx, sy) would grab on the current selection. */
+    const selectionHit = (sx: number, sy: number): { kind: 'handle'; corner: number; box: BBox } | { kind: 'body' } | null => {
+      if (!useUI.getState().selectedIds.length) return null
+      const box = editor.selectionBBox()
+      if (!box) return null
+      const r = selectionScreenRect(box, editor.camera)
+      const corners = selectionCorners(r)
+      const reach = HANDLE_SIZE + (hover?.pointerType === 'mouse' ? 0 : 6)
+      for (let i = 0; i < 4; i++) {
+        if (Math.abs(sx - corners[i][0]) <= reach && Math.abs(sy - corners[i][1]) <= reach) return { kind: 'handle', corner: i, box }
+      }
+      if (sx >= r.x && sx <= r.x + r.w && sy >= r.y && sy <= r.y + r.h) return { kind: 'body' }
+      return null
+    }
 
     /** Which action a pointer press performs, taking pen buttons and modifiers into account. */
     const effectiveFor = (e: PointerEvent): Effective => {
@@ -93,7 +129,7 @@ export function Board() {
       const penHover = hover.pointerType === 'pen' && hover.buttons === 0
       const eraserButton = hover.pointerType === 'pen' && (hover.buttons & 32) !== 0
       const eff = eraserButton ? 'eraser' : toolEffect(ui.tool)
-      if (eff === 'pan') return null
+      if (eff === 'pan' || eff === 'select') return null
       // While actually inking, the ink itself is the feedback.
       if (gesture?.kind === 'ink') return null
       if (eff === 'eraser') {
@@ -115,6 +151,12 @@ export function Board() {
       let c = 'none'
       if (gesture?.kind === 'pan' || gesture?.kind === 'pinch') c = 'grabbing'
       else if (spaceDown || tool === 'pan') c = 'grab'
+      else if (gesture?.kind === 'move') c = 'move'
+      else if (gesture?.kind === 'scale') c = gesture.cx > gesture.ax === gesture.cy > gesture.ay ? 'nwse-resize' : 'nesw-resize'
+      else if (tool === 'select') {
+        const h = hover ? selectionHit(hover.sx, hover.sy) : null
+        c = !h ? 'default' : h.kind === 'body' ? 'move' : h.corner % 2 === 0 ? 'nwse-resize' : 'nesw-resize'
+      }
       overlay.style.cursor = c
     }
 
@@ -176,6 +218,18 @@ export function Board() {
         scene.add([stroke])
       } else if (g.kind === 'eraser') {
         scene.record({ added: [], removed: g.removed })
+      } else if (g.kind === 'lasso') {
+        if (!g.moved) {
+          // A tap selects the item under the pointer (or clears the selection).
+          const w = screenToWorld(editor.camera, g.startX, g.startY)
+          const hit = hitTest(scene.getItems(), w.x, w.y, 6 / editor.camera.zoom)
+          if (hit) editor.setSelection([hit])
+          else editor.clearSelection()
+        } else {
+          editor.setSelection(itemsInLasso(scene.getItems(), g.points))
+        }
+      } else if (g.kind === 'move' || g.kind === 'scale') {
+        editor.commitPreview()
       }
       updateCssCursor()
       invalidate(false)
@@ -195,7 +249,7 @@ export function Board() {
         return
       const p = local(e)
       touches.set(e.pointerId, p)
-      overlay.setPointerCapture(e.pointerId)
+      capture(e.pointerId)
       if (touches.size === 1) {
         gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
       } else if (touches.size === 2) {
@@ -239,18 +293,41 @@ export function Board() {
       if (gesture) return
       if (e.pointerType === 'pen') lastPenTime = performance.now()
       e.preventDefault()
-      overlay.setPointerCapture(e.pointerId)
+      capture(e.pointerId)
       const p = local(e)
       const eff = effectiveFor(e)
 
       if (eff === 'pan') {
         gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
+      } else if (eff === 'select') {
+        const w = screenToWorld(editor.camera, p.x, p.y)
+        const h = selectionHit(p.x, p.y)
+        if (h?.kind === 'handle') {
+          // Scale uniformly about the opposite corner.
+          const b = h.box
+          const xs = [b.minX, b.maxX, b.maxX, b.minX]
+          const ys = [b.minY, b.minY, b.maxY, b.maxY]
+          const o = (h.corner + 2) % 4
+          gesture = { kind: 'scale', pointerId: e.pointerId, ax: xs[o], ay: ys[o], cx: xs[h.corner], cy: ys[h.corner] }
+        } else if (h?.kind === 'body') {
+          gesture = { kind: 'move', pointerId: e.pointerId, startX: w.x, startY: w.y }
+        } else {
+          // Pressing on an unselected item grabs it right away; empty space starts a lasso.
+          const hit = hitTest(scene.getItems(), w.x, w.y, 6 / editor.camera.zoom)
+          if (hit && e.pointerType !== 'pen') {
+            editor.setSelection([hit])
+            gesture = { kind: 'move', pointerId: e.pointerId, startX: w.x, startY: w.y }
+          } else {
+            gesture = { kind: 'lasso', pointerId: e.pointerId, points: [[w.x, w.y]], startX: p.x, startY: p.y, moved: false }
+          }
+        }
       } else if (eff === 'eraser') {
         const w = screenToWorld(editor.camera, p.x, p.y)
         const g: Gesture = { kind: 'eraser', pointerId: e.pointerId, removed: [], lastX: w.x, lastY: w.y }
         gesture = g
         eraseSegment(w.x, w.y, w.x, w.y, g)
       } else {
+        editor.clearSelection()
         const ui = useUI.getState()
         const isHl = ui.tool === 'highlighter'
         const slot = isHl ? ui.highlighter : ui.pens[ui.activePen]
@@ -278,6 +355,20 @@ export function Board() {
           editor.setCamera(panBy(editor.camera, p.x - g.lastX, p.y - g.lastY))
           g.lastX = p.x
           g.lastY = p.y
+        } else if (g.kind === 'lasso') {
+          const w = screenToWorld(editor.camera, p.x, p.y)
+          g.points.push([w.x, w.y])
+          if (Math.hypot(p.x - g.startX, p.y - g.startY) > 4) g.moved = true
+        } else if (g.kind === 'move') {
+          const w = screenToWorld(editor.camera, p.x, p.y)
+          editor.setPreview({ s: 1, ax: 0, ay: 0, dx: w.x - g.startX, dy: w.y - g.startY })
+        } else if (g.kind === 'scale') {
+          const w = screenToWorld(editor.camera, p.x, p.y)
+          const vx = g.cx - g.ax
+          const vy = g.cy - g.ay
+          const len2 = vx * vx + vy * vy || 1
+          const s = Math.max(0.05, ((w.x - g.ax) * vx + (w.y - g.ay) * vy) / len2)
+          editor.setPreview({ s, ax: g.ax, ay: g.ay, dx: 0, dy: 0 })
         } else {
           // Coalesced events give every sample the tablet produced (often 200+ Hz), not just one per frame.
           const samples = e.getCoalescedEvents?.() ?? []
@@ -295,6 +386,7 @@ export function Board() {
           }
         }
       }
+      if (!gesture && useUI.getState().tool === 'select') updateCssCursor()
       invalidate(false)
     }
 
@@ -352,7 +444,15 @@ export function Board() {
       if (mod && (key === '=' || key === '+')) return e.preventDefault(), editor.zoomStep(1)
       if (mod && key === '-') return e.preventDefault(), editor.zoomStep(-1)
       if (mod && key === '0') return e.preventDefault(), editor.resetZoom()
+      if (mod && key === 's') return e.preventDefault(), void editor.save(e.shiftKey)
+      if (mod && key === 'o') return e.preventDefault(), void editor.open()
+      if (mod && key === 'n') return e.preventDefault(), void editor.newBoard()
+      if (mod && key === 'a') return e.preventDefault(), editor.selectAll()
+      if (mod && key === 'd') return e.preventDefault(), editor.duplicateSelection()
       if (mod) return
+      if (key === 'delete' || key === 'backspace') return e.preventDefault(), editor.deleteSelection()
+      if (key === 'escape') return editor.clearSelection()
+      if (key === 'v') return ui.setTool('select')
       if (key === 'p') ui.selectPen(ui.activePen)
       else if (key === 'h') ui.setTool('highlighter')
       else if (key === 'e') ui.setTool('eraser')
@@ -370,11 +470,13 @@ export function Board() {
     // ---------- images: paste & drag-and-drop ----------
     const onPaste = (e: ClipboardEvent): void => {
       if (isTyping(e.target)) return
-      const files = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'))
-      if (files.length) {
-        e.preventDefault()
-        void editor.insertImages(files)
-      }
+      if (editor.pasteFromClipboard(e)) e.preventDefault()
+    }
+    const onCopy = (e: ClipboardEvent): void => {
+      if (!isTyping(e.target) && editor.copyToClipboard(e, false)) e.preventDefault()
+    }
+    const onCut = (e: ClipboardEvent): void => {
+      if (!isTyping(e.target) && editor.copyToClipboard(e, true)) e.preventDefault()
     }
     const onDragOver = (e: DragEvent): void => {
       e.preventDefault()
@@ -413,6 +515,8 @@ export function Board() {
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
     window.addEventListener('paste', onPaste)
+    window.addEventListener('copy', onCopy)
+    window.addEventListener('cut', onCut)
     window.addEventListener('dragover', onDragOver)
     window.addEventListener('drop', onDrop)
     updateCssCursor()
@@ -432,6 +536,8 @@ export function Board() {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('paste', onPaste)
+      window.removeEventListener('copy', onCopy)
+      window.removeEventListener('cut', onCut)
       window.removeEventListener('dragover', onDragOver)
       window.removeEventListener('drop', onDrop)
     }
