@@ -3,7 +3,9 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
-## [0.7.0] (2026-11-12)
+## [0.7.1] (2026-11-12)
+
+0.7.0 was tagged but never published; 0.7.1 is the first release with these changes.
 
 ### Added
 - Ruler and two set squares (45°/45°/90° and 30°/60°/90°) with centimetre and millimetre scales
@@ -13,15 +15,19 @@ All notable changes to Inkboard. Downloads for every version are on the
 - Hold `Ctrl` (`⌘` on macOS) while dragging any instrument to snap its origin to paper grid intersections.
 
 ### Changed
-- Library storage moved from gzipped `.inkboard` files to Node's built-in SQLite (`library.sqlite` in WAL mode);
-  board JSON is stored uncompressed, and raster images are stored once by SHA-256 hash as raw binary BLOBs
-  instead of base64 strings. Existing libraries migrate automatically on startup.
-- Standalone `.inkboard` files are now plain UTF-8 JSON and are exported or imported only on explicit request.
-- Autosave waits for 5 seconds of inactivity before writing (while still flushing immediately on board switch,
-  app close or `Ctrl+S`).
+- Library storage moved from gzipped `.inkboard` files to Node's built-in SQLite (`library.sqlite`, WAL,
+  `synchronous = FULL`, schema versioned with `user_version`). Raster images are stored once by SHA-256 hash
+  as binary BLOBs. The migration runs in one transaction and moves the old files into `Library/legacy-0.6/`
+  instead of deleting them; a re-run after a crash never overwrites migrated boards.
+- Every board now lives in the library. "Save as file" exports a copy; opening an `.inkboard` file imports it
+  once, and opening the same unchanged file again opens that board instead of a duplicate. Boards that
+  0.6 kept in the user's own files are copied into the library (the files stay where they are).
+- Standalone `.inkboard` files are now plain UTF-8 JSON (0.6 reads them; gzip files are still read).
+- Autosave writes at most 5 seconds after the first unsaved change, also while drawing without pauses
+  (and right away on board switch, app close, sleep or `Ctrl+S`).
 
 ### Removed
-- Built-in version history snapshots (`VersionHistory` panel and `history/` directory).
+- Built-in version history. Existing snapshots in `Library/history/` are left on disk untouched.
 
 ## [0.6.0] (2026-11-12)
 

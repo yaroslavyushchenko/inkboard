@@ -2,7 +2,7 @@
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
-## What's new in 0.7.0
+## What's new in 0.7.1
 
 - **Ruler and set squares:** all measuring and drawing instruments (ruler, 45° set square, 30°/60° set square,
   protractor and compass) now live in a dedicated **Drawing tools** menu on the toolbar. Draw with the pen
@@ -11,12 +11,15 @@
 - **Grid snap for instruments:** hold `Ctrl` (`⌘` on macOS) while moving any instrument to snap its origin
   (the ruler's `0 cm` mark, the set square's `90°` corner, the protractor's centre or the compass's needle)
   to paper grid intersections.
-- **SQLite library storage:** boards, templates, tags and thumbnails are now stored in a local SQLite database
-  (`library.sqlite`) with raw binary image assets deduplicated by SHA-256 hash instead of gzipped archives
-  and inline base64 strings. Existing boards are migrated automatically on first launch, and standalone
-  `.inkboard` files are exported or imported on request.
-- **Quieter autosave:** changes are saved automatically after 5 seconds of inactivity (and immediately when
-  switching boards, closing the window or pressing `Ctrl+S`).
+- **New library storage:** boards, templates, tags and thumbnails now live in one local database, with each
+  image stored once. Your boards move over automatically on first launch; the old files are kept in the
+  `legacy-0.6` folder inside the library, nothing is deleted.
+- **Every board lives in Inkboard now.** *Save as file…* saves a copy you can send or keep. Opening an
+  `.inkboard` file adds it to your boards once; opening the same file again opens that board.
+- **Autosave** writes at most 5 seconds after you change something, even while you keep drawing.
+- **Version history has been removed.**
+
+Boards from 0.7 can't be seen by older versions, so update every computer you use.
 
 ## Also in 0.6.0
 
