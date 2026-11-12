@@ -110,16 +110,22 @@ jobs:
       - name: Check for store credentials
         if: env.SNAPCRAFT_STORE_CREDENTIALS == ''
         run: echo "::notice::SNAPCRAFT_STORE_CREDENTIALS is not set, skipping the Snap Store upload. See docs/SNAP.md."
+      # No snap when the Snap Store was down during the build: skip the upload instead of failing.
       - uses: actions/download-artifact@v8
+        id: download
         if: env.SNAPCRAFT_STORE_CREDENTIALS != ''
+        continue-on-error: true
         with:
           name: snap
           path: snap
+      - name: Note a missing snap
+        if: env.SNAPCRAFT_STORE_CREDENTIALS != '' && steps.download.outcome != 'success'
+        run: echo "::warning::No snap was built for this release (Snap Store was unreachable), nothing to upload."
       - name: Install snapcraft
-        if: env.SNAPCRAFT_STORE_CREDENTIALS != ''
+        if: env.SNAPCRAFT_STORE_CREDENTIALS != '' && steps.download.outcome == 'success'
         run: sudo snap install snapcraft --classic
       - name: Upload to the Snap Store
-        if: env.SNAPCRAFT_STORE_CREDENTIALS != ''
+        if: env.SNAPCRAFT_STORE_CREDENTIALS != '' && steps.download.outcome == 'success'
         run: |
           for f in snap/*.snap; do
             snapcraft upload "$f" --release=stable
