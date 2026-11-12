@@ -2,7 +2,7 @@
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
-## What's new in 0.7.1
+## What's new in 0.7.2
 
 - **Ruler and set squares:** all measuring and drawing instruments (ruler, 45° set square, 30°/60° set square,
   protractor and compass) now live in a dedicated **Drawing tools** menu on the toolbar. Draw with the pen

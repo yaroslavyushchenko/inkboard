@@ -3,9 +3,9 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
-## [0.7.1] (2026-11-12)
+## [0.7.2] (2026-11-12)
 
-0.7.0 was tagged but never published; 0.7.1 is the first release with these changes.
+0.7.0 and 0.7.1 were tagged but never published; 0.7.2 is the first release with these changes.
 
 ### Added
 - Ruler and two set squares (45°/45°/90° and 30°/60°/90°) with centimetre and millimetre scales
