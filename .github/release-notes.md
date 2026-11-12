@@ -2,7 +2,27 @@
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
-## What's new in 0.7.2
+## What's new in 0.8.0
+
+- **Formulas on the board.** The new **√x** tool opens an on-screen math keypad: fractions, roots of any
+  degree, powers and indices, logarithms, trigonometry, limits, derivatives, integrals, sums, matrices,
+  combinations and Greek letters. Keys with a red dot have more variants (hold the key or right-click it):
+  `∛`, `x³`, a free power. A formula stays vector; double-click it to edit.
+- **Typing works too:** `/` divides, `Alt + /` makes a fraction, `^` a power, `_` an index;
+  `sqrt`, `sin`, `pi` turn into their signs.
+- **Show answer:** plain arithmetic gets a button that reveals its value, so the class can work it out
+  first.
+- **Plot formulas from the board:** select one or more formulas (`y = x²`, `f(x) = …`) and press the plot
+  button to get a coordinate plane with their graphs.
+- **More in the Functions panel:** any name and variable (`s(t) = 2t`), a range of `x` and of `y` for
+  each curve, and equations such as the circle `x² + y² = 4` or `x = y²`.
+- **Fit to graphs** sets a plane's axes to just hold its curves, growing or shrinking it.
+- The bar above a selection is smaller and always stays on screen.
+
+Boards with formulas, ranges or equations can't be opened by 0.7.2 or older, so update every computer you
+use. Other boards still open there.
+
+## Also in 0.7.2
 
 - **Ruler and set squares:** all measuring and drawing instruments (ruler, 45° set square, 30°/60° set square,
   protractor and compass) now live in a dedicated **Drawing tools** menu on the toolbar. Draw with the pen

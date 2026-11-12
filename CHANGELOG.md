@@ -3,7 +3,7 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
-## Unreleased
+## [0.8.0] (2026-11-13)
 
 ### Added
 - **Formulas.** A new board object built on an on-screen math keypad: fractions, roots of any degree,
@@ -167,6 +167,7 @@ Boards saved by 0.5 can't be opened by older versions.
 First test build: infinite board, pressure-sensitive vector ink, eraser, paper backgrounds, images,
 lasso selection.
 
+[0.8.0]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.8.0
 [0.7.0]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.7.0
 [0.6.0]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.6.0
 [0.5.2]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.5.2
