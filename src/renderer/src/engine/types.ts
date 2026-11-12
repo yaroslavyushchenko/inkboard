@@ -96,6 +96,16 @@ export interface GraphParams {
   labelStep: number
   /** Kept for file compatibility; always false (the paper background is the grid). */
   grid: boolean
+  /** Functions y = f(x) plotted on a coordinate plane (drawn only when kind is 'plane'). */
+  fns?: PlotFn[]
+  /** true = don't write the formulas next to the curves (shown by default). */
+  hideFormulas?: boolean
+}
+
+/** One plotted function: the formula as the teacher typed it (see engine/mathexpr.ts) and its colour. */
+export interface PlotFn {
+  expr: string
+  color: string
 }
 
 export interface GraphItem extends ItemBase, GraphParams {

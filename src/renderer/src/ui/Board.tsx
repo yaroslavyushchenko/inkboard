@@ -12,7 +12,7 @@ import {
   type CursorState,
   type LiveStroke
 } from '../engine/renderer'
-import { arcStroke, baseStroke, hitProtractor, rayStroke, scaleAngle, toLocal, toWorld, type ProtractorHit } from '../engine/protractor'
+import { arcStroke, baseStroke, degText, hitProtractor, rayStroke, scaleAngle, snapDeg, toLocal, toWorld, type ProtractorHit, type ProtractorState } from '../engine/protractor'
 import { buildShapeItems, editableShape, regenerateShape, shapeMembers } from '../engine/shapeItems'
 import { DEFAULT_SHAPE_SIZE, isLinear, SHAPE_BASES, shapeBox, shapeParts, snapAngle, type ShapeKind } from '../engine/shapes'
 import { hitTest, itemsInLasso } from '../engine/transform'
@@ -20,8 +20,8 @@ import type { BBox, Item, Point, ShapeSpec, StrokeItem, TextItem } from '../engi
 import { editor } from '../editor'
 import { matchShortcut, type ShortcutId } from '../shortcuts'
 import { useUI, type InkSlot, type PenAction, type Tool } from '../store'
-import { translate, type Lang } from '../i18n'
-import { compassArc, hitCompass, radiusCells, radiusFromHandle, type CompassHit } from '../engine/compass'
+import { translate, type Lang, type MessageKey } from '../i18n'
+import { compassArc, hitCompass, radiusCells, radiusFromHandle, snapSweep, type CompassHit, type CompassState } from '../engine/compass'
 import { textBBox } from '../engine/text'
 
 /** "r = 4 cells" / "r = 4,5 клітинки" for the compass. */
@@ -148,6 +148,10 @@ export function Board() {
         const live = gesture?.kind === 'ink' || gesture?.kind === 'shape' ? gesture.live : null
         const info = selInfo()
         const hl = !gesture && hoverLine && hoverLine.id !== info?.line?.id ? hoverLine : null
+        const comp = ui.compass
+        const cs = comp ? compassState() : null
+        const prot = ui.protractor
+        const ps = prot ? protractorState() : null
         renderer.renderOverlay(live, cursorState(), editor.camera, {
           box: info?.box ?? null,
           lasso: gesture?.kind === 'lasso' ? gesture.points : null,
@@ -157,10 +161,9 @@ export function Board() {
           sides: !!info?.shape,
           ends: info?.line ? lineEnds(info.line) : hl ? lineEnds(hl) : null
         }, {
-          protractor: ui.protractor,
-          compass: ui.compass
-            ? { c: ui.compass, color: inkSlot().color, label: radiusLabel(ui.lang, ui.compass.r) }
-            : null,
+          protractor: prot ? { p: prot, state: ps!.state } : null,
+          compass: comp ? { c: comp, color: inkSlot().color, label: radiusLabel(ui.lang, comp.r), state: cs!.state } : null,
+          hint: hover && (cs?.hint || ps?.hint) ? { sx: hover.sx, sy: hover.sy, text: (cs?.hint || ps?.hint)! } : null,
           angleLabel
         })
       }
@@ -323,6 +326,60 @@ export function Board() {
       return hitCompass(c, w.x, w.y, editor.camera.zoom)
     }
 
+    /** Open or close the settings card beside the protractor. */
+    const togglePanel = (): void => {
+      useUI.setState((s) => ({ protractorPanel: !s.protractorPanel }))
+    }
+
+    /** Which compass part is lit (being dragged, or under a hovering mouse / pen) and what to show with it. */
+    const compassState = (): { state: CompassState; hint: string | null } => {
+      const g = gesture
+      const drawing = g?.kind === 'ink' && g.snap?.mode === 'compass' ? g.snap : null
+      let hot: CompassHit | null = null
+      if (g?.kind === 'compMove') hot = 'body'
+      else if (g?.kind === 'compRadius') hot = 'radius'
+      else if (drawing) hot = 'pencil'
+      else if (!g && hover && hover.pointerType !== 'touch' && !spaceDown) {
+        // Same rule as a press: the pan tool and the eraser go through the compass.
+        const tool = useUI.getState().tool
+        const eraserEnd = hover.pointerType === 'pen' && (hover.buttons & 32) !== 0
+        if (tool !== 'pan' && tool !== 'eraser' && !eraserEnd) hot = compassHitAt(hover.sx, hover.sy)
+      }
+      const key = !g && hot ? (hot === 'pencil' || hot === 'radius' || hot === 'close' ? hot : 'move') : null
+      return {
+        state: { hot, sweepFrom: drawing ? drawing.a0 : null, ticks: hot === 'radius' },
+        hint: key ? translate(useUI.getState().lang, `compass.hint.${key}` as MessageKey) : null
+      }
+    }
+
+    /** Which protractor part is lit, the angle under the pointer on its edge, and the hint to show. */
+    const protractorState = (): { state: ProtractorState; hint: string | null } => {
+      const ui = useUI.getState()
+      const prot = ui.protractor!
+      const g = gesture
+      let hot: ProtractorHit | null = null
+      if (g?.kind === 'protMove') hot = 'body'
+      else if (g?.kind === 'protRotate') hot = 'rotate'
+      else if (g?.kind === 'ink' && g.snap && g.snap.mode !== 'compass') hot = g.snap.mode
+      else if (!g && hover && hover.pointerType !== 'touch' && !spaceDown && ui.tool !== 'pan') {
+        // The compass lies on top: it wins, as on a press.
+        if (!(ui.tool !== 'eraser' && compassHitAt(hover.sx, hover.sy))) hot = protractorHitAt(hover.sx, hover.sy)
+      }
+      const drawing = toolEffect(ui.tool) === 'ink'
+      let hoverDeg: number | null = null
+      if (hot === 'arc' && hover && (drawing || g)) {
+        const w = screenToWorld(editor.camera, hover.sx, hover.sy)
+        hoverDeg = snapDeg(scaleAngle(prot, w.x, w.y), ui.instruments.protStep)
+      }
+      let key: string | null = null
+      if (!g && hot) {
+        if (hot === 'close' || hot === 'rotate' || hot === 'settings') key = hot
+        else if (drawing && hot !== 'body') key = hot
+        else key = 'move'
+      }
+      return { state: { hot, hoverDeg }, hint: key ? translate(ui.lang, `protractor.hint.${key}` as MessageKey) : null }
+    }
+
     /** The ink a pen stroke would use now (the compass pencil draws with it too). */
     const inkSlot = (): InkSlot => {
       const ui = useUI.getState()
@@ -369,6 +426,8 @@ export function Board() {
     const updateCssCursor = (): void => {
       const tool = useUI.getState().tool
       let c = 'none'
+      // Protractor part under a hovering pointer, hit-tested once (null while a gesture runs).
+      const pHit = !gesture && hover ? protractorHitAt(hover.sx, hover.sy) : null
       if (gesture?.kind === 'pan' || gesture?.kind === 'pinch') c = 'grabbing'
       else if (spaceDown || tool === 'pan') c = 'grab'
       else if (tool === 'shape') c = 'crosshair'
@@ -388,9 +447,9 @@ export function Board() {
       else if (!gesture && hover && compassHitAt(hover.sx, hover.sy)) {
         const h = compassHitAt(hover.sx, hover.sy)
         c = h === 'close' ? 'pointer' : h === 'pencil' || h === 'radius' ? 'grab' : 'move'
-      } else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'body') c = 'move'
-      else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'rotate') c = 'grab'
-      else if (!gesture && hover && protractorHitAt(hover.sx, hover.sy) === 'close') c = 'pointer'
+      } else if (pHit === 'body') c = 'move'
+      else if (pHit === 'rotate') c = 'grab'
+      else if (pHit === 'close' || pHit === 'settings') c = 'pointer'
       else if (gesture?.kind === 'move') c = 'move'
       else if (gesture?.kind === 'scale') c = gesture.cx > gesture.ax === gesture.cy > gesture.ay ? 'nwse-resize' : 'nesw-resize'
       else if (gesture?.kind === 'reshape') c = gesture.side % 2 === 0 ? 'ns-resize' : 'ew-resize'
@@ -563,13 +622,13 @@ export function Board() {
         }
         // An arc drawn along the protractor gets its angle written next to it ("50°"), kept with it as a group.
         const prot = useUI.getState().protractor
-        const deg = g.snap?.mode === 'arc' && g.snap.endDeg !== undefined ? Math.round(Math.abs(g.snap.endDeg - g.snap.startDeg)) : 0
+        const deg = g.snap?.mode === 'arc' && g.snap.endDeg !== undefined ? Math.round(Math.abs(g.snap.endDeg - g.snap.startDeg) * 10) / 10 : 0
         if (prot && deg >= 1 && g.snap?.mode === 'arc') {
           const size = Math.max(14, Math.min(48, prot.r * 0.075))
           const mid = (((g.snap.startDeg + g.snap.endDeg!) / 2) * Math.PI) / 180
           const rr = prot.r + live.size + size * 1.1
           const at = toWorld(prot, Math.cos(mid) * rr, -Math.sin(mid) * rr)
-          const label: TextItem = { type: 'text', id: newId(), z: scene.allocZ(), x: 0, y: 0, text: `${deg}°`, size, color: live.color, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
+          const label: TextItem = { type: 'text', id: newId(), z: scene.allocZ(), x: 0, y: 0, text: degText(deg, useUI.getState().lang === 'uk'), size, color: live.color, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
           const b = textBBox(label)
           label.x = at.x - (b.maxX - b.minX) / 2
           label.y = at.y - (b.maxY - b.minY) / 2
@@ -623,7 +682,9 @@ export function Board() {
       capture(e.pointerId)
       const ch = touches.size === 1 ? compassHitAt(p.x, p.y) : null
       const ph = touches.size === 1 && !ch ? protractorHitAt(p.x, p.y) : null
-      if (ch === 'needle' || ch === 'body') {
+      if (ph === 'settings') {
+        togglePanel()
+      } else if (ch === 'needle' || ch === 'body') {
         const w = screenToWorld(editor.camera, p.x, p.y)
         gesture = { kind: 'compMove', pointerId: e.pointerId, lastX: w.x, lastY: w.y }
       } else if (ph && ph !== 'close' && ph !== 'rotate') {
@@ -701,7 +762,7 @@ export function Board() {
       // The compass lies on top of the protractor; with the eraser its pencil would only get in the way.
       const cHit = eff === 'pan' || eff === 'eraser' || endGrab ? null : compassHitAt(p.x, p.y)
       const pHit = eff === 'pan' || endGrab || cHit ? null : protractorHitAt(p.x, p.y)
-      const protGrab = pHit === 'body' || (pHit !== null && pHit !== 'close' && pHit !== 'rotate' && eff !== 'ink')
+      const protGrab = pHit === 'body' || (pHit !== null && pHit !== 'close' && pHit !== 'rotate' && pHit !== 'settings' && eff !== 'ink')
       if (cHit) {
         const c = useUI.getState().compass!
         const w = screenToWorld(editor.camera, p.x, p.y)
@@ -747,6 +808,13 @@ export function Board() {
         hoverBox = null
       } else if (pHit === 'close') {
         useUI.setState({ protractor: null })
+        try {
+          overlay.releasePointerCapture(e.pointerId)
+        } catch {
+          // not captured
+        }
+      } else if (pHit === 'settings') {
+        togglePanel()
         try {
           overlay.releasePointerCapture(e.pointerId)
         } catch {
@@ -932,7 +1000,10 @@ export function Board() {
           const w = screenToWorld(editor.camera, p.x, p.y)
           const g = gesture
           g.live = { ...g.live, geom: 'line', pressure: false }
-          if (pHit === 'arc') g.snap = { mode: 'arc', startDeg: scaleAngle(prot, w.x, w.y) }
+          const ins = useUI.getState().instruments
+          if (pHit === 'arc') {
+            g.snap = { mode: 'arc', startDeg: snapDeg(scaleAngle(prot, w.x, w.y), ins.protStep) }
+          }
           else if (pHit === 'center') g.snap = { mode: 'center' }
           else g.snap = { mode: 'base', u0: Math.max(-prot.r, Math.min(prot.r, toLocal(prot, w.x, w.y).u)) }
           g.live.points = []
@@ -1071,23 +1142,26 @@ export function Board() {
               if (d < -Math.PI) d += Math.PI * 2
               g.snap.last = ang
               g.snap.sweep = Math.max(-Math.PI * 2, Math.min(Math.PI * 2, g.snap.sweep + d))
-              useUI.setState({ compass: { ...comp, a: g.snap.a0 + g.snap.sweep } })
-              g.live = { ...g.live, points: compassArc(comp, g.snap.a0, g.snap.sweep) }
-              angleLabel = { sx: p.x, sy: p.y, text: `${Math.round(Math.abs((g.snap.sweep * 180) / Math.PI))}°` }
+              // The raw sweep keeps adding up the turns; what is drawn snaps to quarter turns.
+              const sweep = snapSweep(g.snap.sweep, comp.r, editor.camera.zoom)
+              useUI.setState({ compass: { ...comp, a: g.snap.a0 + sweep } })
+              g.live = { ...g.live, points: compassArc(comp, g.snap.a0, sweep) }
+              angleLabel = { sx: p.x, sy: p.y, text: `${Math.round(Math.abs((sweep * 180) / Math.PI))}°` }
             }
           } else if (g.kind === 'ink' && g.snap && g.snap.mode !== 'compass' && prot) {
             const w = screenToWorld(editor.camera, p.x, p.y)
             const off = g.live.size / 2 + 1 / editor.camera.zoom
+            const ins = useUI.getState().instruments
             if (g.snap.mode === 'arc') {
-              const cur = scaleAngle(prot, w.x, w.y)
+              const cur = snapDeg(scaleAngle(prot, w.x, w.y), ins.protStep)
               g.snap.endDeg = cur
               g.live = { ...g.live, points: arcStroke(prot, g.snap.startDeg, cur, off) }
-              angleLabel = { sx: p.x, sy: p.y, text: `${Math.round(Math.abs(cur - g.snap.startDeg))}°` }
+              angleLabel = { sx: p.x, sy: p.y, text: degText(Math.abs(cur - g.snap.startDeg), useUI.getState().lang === 'uk') }
             } else if (g.snap.mode === 'center') {
-              const deg = Math.round(scaleAngle(prot, w.x, w.y))
+              const deg = snapDeg(scaleAngle(prot, w.x, w.y), ins.protStep)
               const len = Math.max(Math.hypot(w.x - prot.x, w.y - prot.y), 2 / editor.camera.zoom)
               g.live = { ...g.live, points: rayStroke(prot, deg, len) }
-              angleLabel = { sx: p.x, sy: p.y, text: `${deg}°` }
+              angleLabel = { sx: p.x, sy: p.y, text: degText(deg, useUI.getState().lang === 'uk') }
             } else {
               const u = Math.max(-prot.r, Math.min(prot.r, toLocal(prot, w.x, w.y).u))
               g.live = { ...g.live, points: baseStroke(prot, g.snap.u0, u, off) }
@@ -1293,7 +1367,7 @@ export function Board() {
     ro.observe(overlay.parentElement!)
 
     const unsubTool = useUI.subscribe((s, prev) => {
-      if (s.protractor !== prev.protractor || s.compass !== prev.compass) invalidate(false)
+      if (s.protractor !== prev.protractor || s.compass !== prev.compass || s.instruments !== prev.instruments) invalidate(false)
       if (s.textEdit?.id !== prev.textEdit?.id) invalidate(true)
       if (s.tool !== prev.tool) {
         hoverBox = null

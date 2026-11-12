@@ -3,6 +3,8 @@ import type { Item } from './types'
 interface HistoryEntry {
   added: Item[]
   removed: Item[]
+  /** Consecutive replaces with the same key fold into this one entry (live typing = one undo step). */
+  merge?: string
 }
 
 /**
@@ -63,6 +65,26 @@ export class Scene {
     this.insert(newItems)
     if (record) this.record({ added: newItems, removed: oldItems })
     else this.emit()
+  }
+
+  /**
+   * Replace and record, folding into the previous history entry when it has the same `key` and its
+   * result is exactly `oldItems` (nothing else happened in between). Used for live edits such as typing a
+   * formula: the board updates on every key, Ctrl+Z undoes the whole edit at once.
+   */
+  replaceMerged(oldItems: Item[], newItems: Item[], key: string): void {
+    if (oldItems.length === 0) return
+    const last = this.undoStack[this.undoStack.length - 1]
+    const same = last?.merge === key && last.added.length === oldItems.length && last.added.every((it, i) => it === oldItems[i])
+    this.delete(oldItems)
+    this.insert(newItems)
+    if (same) {
+      last.added = newItems
+      this.redoStack = []
+      this.emit()
+    } else {
+      this.record({ added: newItems, removed: oldItems, merge: key })
+    }
   }
 
   /** Replace the whole board (open file / new board). Clears history. */

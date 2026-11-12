@@ -32,7 +32,9 @@ export function GraphDialog() {
   }
   const savePreset = (): void => {
     if (!presetName.trim()) return
-    const preset = { id: `${Date.now().toString(36)}`, name: presetName.trim(), params: sanitizeGraph(p) }
+    // A preset is the coordinate layout only, never the functions plotted on the plane it came from.
+    const { fns: _fns, hideFormulas: _hide, ...layout } = sanitizeGraph(p)
+    const preset = { id: `${Date.now().toString(36)}`, name: presetName.trim(), params: layout }
     useUI.setState((s) => ({ graphPresets: [...s.graphPresets, preset] }))
     setPresetName('')
   }

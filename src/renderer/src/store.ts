@@ -5,6 +5,7 @@ import type { GraphPreset } from './engine/graph'
 import type { ShapeKind } from './engine/shapes'
 import type { Protractor } from './engine/protractor'
 import type { Compass } from './engine/compass'
+import { cleanInstrumentPrefs, DEFAULT_INSTRUMENTS, type InstrumentPrefs } from './engine/instruments'
 import type { FullRun } from './engine/text'
 import type { BackgroundKind, Camera, GraphParams, LineCap, LineDash } from './engine/types'
 import { detectLanguage, type Lang } from './i18n'
@@ -82,6 +83,8 @@ interface UIState {
   graphPresets: GraphPreset[]
   /** Coordinate settings dialog: insert a new graph or edit the selected one. */
   graphDialog: { mode: 'insert' | 'edit'; id?: string; params: GraphParams } | null
+  /** Function panel docked beside the selected coordinate plane (`session` groups its edits into one undo step). */
+  fnPanel: { id: string; session: number } | null
   activePen: number
   pens: InkSlot[]
   highlighter: InkSlot
@@ -114,6 +117,10 @@ interface UIState {
   protractor: Protractor | null
   /** On-board compass, or null when hidden. */
   compass: Compass | null
+  /** Protractor angle snapping. */
+  instruments: InstrumentPrefs
+  /** Settings card docked beside the protractor. */
+  protractorPanel: boolean
   /** Instrument tips the user closed ("protractor", "compass"); they don't show again. */
   hiddenTips: string[]
   setTool: (tool: Tool) => void
@@ -137,6 +144,7 @@ export const useUI = create<UIState>()(
       textEdit: null,
       graphPresets: [],
       graphDialog: null,
+      fnPanel: null,
       activePen: 0,
       pens: [
         { color: '#1e1e1e', size: 3 },
@@ -161,6 +169,8 @@ export const useUI = create<UIState>()(
       shortcutsOpen: false,
       protractor: null,
       compass: null,
+      instruments: DEFAULT_INSTRUMENTS,
+      protractorPanel: false,
       hiddenTips: [],
       justUpdatedTo: null,
       appVersion: '',
@@ -182,6 +192,7 @@ export const useUI = create<UIState>()(
           ...current,
           ...p,
           penButtons: cleanPenButtons(p.penButtons),
+          instruments: cleanInstrumentPrefs(p.instruments),
           hiddenTips: Array.isArray(p.hiddenTips) ? p.hiddenTips.filter((x) => typeof x === 'string') : []
         }
       },
@@ -196,7 +207,8 @@ export const useUI = create<UIState>()(
         selectRadius: s.selectRadius,
         penButtons: s.penButtons,
         textStyle: s.textStyle,
-        hiddenTips: s.hiddenTips
+        hiddenTips: s.hiddenTips,
+        instruments: s.instruments
       })
     }
   )

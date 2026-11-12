@@ -68,12 +68,11 @@ export function hitCompass(c: Compass, wx: number, wy: number, zoom: number): Co
   return legs || near(L.hinge, 14) ? 'body' : null
 }
 
-/** Radius from the ↔ handle position: whole and half cells snap when close. */
+/** Radius from the ↔ handle position, in whole and half paper cells. */
 export function radiusFromHandle(c: Compass, wx: number, wy: number, zoom: number): Compass {
   const d = Math.hypot(wx - c.x, wy - c.y)
-  let r = Math.max(12 / zoom, d - HANDLE_GAP / zoom)
-  const halves = (r / COMPASS_CELL) * 2
-  if (Math.abs(halves - Math.round(halves)) * (COMPASS_CELL / 2) * zoom < 5) r = (Math.round(halves) * COMPASS_CELL) / 2
+  const step = COMPASS_CELL / 2
+  const r = Math.max(step, Math.round((d - HANDLE_GAP / zoom) / step) * step)
   return { ...c, r, a: Math.atan2(wy - c.y, wx - c.x) }
 }
 
@@ -86,6 +85,28 @@ export function compassArc(c: Compass, a0: number, sweep: number): Point[] {
     pts.push([c.x + Math.cos(a) * c.r, c.y + Math.sin(a) * c.r, 0.5])
   }
   return pts
+}
+
+/** Arc sweeps snap to quarter turns when the pencil is this close to one (screen px along the arc). */
+const SNAP_PX = 8
+
+/** Snap a pencil sweep (radians) to the nearest multiple of 90° when it is within a few screen px of it. */
+export function snapSweep(sweep: number, r: number, zoom: number): number {
+  const q = Math.PI / 2
+  const k = Math.max(-4, Math.min(4, Math.round(sweep / q)))
+  if (k === 0) return sweep
+  return Math.abs(sweep - k * q) * r * zoom < SNAP_PX ? k * q : sweep
+}
+
+/** Tick marks along the radius line: whole cells, plus half cells when there is room on screen. */
+export function radiusTicks(r: number, zoom: number): { d: number; half: boolean }[] {
+  const cellPx = COMPASS_CELL * zoom
+  if (cellPx < 4) return []
+  const halves = cellPx / 2 >= 6
+  const out: { d: number; half: boolean }[] = []
+  const step = halves ? COMPASS_CELL / 2 : COMPASS_CELL
+  for (let i = 1; i * step <= r + 1e-6; i++) out.push({ d: i * step, half: halves && i % 2 === 1 })
+  return out
 }
 
 /** Radius in paper cells (one decimal) and which plural form of "cell" it takes (Ukrainian rules; English uses one / other). */
@@ -101,12 +122,38 @@ export function radiusCells(r: number): { n: number; form: 'cell1' | 'cellFew' |
 
 const ACCENT = '#4f6bed'
 const METAL = '#5c6270'
+const GLOW = 'rgba(79, 107, 237, 0.22)'
+
+/** How the compass answers the pointer. */
+export interface CompassState {
+  /** Part under the pointer (or being dragged): drawn lit. */
+  hot: CompassHit | null
+  /** While the pencil draws: the start angle, for the quarter-turn marks. */
+  sweepFrom: number | null
+  /** Show cell ticks on the radius line. */
+  ticks: boolean
+}
 
 /** Draw the compass on the overlay canvas (`ctx` has an identity transform, device pixels). */
-export function drawCompass(ctx: CanvasRenderingContext2D, cam: Camera, dpr: number, c: Compass, pencilColor: string, label: string): void {
+export function drawCompass(
+  ctx: CanvasRenderingContext2D,
+  cam: Camera,
+  dpr: number,
+  c: Compass,
+  pencilColor: string,
+  label: string,
+  state: CompassState = { hot: null, sweepFrom: null, ticks: false }
+): void {
   const s = cam.zoom * dpr
   const L = layout(c, cam.zoom)
   const px = L.px
+  const hot = state.hot
+  const glow = (x: number, y: number, rad: number): void => {
+    ctx.beginPath()
+    ctx.arc(x, y, rad * px, 0, Math.PI * 2)
+    ctx.fillStyle = GLOW
+    ctx.fill()
+  }
   ctx.save()
   ctx.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s)
   ctx.lineCap = 'round'
@@ -130,17 +177,59 @@ export function drawCompass(ctx: CanvasRenderingContext2D, cam: Camera, dpr: num
   ctx.stroke()
   ctx.setLineDash([])
 
+  // Cell ticks across the radius line: where the ↔ handle snaps.
+  if (state.ticks) {
+    const ux = Math.cos(c.a)
+    const uy = Math.sin(c.a)
+    ctx.beginPath()
+    for (const t of radiusTicks(c.r, cam.zoom)) {
+      const k = (t.half ? 3 : 6) * px
+      const x = c.x + ux * t.d
+      const y = c.y + uy * t.d
+      ctx.moveTo(x - uy * k, y + ux * k)
+      ctx.lineTo(x + uy * k, y - ux * k)
+    }
+    ctx.lineWidth = 1.5 * px
+    ctx.strokeStyle = ACCENT
+    ctx.stroke()
+  }
+
+  // While drawing: where the arc started and the quarter turns it snaps to.
+  if (state.sweepFrom !== null) {
+    ctx.beginPath()
+    for (let k = 1; k < 4; k++) {
+      const a = state.sweepFrom + (k * Math.PI) / 2
+      const ux = Math.cos(a)
+      const uy = Math.sin(a)
+      ctx.moveTo(c.x + ux * (c.r - 7 * px), c.y + uy * (c.r - 7 * px))
+      ctx.lineTo(c.x + ux * (c.r + 7 * px), c.y + uy * (c.r + 7 * px))
+    }
+    ctx.lineWidth = 2 * px
+    ctx.strokeStyle = ACCENT
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(c.x + Math.cos(state.sweepFrom) * c.r, c.y + Math.sin(state.sweepFrom) * c.r, 4 * px, 0, Math.PI * 2)
+    ctx.fillStyle = ACCENT
+    ctx.fill()
+  }
+
   // Legs and hinge.
+  const bodyHot = hot === 'body'
   ctx.beginPath()
   ctx.moveTo(c.x, c.y)
   ctx.lineTo(L.hinge.x, L.hinge.y)
   ctx.lineTo(L.p.x, L.p.y)
+  if (bodyHot) {
+    ctx.lineWidth = 14 * px
+    ctx.strokeStyle = GLOW
+    ctx.stroke()
+  }
   ctx.lineWidth = 6 * px
-  ctx.strokeStyle = 'rgba(92, 98, 112, 0.75)'
+  ctx.strokeStyle = bodyHot ? 'rgba(79, 107, 237, 0.85)' : 'rgba(92, 98, 112, 0.75)'
   ctx.stroke()
   ctx.beginPath()
   ctx.arc(L.hinge.x, L.hinge.y, 8 * px, 0, Math.PI * 2)
-  ctx.fillStyle = METAL
+  ctx.fillStyle = bodyHot ? ACCENT : METAL
   ctx.fill()
   ctx.beginPath()
   ctx.arc(L.hinge.x, L.hinge.y, 3 * px, 0, Math.PI * 2)
@@ -148,12 +237,13 @@ export function drawCompass(ctx: CanvasRenderingContext2D, cam: Camera, dpr: num
   ctx.fill()
 
   // Needle.
+  if (hot === 'needle') glow(c.x, c.y, 17)
   ctx.beginPath()
-  ctx.arc(c.x, c.y, 9 * px, 0, Math.PI * 2)
+  ctx.arc(c.x, c.y, (hot === 'needle' ? 11 : 9) * px, 0, Math.PI * 2)
   ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
   ctx.fill()
-  ctx.lineWidth = 1.5 * px
-  ctx.strokeStyle = METAL
+  ctx.lineWidth = (hot === 'needle' ? 2 : 1.5) * px
+  ctx.strokeStyle = hot === 'needle' ? ACCENT : METAL
   ctx.stroke()
   ctx.beginPath()
   ctx.arc(c.x, c.y, 2.5 * px, 0, Math.PI * 2)
@@ -161,22 +251,25 @@ export function drawCompass(ctx: CanvasRenderingContext2D, cam: Camera, dpr: num
   ctx.fill()
 
   // Pencil tip in the ink colour.
+  const pencilHot = hot === 'pencil'
+  if (pencilHot) glow(L.p.x, L.p.y, 20)
   ctx.beginPath()
-  ctx.arc(L.p.x, L.p.y, 11 * px, 0, Math.PI * 2)
+  ctx.arc(L.p.x, L.p.y, (pencilHot ? 13 : 11) * px, 0, Math.PI * 2)
   ctx.fillStyle = '#fff'
   ctx.fill()
-  ctx.lineWidth = 2 * px
-  ctx.strokeStyle = METAL
+  ctx.lineWidth = (pencilHot ? 2.5 : 2) * px
+  ctx.strokeStyle = pencilHot ? ACCENT : METAL
   ctx.stroke()
   ctx.beginPath()
-  ctx.arc(L.p.x, L.p.y, 6 * px, 0, Math.PI * 2)
+  ctx.arc(L.p.x, L.p.y, (pencilHot ? 7.5 : 6) * px, 0, Math.PI * 2)
   ctx.fillStyle = pencilColor
   ctx.fill()
 
-  const handle = (q: { x: number; y: number }, draw: () => void): void => {
+  const handle = (q: { x: number; y: number }, lit: boolean, draw: () => void): void => {
+    if (lit) glow(q.x, q.y, HANDLE_R + 7)
     ctx.beginPath()
-    ctx.arc(q.x, q.y, HANDLE_R * px, 0, Math.PI * 2)
-    ctx.fillStyle = '#fff'
+    ctx.arc(q.x, q.y, (lit ? HANDLE_R + 2 : HANDLE_R) * px, 0, Math.PI * 2)
+    ctx.fillStyle = lit ? '#e6eafd' : '#fff'
     ctx.fill()
     ctx.lineWidth = 1.5 * px
     ctx.strokeStyle = ACCENT
@@ -189,7 +282,7 @@ export function drawCompass(ctx: CanvasRenderingContext2D, cam: Camera, dpr: num
     ctx.restore()
   }
   // ↔ along the legs: open / close.
-  handle(L.radius, () => {
+  handle(L.radius, hot === 'radius', () => {
     ctx.rotate(c.a)
     const k = 6 * px
     ctx.beginPath()
@@ -203,7 +296,7 @@ export function drawCompass(ctx: CanvasRenderingContext2D, cam: Camera, dpr: num
     ctx.lineTo(k - 3 * px, 3 * px)
     ctx.stroke()
   })
-  handle(L.close, () => {
+  handle(L.close, hot === 'close', () => {
     const k = 4.5 * px
     ctx.beginPath()
     ctx.moveTo(-k, -k)

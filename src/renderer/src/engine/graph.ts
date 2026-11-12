@@ -1,4 +1,12 @@
-import type { BBox, GraphItem, GraphParams } from './types'
+import { PAPER_COLOR } from './background'
+import { MAX_EXPR_LENGTH, parseExpr, type MathFn } from './mathexpr'
+import { MATH_FONT, typesetFormula } from './mathtype'
+import type { BBox, GraphItem, GraphParams, PlotFn } from './types'
+
+/** At most this many functions on one plane. */
+export const MAX_FNS = 8
+/** Colours given to new functions in turn (from the pen palette). */
+export const FN_COLORS = ['#e03131', '#1971c2', '#2f9e44', '#6741d9', '#f76707', '#c2255c']
 
 /** Ready-made coordinate templates for school. `unit` 24 = one dot-paper cell. */
 export interface GraphPreset {
@@ -42,7 +50,22 @@ type Baseline = 'top' | 'middle' | 'alphabetic'
 export interface GraphPrims {
   lines: { x1: number; y1: number; x2: number; y2: number; w: number; color: string }[]
   tris: { pts: [number, number][]; color: string }[]
-  texts: { x: number; y: number; s: string; size: number; align: Align; baseline: Baseline; italic?: boolean; color: string }[]
+  texts: {
+    x: number
+    y: number
+    s: string
+    size: number
+    align: Align
+    baseline: Baseline
+    italic?: boolean
+    color: string
+    /** Formula text: serif math font, outlined in paper colour so it stays readable over curves. */
+    math?: boolean
+  }[]
+  /** Plotted function curves (polylines). */
+  paths: { pts: [number, number][]; w: number; color: string }[]
+  /** Strokes of the formulas (fraction bars, radical signs), drawn over the curves. */
+  marks: { pts: [number, number][]; w: number; color: string }[]
 }
 
 const clamp = (v: number, a: number, b: number): number => Math.min(b, Math.max(a, v))
@@ -67,11 +90,266 @@ export function sanitizeGraph(p: GraphParams): GraphParams {
     unit: clamp(Number(p.unit) || 24, 6, 400),
     labelStep: Math.max(1, Math.round(Number(p.labelStep) || 1)),
     // Grid lines were dropped by design: the paper background provides them.
-    grid: false
+    grid: false,
+    ...sanitizeFns(p.fns),
+    ...(p.hideFormulas === true ? { hideFormulas: true } : {})
   }
 }
 
+/** Keep only well-formed functions (non-empty text within the length cap); fix missing colours. */
+function sanitizeFns(v: unknown): { fns?: PlotFn[] } {
+  if (!Array.isArray(v)) return {}
+  const fns: PlotFn[] = []
+  for (const f of v as Partial<PlotFn>[]) {
+    if (!f || typeof f.expr !== 'string') continue
+    const expr = f.expr.trim()
+    if (!expr || expr.length > MAX_EXPR_LENGTH) continue
+    const color = typeof f.color === 'string' && /^#[0-9a-f]{3,8}$/i.test(f.color) ? f.color : FN_COLORS[fns.length % FN_COLORS.length]
+    fns.push({ expr, color })
+    if (fns.length === MAX_FNS) break
+  }
+  return fns.length ? { fns } : {}
+}
+
+/** A row of the function panel. */
+export interface FnRow {
+  key: number
+  expr: string
+  color: string
+  /** Last text of this row that parsed; drawn while `expr` is half-typed (`x^`, `sin(`). */
+  shown: string
+}
+
+/** Refresh `shown` for every row and list the functions to draw (rows with nothing valid yet are skipped). */
+export function liveFns(rows: FnRow[]): { rows: FnRow[]; fns: PlotFn[] } {
+  const next = rows.map((r) => {
+    if (!r.expr.trim()) return r.shown ? { ...r, shown: '' } : r
+    const ok = parseExpr(r.expr).ok
+    return ok && r.shown !== r.expr ? { ...r, shown: r.expr } : r
+  })
+  return { rows: next, fns: next.filter((r) => r.shown.trim()).map((r) => ({ expr: r.shown, color: r.color })) }
+}
+
+/**
+ * Sample y = f(x) for x in [x0, x1] and clip it to the box [x0, x1] × [y0, y1] (all in axis units).
+ * Returns separate polylines: the curve is broken where f is undefined (sqrt(x) for x < 0) and across
+ * jumps that do not shrink when the step is refined (asymptotes of 1/x or tan(x)).
+ * `step` is the base sampling distance; steep parts are refined adaptively.
+ */
+export function plotCurve(f: MathFn, x0: number, x1: number, y0: number, y1: number, step: number): [number, number][][] {
+  const flat = (y1 - y0) * 0.01 // a jump smaller than this needs no refining
+  const MAX_DEPTH = 14
+  let budget = 60000 // evaluations; keeps wild functions like sin(1/x) from stalling the board
+  const val = (x: number): number => {
+    budget--
+    const v = f(x)
+    return Number.isFinite(v) ? v : NaN
+  }
+  /** Points with `null` marking a break. */
+  const raw: ([number, number] | null)[] = []
+  const emit = (x: number, y: number): void => {
+    raw.push([x, y])
+  }
+  const brk = (): void => {
+    if (raw.length && raw[raw.length - 1] !== null) raw.push(null)
+  }
+  // Both ends finite: add the points after `a` up to and including `b`.
+  const refine = (a: number, fa: number, b: number, fb: number, d: number): void => {
+    if (Math.abs(fb - fa) <= flat || (fa > y1 && fb > y1) || (fa < y0 && fb < y0) || budget <= 0) {
+      emit(b, fb)
+      return
+    }
+    if (d === 0) {
+      // Still a big jump over a tiny interval: a discontinuity, don't connect.
+      brk()
+      emit(b, fb)
+      return
+    }
+    const m = (a + b) / 2
+    const fm = val(m)
+    between(a, fa, m, fm, d - 1)
+    between(m, fm, b, fb, d - 1)
+  }
+  const between = (a: number, fa: number, b: number, fb: number, d: number): void => {
+    const okA = !Number.isNaN(fa)
+    const okB = !Number.isNaN(fb)
+    if (okA && okB) return refine(a, fa, b, fb, d)
+    if (!okA && !okB) return brk()
+    // Domain edge between a and b: find it so sqrt(x) starts exactly at 0.
+    let g = okA ? a : b // defined side
+    let h = okA ? b : a
+    let fg = okA ? fa : fb
+    for (let i = 0; i < 40; i++) {
+      const m = (g + h) / 2
+      const fm = val(m)
+      if (Number.isNaN(fm)) h = m
+      else {
+        g = m
+        fg = fm
+      }
+    }
+    if (okA) {
+      if (g !== a) refine(a, fa, g, fg, d)
+      brk()
+    } else {
+      brk()
+      emit(g, fg)
+      if (g !== b) refine(g, fg, b, fb, d)
+    }
+  }
+  const n = Math.min(4000, Math.max(8, Math.ceil((x1 - x0) / step)))
+  let px = x0
+  let py = val(x0)
+  if (!Number.isNaN(py)) emit(px, py)
+  for (let i = 1; i <= n; i++) {
+    const x = x0 + ((x1 - x0) * i) / n
+    const y = val(x)
+    between(px, py, x, y, MAX_DEPTH)
+    px = x
+    py = y
+  }
+
+  // Clip every segment to the box (Liang-Barsky) and join the pieces back into polylines.
+  const out: [number, number][][] = []
+  let cur: [number, number][] | null = null
+  for (let i = 1; i < raw.length; i++) {
+    const p = raw[i - 1]
+    const q = raw[i]
+    if (!p || !q) {
+      cur = null
+      continue
+    }
+    const c = clipSegment(p, q, x0, x1, y0, y1)
+    if (!c) {
+      cur = null
+      continue
+    }
+    const last = cur?.[cur.length - 1]
+    if (!cur || !last || last[0] !== c[0][0] || last[1] !== c[0][1]) {
+      cur = [c[0]]
+      out.push(cur)
+    }
+    cur.push(c[1])
+  }
+  return out
+}
+
+function clipSegment(p: [number, number], q: [number, number], x0: number, x1: number, y0: number, y1: number): [[number, number], [number, number]] | null {
+  const dx = q[0] - p[0]
+  const dy = q[1] - p[1]
+  let t0 = 0
+  let t1 = 1
+  const edges: [number, number][] = [
+    [-dx, p[0] - x0],
+    [dx, x1 - p[0]],
+    [-dy, p[1] - y0],
+    [dy, y1 - p[1]]
+  ]
+  for (const [pp, qq] of edges) {
+    if (pp === 0) {
+      if (qq < 0) return null
+      continue
+    }
+    const r = qq / pp
+    if (pp < 0) {
+      if (r > t1) return null
+      if (r > t0) t0 = r
+    } else {
+      if (r < t0) return null
+      if (r < t1) t1 = r
+    }
+  }
+  const a: [number, number] = t0 === 0 ? p : [p[0] + dx * t0, p[1] + dy * t0]
+  const b: [number, number] = t1 === 1 ? q : [p[0] + dx * t1, p[1] + dy * t1]
+  return [a, b]
+}
+
+/** Board-space curves of the plane's functions and their formulas (unparsable ones draw nothing). */
+function addFnPrims(g: GraphItem, out: GraphPrims): void {
+  if (g.kind !== 'plane' || !g.fns?.length) return
+  const u = g.unit
+  const w = Math.max(u * 0.1, 1.2)
+  const X = (x: number): number => g.ox + x * u
+  const Y = (y: number): number => g.oy - y * u
+  const labels: Label[] = []
+  for (const f of g.fns) {
+    const r = parseExpr(f.expr)
+    if (!r.ok) continue
+    // Sample about every 2 board units (in axis units: 2 / unit).
+    const pieces = plotCurve(r.fn, g.xMin, g.xMax, g.yMin, g.yMax, 2 / u).filter((p) => p.length >= 2)
+    for (const piece of pieces) out.paths.push({ color: f.color, w, pts: piece.map(([x, y]) => [X(x), Y(y)]) })
+    if (g.hideFormulas || !pieces.length) continue
+    // Anchor the formula at the right end of the curve, where it leaves the plane or the x range ends.
+    let end = pieces[0][pieces[0].length - 1]
+    for (const p of pieces) if (p[p.length - 1][0] > end[0]) end = p[p.length - 1]
+    labels.push({ color: f.color, box: typesetFormula(r.node, u * 0.62, r.comma), ax: X(end[0]), ay: Y(end[1]), x: 0, y: 0 })
+  }
+  placeLabels(labels, { minX: X(g.xMin), maxX: X(g.xMax), minY: Y(g.yMax), maxY: Y(g.yMin) }, u)
+  for (const l of labels) {
+    for (const ln of l.box.lines) out.marks.push({ color: l.color, w: ln.w, pts: ln.pts.map(([x, y]) => [x + l.x, y + l.y]) })
+    for (const t of l.box.texts) {
+      out.texts.push({ x: t.x + l.x, y: t.y + l.y, s: t.s, size: t.size, italic: t.italic, align: 'left', baseline: 'alphabetic', color: l.color, math: true })
+    }
+  }
+}
+
+export interface Label {
+  color: string
+  box: ReturnType<typeof typesetFormula>
+  /** Curve end the label belongs to. */
+  ax: number
+  ay: number
+  /** Placed baseline start. */
+  x: number
+  y: number
+}
+
+/**
+ * Put each formula just above and right of its curve's end, pulled inside the plane, then push apart
+ * labels that would overlap (in order from top to bottom).
+ */
+export function placeLabels(labels: Label[], box: BBox, u: number): void {
+  const gap = u * 0.25
+  for (const l of labels) {
+    const b = l.box
+    l.x = Math.min(l.ax + gap, box.maxX - b.w)
+    l.y = l.ay - gap - b.desc
+    // Ran into the top edge (the curve leaves the plane upwards): go below the end instead.
+    if (l.y - b.asc < box.minY) l.y = l.ay + gap + b.asc
+    l.x = Math.max(box.minX, l.x)
+    l.y = clamp(l.y, box.minY + b.asc, box.maxY - b.desc)
+  }
+  const top = (l: Label): number => l.y - l.box.asc
+  const bottom = (l: Label): number => l.y + l.box.desc
+  const sorted = [...labels].sort((a, b) => top(a) - top(b))
+  for (let i = 0; i < sorted.length; i++) {
+    const l = sorted[i]
+    for (let j = 0; j < i; j++) {
+      const o = sorted[j]
+      const overlapX = l.x < o.x + o.box.w && o.x < l.x + l.box.w
+      if (overlapX && top(l) < bottom(o) + gap * 0.4 && top(o) < bottom(l) + gap * 0.4) {
+        l.y = bottom(o) + gap * 0.4 + l.box.asc
+      }
+    }
+    // Pushed out at the bottom: stack upwards from the plane's bottom edge instead.
+    if (bottom(l) > box.maxY) l.y = box.maxY - l.box.desc
+  }
+}
+
+const primsCache = new WeakMap<GraphItem, GraphPrims>()
+
+/** Items are immutable (edits replace them), so prims are cached per item object. */
 export function graphPrims(g: GraphItem): GraphPrims {
+  let p = primsCache.get(g)
+  if (!p) {
+    p = buildPrims(g)
+    addFnPrims(g, p)
+    primsCache.set(g, p)
+  }
+  return p
+}
+
+function buildPrims(g: GraphItem): GraphPrims {
   const u = g.unit
   const X = (x: number): number => g.ox + x * u
   const Y = (y: number): number => g.oy - y * u
@@ -80,7 +358,7 @@ export function graphPrims(g: GraphItem): GraphPrims {
   const font = u * 0.5
   const ext = u * 0.75 // axis continues past the last unit to the arrow tip
   const head = u * 0.42
-  const out: GraphPrims = { lines: [], tris: [], texts: [] }
+  const out: GraphPrims = { lines: [], tris: [], texts: [], paths: [], marks: [] }
   const label = (n: number): string => (n < 0 ? `−${-n}` : `${n}`)
   const arrow = (tipX: number, tipY: number, dx: number, dy: number): void => {
     out.tris.push({
@@ -233,7 +511,9 @@ export function graphBBox(g: Pick<GraphItem, keyof GraphParams | 'ox' | 'oy'>): 
   }
 }
 
-const fontFamily = (italic?: boolean): string => (italic ? '"Times New Roman", Georgia, serif' : 'system-ui, "Segoe UI", Ubuntu, sans-serif')
+const fontFamily = (italic?: boolean, math?: boolean): string =>
+  math ? MATH_FONT : italic ? '"Times New Roman", Georgia, serif' : 'system-ui, "Segoe UI", Ubuntu, sans-serif'
+const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 export function drawGraph(ctx: CanvasRenderingContext2D, g: GraphItem): void {
   const p = graphPrims(g)
@@ -255,10 +535,32 @@ export function drawGraph(ctx: CanvasRenderingContext2D, g: GraphItem): void {
     ctx.fillStyle = t.color
     ctx.fill()
   }
-  for (const t of p.texts) {
-    ctx.font = `${t.italic ? 'italic ' : ''}${t.size}px ${fontFamily(t.italic)}`
+  ctx.lineJoin = 'round'
+  const polyline = (l: GraphPrims['paths'][number]): void => {
+    ctx.beginPath()
+    ctx.moveTo(l.pts[0][0], l.pts[0][1])
+    for (let i = 1; i < l.pts.length; i++) ctx.lineTo(l.pts[i][0], l.pts[i][1])
+    ctx.lineWidth = l.w
+    ctx.strokeStyle = l.color
+    ctx.stroke()
+  }
+  for (const l of p.paths) polyline(l)
+  const font = (t: GraphPrims['texts'][number]): void => {
+    ctx.font = `${t.italic ? 'italic ' : ''}${t.size}px ${fontFamily(t.italic, t.math)}`
     ctx.textAlign = t.align
     ctx.textBaseline = t.baseline
+  }
+  // Paper-coloured outline under formula glyphs keeps them readable where curves cross.
+  ctx.strokeStyle = PAPER_COLOR
+  for (const t of p.texts) {
+    if (!t.math) continue
+    font(t)
+    ctx.lineWidth = t.size * 0.22
+    ctx.strokeText(t.s, t.x, t.y)
+  }
+  for (const l of p.marks) polyline(l)
+  for (const t of p.texts) {
+    font(t)
     ctx.fillStyle = t.color
     ctx.fillText(t.s, t.x, t.y)
   }
@@ -273,11 +575,23 @@ export function graphSvg(g: GraphItem): string {
     parts.push(`<line x1="${r2(l.x1)}" y1="${r2(l.y1)}" x2="${r2(l.x2)}" y2="${r2(l.y2)}" stroke="${l.color}" stroke-width="${r2(l.w)}"/>`)
   }
   for (const t of p.tris) parts.push(`<path d="M${t.pts.map(([x, y]) => `${r2(x)},${r2(y)}`).join('L')}Z" fill="${t.color}"/>`)
+  for (const l of p.paths) {
+    parts.push(`<path d="M${l.pts.map(([x, y]) => `${r2(x)},${r2(y)}`).join('L')}" fill="none" stroke="${l.color}" stroke-width="${r2(l.w)}" stroke-linejoin="round"/>`)
+  }
+  for (const t of p.texts) {
+    if (!t.math) continue
+    parts.push(
+      `<text x="${r2(t.x)}" y="${r2(t.y)}" font-size="${r2(t.size)}" font-family='${MATH_FONT}'${t.italic ? ' font-style="italic"' : ''} fill="none" stroke="${PAPER_COLOR}" stroke-width="${r2(t.size * 0.22)}" stroke-linejoin="round">${esc(t.s)}</text>`
+    )
+  }
+  for (const l of p.marks) {
+    parts.push(`<path d="M${l.pts.map(([x, y]) => `${r2(x)},${r2(y)}`).join('L')}" fill="none" stroke="${l.color}" stroke-width="${r2(l.w)}" stroke-linejoin="round"/>`)
+  }
   for (const t of p.texts) {
     const anchor = t.align === 'center' ? 'middle' : t.align === 'right' ? 'end' : 'start'
     const base = t.baseline === 'top' ? 'hanging' : t.baseline === 'middle' ? 'central' : 'alphabetic'
     parts.push(
-      `<text x="${r2(t.x)}" y="${r2(t.y)}" font-size="${r2(t.size)}" font-family='${fontFamily(t.italic)}'${t.italic ? ' font-style="italic"' : ''} text-anchor="${anchor}" dominant-baseline="${base}" fill="${t.color}">${t.s}</text>`
+      `<text x="${r2(t.x)}" y="${r2(t.y)}" font-size="${r2(t.size)}" font-family='${fontFamily(t.italic, t.math)}'${t.italic ? ' font-style="italic"' : ''} text-anchor="${anchor}" dominant-baseline="${base}" fill="${t.color}">${esc(t.s)}</text>`
     )
   }
   parts.push('</g>')

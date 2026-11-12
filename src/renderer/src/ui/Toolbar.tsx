@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { editor } from '../editor'
 import { useT } from '../i18n'
 import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useUI, type InkSlot } from '../store'
@@ -9,6 +9,59 @@ import { LineStyleControls, SizeSlider } from './LineStyle'
 import { Popover } from './Popover'
 
 type Open = { kind: 'pen'; index: number } | { kind: 'highlighter' } | { kind: 'text' } | null
+
+const GAP = 12
+
+/**
+ * Where the toolbar fits next to the main menu (top left) and the settings button (top right):
+ * centred on the window when there is room, else moved aside into the free space between them,
+ * else on a second row under the menu, scaled down if even the whole width is too narrow.
+ */
+function toolbarPlace(bar: HTMLElement): CSSProperties {
+  const W = window.innerWidth
+  const menu = document.querySelector('.main-menu-bar')?.getBoundingClientRect()
+  const right = document.querySelector('.bg-picker > :first-child')?.getBoundingClientRect()
+  const w = bar.offsetWidth
+  const from = (menu?.right ?? 0) + GAP
+  const to = (right?.left ?? W) - GAP
+  const centred = (W - w) / 2
+  if (centred >= from && centred + w <= to) return {}
+  if (from + w <= to) return { left: Math.min(Math.max(from, centred), to - w), transform: 'none' }
+  const scale = Math.min(1, (W - GAP * 2) / w)
+  return { top: (menu?.bottom ?? GAP) + 8, transform: `translateX(-50%) scale(${scale})`, transformOrigin: 'top center' }
+}
+
+/** Keep the toolbar off the other top bars as the window, the board title or the toolbar change size. */
+function useToolbarPlace(): [React.RefObject<HTMLDivElement | null>, CSSProperties] {
+  const ref = useRef<HTMLDivElement>(null)
+  const [place, setPlace] = useState<CSSProperties>({})
+  useLayoutEffect(() => {
+    const bar = ref.current?.querySelector<HTMLElement>('.toolbar')
+    if (!bar) return
+    let last = ''
+    const update = (): void => {
+      const next = toolbarPlace(bar)
+      const key = JSON.stringify(next)
+      if (key !== last) {
+        last = key
+        setPlace(next)
+      }
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(bar)
+    for (const sel of ['.main-menu-bar', '.bg-picker > :first-child']) {
+      const el = document.querySelector(sel)
+      if (el) ro.observe(el)
+    }
+    window.addEventListener('resize', update)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+  return [ref, place]
+}
 
 /** Colour and size of new text (text tool popover). */
 function TextOptions() {
@@ -93,6 +146,7 @@ export function Toolbar() {
   const close = useCallback(() => setOpen(null), [])
   const fileRef = useRef<HTMLInputElement>(null)
   const t = useT()
+  const [wrapRef, place] = useToolbarPlace()
 
   const clickPen = (i: number): void => {
     if (tool === 'pen' && activePen === i) setOpen(open?.kind === 'pen' ? null : { kind: 'pen', index: i })
@@ -110,7 +164,7 @@ export function Toolbar() {
   }
 
   return (
-    <div className="toolbar-wrap">
+    <div ref={wrapRef} className="toolbar-wrap" style={place}>
       <div className="panel toolbar">
         <button
           className={`icon-btn ${tool === 'select' ? 'active' : ''}`}

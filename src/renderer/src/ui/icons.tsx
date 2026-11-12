@@ -157,6 +157,13 @@ export const AxesIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
+export const FunctionIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M13.5 4.5c-1.9 0-2.8 1-3.2 3l-2 10c-.4 2-1.3 3-3.1 3M7.5 10.5h5.5" />
+    <path d="M15 12.5l5 6M20 12.5l-5 6" strokeWidth="1.5" />
+  </svg>
+)
+
 export const StampIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <rect x="4" y="3.5" width="16" height="17" rx="2" />

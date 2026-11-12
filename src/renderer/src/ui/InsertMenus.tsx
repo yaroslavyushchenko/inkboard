@@ -158,7 +158,7 @@ export function GraphPreview({ params }: { params: GraphParams }) {
       viewBox={`${b.minX} ${b.minY} ${b.maxX - b.minX} ${b.maxY - b.minY}`}
       preserveAspectRatio="xMidYMid meet"
       aria-hidden
-      // Generated from numbers only (no user text), so it's safe to inline.
+      // Built from numbers and validated colours; any formula text goes through graphSvg's XML escaping.
       dangerouslySetInnerHTML={{ __html: graphSvg(g) }}
     />
   )
@@ -221,6 +221,17 @@ export function GraphMenu() {
         }}
       >
         <span>{t('graph.custom')}</span>
+      </button>
+      <button
+        className="menu-item"
+        onClick={() => {
+          setOpen(false)
+          // Insert a plane right away and open the formula panel beside it.
+          const id = editor.insertGraph(BUILTIN_GRAPHS[3].params)
+          useUI.setState({ fnPanel: { id, session: Date.now() } })
+        }}
+      >
+        <span>{t('graph.functionGraph')}</span>
       </button>
     </MenuButton>
   )

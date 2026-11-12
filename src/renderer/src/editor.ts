@@ -17,7 +17,7 @@ import { editableShape, regenerateShape } from './engine/shapeItems'
 import { applyXform, unionBBox, type Xform } from './engine/transform'
 import { COMPASS_CELL } from './engine/compass'
 import { formatAll, formatRange, fullRuns, textBBox, textFields, trimRunsEnd } from './engine/text'
-import type { BBox, Camera, GraphItem, GraphParams, ImageItem, Item, LineCap, LineDash, ShapeSpec, StrokeItem, TextFormat, TextItem } from './engine/types'
+import type { BBox, Camera, GraphItem, GraphParams, PlotFn, ImageItem, Item, LineCap, LineDash, ShapeSpec, StrokeItem, TextFormat, TextItem } from './engine/types'
 import { translate, type MessageKey } from './i18n'
 import { platform } from './platform'
 import { useUI } from './store'
@@ -79,6 +79,10 @@ class Editor {
         this.invalidate(false)
       }
       if (s.lang !== prev.lang || s.board !== prev.board || s.view !== prev.view) this.updateTitle()
+      // The function panel belongs to one selected plane: close it when that plane stops being the selection.
+      if (s.fnPanel && (s.selectedIds.length !== 1 || s.selectedIds[0] !== s.fnPanel.id || s.view !== 'board')) {
+        useUI.setState({ fnPanel: null })
+      }
       if (s.tool !== prev.tool) {
         // Picking a drawing tool means "done with the selection": drop it (lasso ↔ move keep it).
         if (s.tool !== 'select' && s.tool !== 'brushSelect' && s.tool !== 'move' && s.selectedIds.length) useUI.setState({ selectedIds: [] })
@@ -478,7 +482,7 @@ class Editor {
   // ---------------------------------------------------------------- coordinate graphs
 
   /** Insert a coordinate line/plane centred in the view, origin on a dot-paper point. */
-  insertGraph(params: GraphParams): void {
+  insertGraph(params: GraphParams): string {
     const p = sanitizeGraph(params)
     const c = screenToWorld(this.camera, this.view().width / 2, this.view().height / 2)
     // Centre the graph's box in the view.
@@ -500,13 +504,31 @@ class Editor {
     this.scene.add([g])
     useUI.setState({ tool: 'select' })
     this.setSelection([g])
+    return g.id
+  }
+
+  /**
+   * Live function edit from the function panel: the board shows it at once; all edits made during one
+   * opening of the panel (`session`) are a single undo step.
+   */
+  setGraphFns(id: string, fns: PlotFn[], hideFormulas: boolean, session: number): void {
+    const old = this.scene.getById([id])[0]
+    if (!old || old.type !== 'graph') return
+    const clean = sanitizeGraph({ ...old, fns, hideFormulas })
+    const next: GraphItem = { ...old, ...clean }
+    if (!clean.fns) delete next.fns
+    if (!clean.hideFormulas) delete next.hideFormulas
+    if (JSON.stringify(next.fns ?? []) === JSON.stringify(old.fns ?? []) && !!next.hideFormulas === !!old.hideFormulas) return
+    next.bbox = graphBBox(next)
+    this.scene.replaceMerged([old], [next], `fns:${id}:${session}`)
   }
 
   /** Re-configure an inserted graph (undoable). */
   updateGraph(id: string, params: GraphParams): void {
     const old = this.scene.getById([id])[0]
     if (!old || old.type !== 'graph') return
-    const next: GraphItem = { ...old, ...sanitizeGraph(params) }
+    // The settings dialog does not edit the functions: the plane keeps its own (set by the function panel).
+    const next: GraphItem = { ...old, ...sanitizeGraph({ ...params, fns: old.fns, hideFormulas: old.hideFormulas }) }
     next.bbox = graphBBox(next)
     this.scene.replace([old], [next])
   }

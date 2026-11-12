@@ -8,7 +8,7 @@ import type { StrokeItem, TextItem } from '../engine/types'
 import { useT, type MessageKey } from '../i18n'
 import { useUI } from '../store'
 import { PEN_COLORS, PEN_SIZES } from '../store'
-import { BookmarkIcon, DuplicateIcon, GearIcon, GroupIcon, LockIcon, ShapesIcon, StyleIcon, TextIcon, TrashIcon, UngroupIcon, UnlockIcon } from './icons'
+import { BookmarkIcon, DuplicateIcon, FunctionIcon, GearIcon, GroupIcon, LockIcon, ShapesIcon, StyleIcon, TextIcon, TrashIcon, UngroupIcon, UnlockIcon } from './icons'
 import { BaseRow, ShapePreview, TemplateThumb } from './InsertMenus'
 import type { TemplateEntry } from '../../../shared/library'
 import { LineStyleControls, SizeSlider } from './LineStyle'
@@ -19,6 +19,7 @@ export function SelectionToolbar() {
   const t = useT()
   const selectedIds = useUI((s) => s.selectedIds)
   const view = useUI((s) => s.view)
+  const fnPanel = useUI((s) => s.fnPanel)
   // Re-render when the camera or items move so the bar follows the selection.
   useUI((s) => s.camera)
   useUI((s) => s.sceneVersion)
@@ -83,6 +84,16 @@ export function SelectionToolbar() {
             <GearIcon />
             <span>{t('sel.settings')}</span>
           </button>
+          {graph.kind === 'plane' && (
+            <button
+              className={`labeled-btn ${fnPanel?.id === graph.id ? 'active' : ''}`}
+              title={t('graph.plotTitle')}
+              onClick={() => useUI.setState({ fnPanel: fnPanel?.id === graph.id ? null : { id: graph.id, session: Date.now() } })}
+            >
+              <FunctionIcon />
+              <span>{t('graph.plot')}</span>
+            </button>
+          )}
           <div className="sep" />
         </>
       )}

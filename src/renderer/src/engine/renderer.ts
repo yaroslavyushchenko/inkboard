@@ -4,8 +4,8 @@ import { bboxIntersects } from './geometry'
 import { getImage } from './images'
 import { drawGraph } from './graph'
 import { drawText } from './text'
-import { drawCompass, type Compass } from './compass'
-import { drawAngleLabel, drawProtractor, type Protractor } from './protractor'
+import { drawCompass, type Compass, type CompassState } from './compass'
+import { drawAngleLabel, drawProtractor, type Protractor, type ProtractorState } from './protractor'
 import { buildInkPath, drawCaps, drawStroke, fillInk, linePath, strokeLine, type InkStyle } from './ink'
 import { xformBBox, type Xform } from './transform'
 import type { BackgroundKind, BBox, Camera, Item, LineCap, LineDash, Point } from './types'
@@ -120,16 +120,18 @@ export class BoardRenderer {
     cam: Camera,
     sel: SelectionOverlay,
     extras: {
-      protractor?: Protractor | null
-      compass?: { c: Compass; color: string; label: string } | null
+      protractor?: { p: Protractor; state: ProtractorState } | null
+      compass?: { c: Compass; color: string; label: string; state: CompassState } | null
+      /** Short hint next to the pointer (what dragging the part under it does). */
+      hint?: { sx: number; sy: number; text: string } | null
       angleLabel?: { sx: number; sy: number; text: string } | null
     } = {}
   ): void {
     const ctx = this.overlay
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height)
-    if (extras.protractor) drawProtractor(ctx, cam, this.dpr, extras.protractor)
-    if (extras.compass) drawCompass(ctx, cam, this.dpr, extras.compass.c, extras.compass.color, extras.compass.label)
+    if (extras.protractor) drawProtractor(ctx, cam, this.dpr, extras.protractor.p, extras.protractor.state)
+    if (extras.compass) drawCompass(ctx, cam, this.dpr, extras.compass.c, extras.compass.color, extras.compass.label, extras.compass.state)
 
     if (sel.lasso && sel.lasso.length > 1) {
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
@@ -278,6 +280,7 @@ export class BoardRenderer {
       }
     }
     if (extras.angleLabel) drawAngleLabel(ctx, this.dpr, extras.angleLabel.sx, extras.angleLabel.sy, extras.angleLabel.text)
+    else if (extras.hint) drawAngleLabel(ctx, this.dpr, extras.hint.sx, extras.hint.sy, extras.hint.text, true)
   }
 }
 

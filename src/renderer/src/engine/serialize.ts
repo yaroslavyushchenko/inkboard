@@ -15,9 +15,10 @@ export const FORMAT = 'inkboard'
  * 3 = line patterns (`dash`) and line ends (`startCap` / `endCap`).
  * 4 = editable shapes (`shape` spec on shape strokes), locked items (`locked`), text items.
  * 5 = formatted text (`runs` on text items), any number of sides for a solid's base.
+ * 6 = functions plotted on coordinate planes (`fns` on graphs).
  * Readers accept ≤ this; older apps refuse newer files instead of silently dropping data.
  */
-export const FORMAT_VERSION = 5
+export const FORMAT_VERSION = 6
 
 interface SerializedStroke {
   type: 'stroke'

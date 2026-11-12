@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { editor } from './editor'
 import { useUI } from './store'
 import { BackgroundPicker } from './ui/BackgroundPicker'
+import { FunctionPanel } from './ui/FunctionPanel'
+import { InstrumentPanel } from './ui/InstrumentPanel'
 import { GraphDialog } from './ui/GraphDialog'
 import { Board } from './ui/Board'
 import { HomeScreen } from './ui/HomeScreen'
@@ -42,6 +44,8 @@ export function App() {
       <ZoomControls />
       <VersionHistory />
       <GraphDialog />
+      <FunctionPanel />
+      <InstrumentPanel />
       <UpdateBanner />
       <InstrumentTip />
       <ShortcutsDialog />
