@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Inkboard: безкоштовна дошка для графічного планшета</title>
-<meta name="description" content="Безкоштовна нескінченна дошка для вчителів і графічних планшетів: перо з натиском, транспортир і циркуль, графіки функцій, об’ємні фігури, текст. Зберігає все саме, навіть коли зникає світло. Windows, macOS, Linux.">
+<meta name="description" content="Безкоштовна нескінченна дошка для графічного планшета: для пояснень, лекцій і конспектів. Перо з натиском, транспортир і циркуль, графіки функцій, об’ємні фігури, текст. Зберігає все саме, навіть коли зникає світло. Windows, macOS, Linux.">
 <meta property="og:title" content="Inkboard: free whiteboard for pen tablets">
 <meta property="og:description" content="Infinite canvas, pressure-sensitive ink, protractor and compass, function graphs, 3D solids and text. Free and open source for Windows, macOS and Linux.">
 <meta property="og:image" content="https://yaroslavyushchenko.github.io/inkboard/img/social-preview.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
-<meta property="og:image:alt" content="Inkboard, a free whiteboard for teachers with a pen tablet">
+<meta property="og:image:alt" content="Inkboard, a free infinite whiteboard for pen tablets">
 <meta property="og:url" content="https://yaroslavyushchenko.github.io/inkboard/">
 <meta property="og:site_name" content="Inkboard">
 <meta property="og:type" content="website">
@@ -379,8 +379,8 @@
       </div>
       <div class="stage">
         <div class="window" id="window">
-          <img data-only="uk" src="img/hero-uk.webp" width="2000" height="1250" alt="Inkboard: дошка «Геометрія, урок 14» з транспортиром, шестикутною пірамідою і колом, накресленим циркулем на координатній площині">
-          <img data-only="en" src="img/hero-en.webp" width="2000" height="1250" loading="lazy" alt="Inkboard: the board “Geometry, lesson 14” with a protractor, a hexagonal pyramid and a circle drawn with the compass on a coordinate plane">
+          <img data-only="uk" src="img/hero-uk.webp" width="2000" height="1250" alt="Inkboard: дошка «Геометрія» з транспортиром, шестикутною пірамідою і колом, накресленим циркулем на координатній площині">
+          <img data-only="en" src="img/hero-en.webp" width="2000" height="1250" loading="lazy" alt="Inkboard: the board “Geometry” with a protractor, a hexagonal pyramid and a circle drawn with the compass on a coordinate plane">
         </div>
       </div>
     </div>
@@ -391,7 +391,7 @@
       <div class="ex-head">
         <div class="rv">
           <p class="eyebrow" data-i18n="ex.kicker">Приклади</p>
-          <h2 data-i18n="ex.title">Так виглядає урок</h2>
+          <h2 data-i18n="ex.title">Як це виглядає</h2>
           <p class="sub" data-i18n="ex.sub">Справжні знімки екрана Inkboard, без монтажу.</p>
         </div>
         <div class="seg rv d1" id="ex-tabs" role="tablist" aria-label="Приклади">
@@ -434,10 +434,10 @@
         </figure>
         <figure>
           <div class="frame">
-            <img data-only="uk" src="img/ex-home-uk.webp" width="2000" height="1250" loading="lazy" alt="Екран «Усі дошки»: прев’ю дощок, теги класів і тем, закріплені дошки, пошук">
-            <img data-only="en" src="img/ex-home-en.webp" width="2000" height="1250" loading="lazy" alt="The All boards screen: board previews, class and topic tags, pinned boards, search">
+            <img data-only="uk" src="img/ex-home-uk.webp" width="2000" height="1250" loading="lazy" alt="Екран «Усі дошки»: прев’ю дощок, теги предметів і тем, закріплені дошки, пошук">
+            <img data-only="en" src="img/ex-home-en.webp" width="2000" height="1250" loading="lazy" alt="The All boards screen: board previews, subject and topic tags, pinned boards, search">
           </div>
-          <figcaption><h3 data-i18n="ex.h5">Усі дошки</h3><p data-i18n="ex.c5">Прев’ю кожної дошки, кольорові теги для класів і тем, пошук, закріплені дошки й кошик на 30 днів.</p></figcaption>
+          <figcaption><h3 data-i18n="ex.h5">Усі дошки</h3><p data-i18n="ex.c5">Прев’ю кожної дошки, кольорові теги для предметів і тем, пошук, закріплені дошки й кошик на 30 днів.</p></figcaption>
         </figure>
       </div>
     </div>
@@ -448,7 +448,7 @@
       <div class="rv">
         <p class="eyebrow" data-i18n="f.kicker">Можливості</p>
         <h2 data-i18n="f.title">Зроблено для пера, а не для мишки</h2>
-        <p class="sub" data-i18n="f.sub">Inkboard з’явився для вчительки з планшетом Wacom, якій бракувало Microsoft Whiteboard. Тепер він для всіх.</p>
+        <p class="sub" data-i18n="f.sub">Для пояснень, лекцій, конспектів і чернеток: усе, що зручніше показати рукою, ніж мишкою.</p>
       </div>
       <div class="bento">
         <div class="tile wide rv">
@@ -501,7 +501,7 @@
             <text x="287" y="68" text-anchor="middle" font-family="Manrope, sans-serif" font-weight="800" font-size="20" fill="var(--accent)">PDF</text>
           </svg></div>
           <h3 data-i18n="f.exp.t">Експорт у PNG і PDF</h3>
-          <p data-i18n="f.exp.d">Роздайте учням конспект уроку або надрукуйте його. Без акаунта й без хмари: дошки лишаються на вашому комп’ютері.</p>
+          <p data-i18n="f.exp.d">Поділіться конспектом або надрукуйте його. Без акаунта й без хмари: дошки лишаються на вашому комп’ютері.</p>
         </div>
       </div>
     </div>
@@ -619,7 +619,7 @@
 
   <section class="final">
     <div class="wrap rv">
-      <h2 data-i18n="cta.title">Спробуйте на наступному уроці</h2>
+      <h2 data-i18n="cta.title">Почніть малювати вже сьогодні</h2>
       <a class="btn primary" href="#download">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
         <span class="p-label" data-i18n="hero.download">Завантажити</span>
@@ -654,7 +654,7 @@
     'hero.free': 'free, forever',
     'hero.for': 'For',
     'ex.kicker': 'Examples',
-    'ex.title': 'What a lesson looks like',
+    'ex.title': 'What it looks like',
     'ex.sub': 'Real screenshots of Inkboard, not mockups.',
     'ex.t1': 'Geometry', 'ex.t2': 'Graphs', 'ex.t3': '3D solids', 'ex.t4': 'Text', 'ex.t5': 'All boards',
     'ex.h1': 'Protractor and compass',
@@ -666,10 +666,10 @@
     'ex.h4': 'Formatted text',
     'ex.c4': 'Type right on the board. Make single words bold, italic, or a different colour or size.',
     'ex.h5': 'All boards',
-    'ex.c5': 'A preview of every board, colour tags for classes and topics, search, pinned boards and a 30-day bin.',
+    'ex.c5': 'A preview of every board, colour tags for subjects and topics, search, pinned boards and a 30-day bin.',
     'f.kicker': 'Features',
     'f.title': 'Made for a pen, not a mouse',
-    'f.sub': 'Inkboard started for a teacher with a Wacom tablet who missed Microsoft Whiteboard. Now it’s for everyone.',
+    'f.sub': 'For explanations, lectures, notes and rough work: anything that’s easier to show by hand than with a mouse.',
     'f.ink.t': 'Pressure-sensitive pen',
     'f.ink.d': 'Press harder for a thicker line. Lines are vector and stay sharp at any zoom, and your palm on the screen doesn’t draw.',
     'f.wacom.t': 'Wacom and other tablets',
@@ -684,7 +684,7 @@
     'f.lang.t': 'English and Ukrainian',
     'f.lang.d': 'The interface speaks both; switch in Settings.',
     'f.exp.t': 'Export to PNG and PDF',
-    'f.exp.d': 'Share the lesson notes with students or print them. No account and no cloud: your boards stay on your computer.',
+    'f.exp.d': 'Share your notes or print them. No account and no cloud: your boards stay on your computer.',
     's.kicker': 'Reliability',
     's.title': 'Power cut? The board is still there',
     's.sub': 'There’s no Save button because you don’t need one. Inkboard writes every board to disk by itself, safely, and keeps earlier versions.',
@@ -732,7 +732,7 @@
     'why.1': 'All the code is open: <a href="https://github.com/yaroslavyushchenko/inkboard">github.com/yaroslavyushchenko/inkboard</a>.',
     'why.2': 'The download files are built publicly by GitHub Actions straight from that code.',
     'why.3': 'The app collects no data and only goes online to check GitHub for updates.',
-    'cta.title': 'Try it in your next lesson',
+    'cta.title': 'Start drawing today',
     'cta.hand': 'no account, no ads, no subscription',
     'foot.license': 'free software under the GPL-3.0',
     'foot.code': 'Source code',
