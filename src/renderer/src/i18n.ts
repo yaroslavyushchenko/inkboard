@@ -15,7 +15,6 @@ const en = {
   'sel.delete': 'Delete (Del)',
   'sel.duplicate': 'Duplicate (Ctrl+D)',
   'sel.group': 'Group',
-  'sel.settings': 'Settings',
   'sel.ungroup': 'Ungroup',
 
   'settings.title': 'Settings',
@@ -186,10 +185,7 @@ const en = {
   "shapes.base5": "Pentagon",
   "shapes.base6": "Hexagon",
   "shapes.baseN": "Number of sides (3–24)",
-  "sel.shape": "Shape",
   "sel.shapeTitle": "Change the shape (drag the side handles to stretch it)",
-  "sel.lock": "Lock",
-  "sel.unlock": "Unlock",
   "sel.lockTitle": "Lock: can't be erased, deleted, moved or changed",
   "sel.unlockTitle": "Unlock so it can be changed again",
   "shapes.hint": "Drag on the board to draw; click for a default size. Hold Shift for squares, circles and 45° lines. Uses the selected pen's colour and width.",
@@ -235,7 +231,6 @@ const en = {
   "graph.insert": "Insert",
   "graph.apply": "Apply",
   "graph.functionGraph": "Function graph…",
-  "graph.plot": "Function",
   "graph.plotTitle": "Plot a function y = f(x)",
   "graph.functions": "Functions",
   "graph.addFunction": "+ Add function",
@@ -310,7 +305,24 @@ const en = {
   "shortcuts.zoomOut": "Zoom out",
   "shortcuts.saveAs": "Save as file (new location)",
   "tool.protractor": "Protractor (T): drag to move, ↻ to rotate and resize; draw along the edge for arcs, from the centre for angles",
-  'common.close': 'Close'
+  'common.close': 'Close',
+
+  'tool.formula': 'Formula: fractions, roots, powers, integrals (opens the math keypad)',
+  'formula.edit': 'Edit formula (or double-click it)',
+  'formula.insertResult': 'Add the result to the formula (Tab)',
+  'keypad.letters': 'Letters',
+  'keypad.numbers': 'Numbers and signs',
+  'keypad.history': 'Recent formulas',
+  'keypad.historyEmpty': 'Formulas you put on a board will be listed here.',
+  'keypad.left': 'Move left',
+  'keypad.right': 'Move right (also leaves a fraction or a power)',
+  'keypad.done': 'Done (Enter)',
+  'keypad.backspace': 'Delete',
+  'keypad.tabBasic': 'Numbers, fractions, roots, powers',
+  'keypad.tabFunc': 'Functions, logarithms, combinations, matrices',
+  'keypad.tabTrig': 'Trigonometry',
+  'keypad.tabCalc': 'Limits, derivatives, integrals, sums',
+  'graph.fnError.unsupported': 'This can be written but not plotted'
 }
 
 export type MessageKey = keyof typeof en
@@ -330,7 +342,6 @@ const uk: Record<MessageKey, string> = {
   'sel.delete': 'Видалити (Del)',
   'sel.duplicate': 'Дублювати (Ctrl+D)',
   'sel.group': 'Згрупувати',
-  'sel.settings': 'Налаштувати',
   'sel.ungroup': 'Розгрупувати',
 
   'settings.title': 'Налаштування',
@@ -501,10 +512,7 @@ const uk: Record<MessageKey, string> = {
   "shapes.base5": "П’ятикутник",
   "shapes.base6": "Шестикутник",
   "shapes.baseN": "Кількість сторін (3–24)",
-  "sel.shape": "Фігура",
   "sel.shapeTitle": "Змінити фігуру (бічні маркери розтягують її)",
-  "sel.lock": "Заблокувати",
-  "sel.unlock": "Розблокувати",
   "sel.lockTitle": "Замок: не стирається, не видаляється, не рухається і не змінюється",
   "sel.unlockTitle": "Розблокувати, щоб знову можна було змінювати",
   "shapes.hint": "Тягніть по дошці, щоб намалювати, або клацніть для стандартного розміру. З Shift виходять квадрат, коло й лінії під 45°. Колір і товщина беруться з вибраного пера.",
@@ -550,7 +558,6 @@ const uk: Record<MessageKey, string> = {
   "graph.insert": "Вставити",
   "graph.apply": "Застосувати",
   "graph.functionGraph": "Графік функції…",
-  "graph.plot": "Функція",
   "graph.plotTitle": "Побудувати графік функції y = f(x)",
   "graph.functions": "Функції",
   "graph.addFunction": "+ Додати функцію",
@@ -625,7 +632,24 @@ const uk: Record<MessageKey, string> = {
   "shortcuts.zoomOut": "Віддалити",
   "shortcuts.saveAs": "Зберегти як файл (нове місце)",
   "tool.protractor": "Транспортир (T): тягніть, щоб перемістити; ↻ повертає й змінює розмір. Пером по краю малюється дуга, від центру кут",
-  'common.close': 'Закрити'
+  'common.close': 'Закрити',
+
+  'tool.formula': 'Формула: дроби, корені, степені, інтеграли (відкриває математичну клавіатуру)',
+  'formula.edit': 'Редагувати формулу (або двічі клацніть по ній)',
+  'formula.insertResult': 'Дописати результат у формулу (Tab)',
+  'keypad.letters': 'Літери',
+  'keypad.numbers': 'Цифри і знаки',
+  'keypad.history': 'Останні формули',
+  'keypad.historyEmpty': 'Тут з\'являться формули, які ви додасте на дошку.',
+  'keypad.left': 'Ліворуч',
+  'keypad.right': 'Праворуч (також вихід із дробу чи степеня)',
+  'keypad.done': 'Готово (Enter)',
+  'keypad.backspace': 'Стерти',
+  'keypad.tabBasic': 'Цифри, дроби, корені, степені',
+  'keypad.tabFunc': 'Функції, логарифми, комбінаторика, матриці',
+  'keypad.tabTrig': 'Тригонометрія',
+  'keypad.tabCalc': 'Границі, похідні, інтеграли, суми',
+  'graph.fnError.unsupported': 'Це можна записати, але не побудувати'
 }
 
 export const LANGUAGES = { en: 'English', uk: 'Українська' } as const

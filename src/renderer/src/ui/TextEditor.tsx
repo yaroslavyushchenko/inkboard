@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { editor } from '../editor'
-import { commonFormat, formatRange, mergeRuns, sameFormat, TEXT_FONT, TEXT_LINE_HEIGHT, TEXT_SIZES, type FullRun } from '../engine/text'
+import { commonFormat, formatRange, mergeRuns, sameFormat, TEXT_FONT, TEXT_LINE_HEIGHT, type FullRun } from '../engine/text'
 import type { TextFormat } from '../engine/types'
 import { useT } from '../i18n'
 import { PEN_COLORS, useUI, type TextEdit } from '../store'
+import { fitBox, screenArea } from './dock'
 
 /*
  * The box shown while typing on the board: a contenteditable (plain-text editing, so the browser
@@ -146,8 +147,10 @@ function setSel(root: HTMLElement, start: number, end: number): void {
 }
 
 interface Panel {
+  /** Screen box of the selected characters (or the right-click point) the bar belongs to. */
   x: number
   y: number
+  bottom: number
   /** Opened by right-click without a selection: formats the whole text. */
   whole: boolean
 }
@@ -161,6 +164,11 @@ export function TextEditor() {
   const rendered = useRef<{ zoom: number } | null>(null)
   const [panel, setPanel] = useState<Panel | null>(null)
   const [, bump] = useState(0)
+  const [panelSize, setPanelSize] = useState({ w: 320, h: 80 })
+  useLayoutEffect(() => {
+    const p = panelRef.current
+    if (p && (p.offsetWidth !== panelSize.w || p.offsetHeight !== panelSize.h)) setPanelSize({ w: p.offsetWidth, h: p.offsetHeight })
+  })
   const t = useT()
   const session = te ? `${te.id ?? 'new'}:${te.x}:${te.y}` : ''
 
@@ -201,7 +209,7 @@ export function TextEditor() {
         return
       }
       const rect = document.getSelection()!.getRangeAt(0).getBoundingClientRect()
-      setPanel({ x: rect.left + rect.width / 2, y: rect.top, whole: false })
+      setPanel({ x: rect.left + rect.width / 2, y: rect.top, bottom: rect.bottom, whole: false })
       bump((n) => n + 1)
     }
     document.addEventListener('selectionchange', onSel)
@@ -235,6 +243,7 @@ export function TextEditor() {
   const toggle = (k: 'bold' | 'italic' | 'underline'): void => apply({ [k]: !fmt[k] })
   const size = fmt.size ?? minSize(te)
   const step = (dir: 1 | -1): void => apply({ size: Math.max(6, Math.min(400, Math.round(size + dir * (size < 40 ? 2 : 4)))) })
+  const bar = panel ? fitBox({ left: panel.x, right: panel.x, top: panel.y, bottom: panel.bottom }, panelSize.w, panelSize.h, screenArea(), 'above', 10) : null
 
   return (
     <>
@@ -264,7 +273,7 @@ export function TextEditor() {
         onContextMenu={(e) => {
           e.preventDefault()
           const s = getSel(e.currentTarget)
-          setPanel({ x: e.clientX, y: e.clientY - 12, whole: !s || s.start === s.end })
+          setPanel({ x: e.clientX, y: e.clientY - 12, bottom: e.clientY + 12, whole: !s || s.start === s.end })
         }}
         onKeyDown={(e) => {
           e.stopPropagation()
@@ -295,7 +304,7 @@ export function TextEditor() {
         <div
           ref={panelRef}
           className="panel text-format"
-          style={{ left: panel.x, top: panel.y, transform: panel.y < 120 ? 'translate(-50%, 28px)' : undefined }}
+          style={{ left: bar!.left, top: bar!.top }}
           // Keep the focus and the selected characters in the text box while using the bar.
           onPointerDown={(e) => {
             e.preventDefault()
@@ -323,11 +332,6 @@ export function TextEditor() {
             <button className="tf-btn" title={t('text.bigger')} onClick={() => step(1)}>
               +
             </button>
-            {TEXT_SIZES.map((s) => (
-              <button key={s} className={`tf-btn ${fmt.size === s ? 'active' : ''}`} title={`${s}`} onClick={() => apply({ size: s })}>
-                <span style={{ fontSize: 9 + s / 6, fontWeight: 600 }}>A</span>
-              </button>
-            ))}
           </div>
           <div className="tf-row swatches">
             {PEN_COLORS.map((c) => (

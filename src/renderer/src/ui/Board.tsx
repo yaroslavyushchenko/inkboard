@@ -157,7 +157,7 @@ export function Board() {
       const ui = useUI.getState()
       if (baseDirty) {
         // Text being edited is shown by the text box instead.
-        const editing = ui.textEdit?.id
+        const editing = ui.textEdit?.id ?? ui.formulaEdit?.id
         const items = editing ? scene.getItems().filter((i) => i.id !== editing) : scene.getItems()
         renderer.renderBase(items, editor.camera, ui.background, editor.preview)
       }
@@ -848,6 +848,8 @@ export function Board() {
         editor.commitText()
         if (useUI.getState().tool === 'text' && e.button === 0) return
       }
+      // The same for a formula being built.
+      editor.commitFormula(false)
       capture(e.pointerId)
       const p = local(e)
       const eff = effectiveFor(e)
@@ -961,7 +963,8 @@ export function Board() {
         // Double click / double tap (pen too) on text edits it.
         const tapHit = e.button === 0 ? hitTest(scene.getItems(), w.x, w.y, 4 / editor.camera.zoom) : null
         const now = performance.now()
-        if (tapHit?.type === 'text' && !isLocked(tapHit) && lastTap?.id === tapHit.id && now - lastTap.t < 500) {
+        const editable = tapHit?.type === 'text' || tapHit?.type === 'formula'
+        if (tapHit && editable && !isLocked(tapHit) && lastTap?.id === tapHit.id && now - lastTap.t < 500) {
           lastTap = null
           try {
             overlay.releasePointerCapture(e.pointerId)
@@ -969,10 +972,11 @@ export function Board() {
             // not captured
           }
           editor.commitPreview()
-          editor.editText(tapHit)
+          if (tapHit.type === 'text') editor.editText(tapHit)
+          else if (tapHit.type === 'formula') editor.editFormula(tapHit)
           return
         }
-        lastTap = tapHit?.type === 'text' ? { id: tapHit.id, t: now } : null
+        lastTap = tapHit && editable ? { id: tapHit.id, t: now } : null
         const h = selH
         const locked = editor.selectionLocked()
         if (h?.kind === 'handle') {
@@ -1535,7 +1539,7 @@ export function Board() {
         s.instruments !== prev.instruments
       )
         invalidate(false)
-      if (s.textEdit?.id !== prev.textEdit?.id) invalidate(true)
+      if (s.textEdit?.id !== prev.textEdit?.id || s.formulaEdit?.id !== prev.formulaEdit?.id) invalidate(true)
       if (s.tool !== prev.tool) {
         hoverBox = null
         hoverLine = null

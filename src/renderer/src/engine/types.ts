@@ -1,3 +1,4 @@
+import type { Row } from './formula'
 import type { ShapeKind } from './shapes'
 
 /** A sampled input point in world coordinates: x, y and pen pressure (0..1). */
@@ -106,6 +107,12 @@ export interface GraphParams {
 export interface PlotFn {
   expr: string
   color: string
+  /**
+   * The formula as built on the math keypad (engine/formula.ts), when it was. It is what gets
+   * plotted and written next to the curve; `expr` then holds the same function as plain text for
+   * versions without the keypad.
+   */
+  rows?: Row
 }
 
 export interface GraphItem extends ItemBase, GraphParams {
@@ -144,7 +151,21 @@ export interface TextItem extends ItemBase {
   runs?: TextRun[]
 }
 
-export type Item = StrokeItem | ImageItem | GraphItem | TextItem
+/**
+ * A formula built on the math keypad: fractions, roots, powers, integrals. Stored as its tree
+ * (engine/formula.ts) and typeset when drawn, so it stays vector and can be edited again.
+ * Position is the top-left corner; `size` is the font size in board units.
+ */
+export interface FormulaItem extends ItemBase {
+  type: 'formula'
+  x: number
+  y: number
+  size: number
+  color: string
+  rows: Row
+}
+
+export type Item = StrokeItem | ImageItem | GraphItem | TextItem | FormulaItem
 
 export type BackgroundKind = 'blank' | 'dots' | 'grid' | 'lines'
 

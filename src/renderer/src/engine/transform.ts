@@ -1,4 +1,5 @@
 import { circleHitsPolyline } from './geometry'
+import { formulaBBox } from './formulatype'
 import { graphBBox } from './graph'
 import { scaleRuns, textBBox } from './text'
 import type { BBox, Item } from './types'
@@ -45,6 +46,10 @@ export function applyXform(item: Item, t: Xform): Item {
   if (item.type === 'text') {
     const n = { ...item, x: tx(t, item.x), y: ty(t, item.y), size: item.size * t.s, ...(item.runs ? { runs: scaleRuns(item.runs, t.s) } : {}) }
     return { ...n, bbox: textBBox(n) }
+  }
+  if (item.type === 'formula') {
+    const n = { ...item, x: tx(t, item.x), y: ty(t, item.y), size: item.size * t.s }
+    return { ...n, bbox: formulaBBox(n) }
   }
   const x = tx(t, item.x)
   const y = ty(t, item.y)

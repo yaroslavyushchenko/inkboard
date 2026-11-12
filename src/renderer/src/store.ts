@@ -6,12 +6,19 @@ import type { ShapeKind } from './engine/shapes'
 import type { Protractor } from './engine/protractor'
 import type { Compass } from './engine/compass'
 import type { Straightedge } from './engine/straightedge'
+import { validateRows, type Cursor, type FormulaState, type Row } from './engine/formula'
 import { cleanInstrumentPrefs, DEFAULT_INSTRUMENTS, type InstrumentPrefs } from './engine/instruments'
 import type { FullRun } from './engine/text'
 import type { BackgroundKind, Camera, GraphParams, LineCap, LineDash } from './engine/types'
 import { detectLanguage, type Lang } from './i18n'
 
 export type Tool = 'select' | 'brushSelect' | 'move' | 'pen' | 'highlighter' | 'eraser' | 'pan' | 'shape' | 'text'
+
+/** How many recent formulas the keypad remembers. */
+export const FORMULA_HISTORY = 20
+
+const cleanFormulaHistory = (v: unknown): Row[] =>
+  Array.isArray(v) ? v.map((r) => validateRows(r)).filter((r): r is Row => !!r && r.length > 0).slice(0, FORMULA_HISTORY) : []
 
 /** Text being typed on the board (a new one, or an existing item while it's edited). */
 export interface TextEdit {
@@ -22,6 +29,31 @@ export interface TextEdit {
   size: number
   color: string
   runs: FullRun[]
+}
+
+/**
+ * A formula being built on the board (a new one, or an existing item while it's edited). Anchored
+ * at the left end of its baseline, so it doesn't jump while fractions and roots make it taller.
+ */
+export interface FormulaEdit {
+  id?: string
+  x: number
+  baseline: number
+  size: number
+  color: string
+  rows: Row
+  cur: Cursor
+}
+
+/** Where the math keypad types: the formula field that has the focus. */
+export interface MathTarget {
+  apply: (f: (st: FormulaState) => FormulaState) => void
+  /** The current formula, for keys that depend on it. */
+  get: () => FormulaState
+  /** Enter on the keypad. */
+  done: () => void
+  /** The field is a function of x for a plot: the keypad leads with x. */
+  plot: boolean
 }
 
 /**
@@ -78,6 +110,13 @@ interface UIState {
   /** Colour and font size of new text. */
   textStyle: { color: string; size: number }
   textEdit: TextEdit | null
+  /** Colour and font size of new formulas. */
+  formulaStyle: { color: string; size: number }
+  formulaEdit: FormulaEdit | null
+  /** The focused formula field; the math keypad is shown while there is one. */
+  mathTarget: MathTarget | null
+  /** Formulas put on boards lately, newest first (the keypad's history). */
+  formulaHistory: Row[]
   /** Chosen base (number of sides) for pyramids and prisms. */
   shapeBases: Partial<Record<ShapeKind, number>>
   /** The user's own coordinate-plane/line presets. */
@@ -145,6 +184,10 @@ export const useUI = create<UIState>()(
       penButtons: DEFAULT_PEN_BUTTONS,
       setPenButton: (which, action) => set((s) => ({ penButtons: { ...s.penButtons, [which]: action } })),
       textStyle: { color: '#1e1e1e', size: 24 },
+      formulaStyle: { color: '#1e1e1e', size: 32 },
+      formulaEdit: null,
+      mathTarget: null,
+      formulaHistory: [],
       textEdit: null,
       graphPresets: [],
       graphDialog: null,
@@ -198,7 +241,8 @@ export const useUI = create<UIState>()(
           ...p,
           penButtons: cleanPenButtons(p.penButtons),
           instruments: cleanInstrumentPrefs(p.instruments),
-          hiddenTips: Array.isArray(p.hiddenTips) ? p.hiddenTips.filter((x) => typeof x === 'string') : []
+          hiddenTips: Array.isArray(p.hiddenTips) ? p.hiddenTips.filter((x) => typeof x === 'string') : [],
+          formulaHistory: cleanFormulaHistory(p.formulaHistory)
         }
       },
       partialize: (s) => ({
@@ -212,6 +256,8 @@ export const useUI = create<UIState>()(
         selectRadius: s.selectRadius,
         penButtons: s.penButtons,
         textStyle: s.textStyle,
+        formulaStyle: s.formulaStyle,
+        formulaHistory: s.formulaHistory,
         hiddenTips: s.hiddenTips,
         instruments: s.instruments
       })

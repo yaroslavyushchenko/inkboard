@@ -1,4 +1,4 @@
-import type { MathNode } from './mathexpr'
+import type { MathNode } from './mathparse'
 
 /**
  * A tiny math typesetter: lays out a parsed formula (engine/mathexpr.ts) the way it is written in a
@@ -26,6 +26,20 @@ export interface MathBox {
   texts: MathText[]
   /** Fraction bars, radical signs, tall brackets (stroked, width in `w` of each line). */
   lines: { pts: [number, number][]; w: number }[]
+  /** Places inside the box that an editor needs (carets, empty slots); they move with their part. */
+  marks?: MathMark[]
+}
+
+/** A point of interest carried through the layout: (x, y) is on its part's baseline. */
+export interface MathMark {
+  kind: 'caret' | 'hole' | 'ghost'
+  path: number[]
+  i: number
+  x: number
+  y: number
+  w: number
+  asc: number
+  desc: number
 }
 
 export type Measure = (s: string, size: number, italic: boolean) => number
@@ -48,15 +62,16 @@ export const measureMath: Measure = (s, size, italic) => {
   return w * size
 }
 
-const empty = (w = 0): MathBox => ({ w, asc: 0, desc: 0, texts: [], lines: [] })
+export const empty = (w = 0): MathBox => ({ w, asc: 0, desc: 0, texts: [], lines: [] })
 
 /** Copy `b` into `into`, moved by (dx, dy). */
-function put(into: MathBox, b: MathBox, dx: number, dy: number): void {
+export function put(into: MathBox, b: MathBox, dx: number, dy: number): void {
   for (const t of b.texts) into.texts.push({ ...t, x: t.x + dx, y: t.y + dy })
   for (const l of b.lines) into.lines.push({ w: l.w, pts: l.pts.map(([x, y]) => [x + dx, y + dy] as [number, number]) })
+  if (b.marks) for (const m of b.marks) (into.marks ??= []).push({ ...m, x: m.x + dx, y: m.y + dy })
 }
 
-function row(parts: MathBox[]): MathBox {
+export function row(parts: MathBox[]): MathBox {
   const out = empty()
   for (const p of parts) {
     put(out, p, out.w, 0)
@@ -67,7 +82,7 @@ function row(parts: MathBox[]): MathBox {
   return out
 }
 
-interface Ctx {
+export interface Ctx {
   size: number
   comma: boolean
   measure: Measure
@@ -75,12 +90,12 @@ interface Ctx {
   script: boolean
 }
 
-function text(c: Ctx, s: string, italic: boolean): MathBox {
+export function text(c: Ctx, s: string, italic: boolean): MathBox {
   return { w: c.measure(s, c.size, italic), asc: c.size * 0.7, desc: c.size * 0.2, texts: [{ x: 0, y: 0, s, size: c.size, italic }], lines: [] }
 }
 
 const strip = (n: MathNode): MathNode => (n.k === 'paren' ? n.a : n)
-const rule = (c: Ctx): number => Math.max(c.size * 0.065, 0.6)
+export const rule = (c: Ctx): number => Math.max(c.size * 0.065, 0.6)
 
 /** Does the typeset node start with a digit (then `2 * 3` needs a visible dot)? */
 function startsWithNumber(n: MathNode): boolean {
@@ -89,18 +104,43 @@ function startsWithNumber(n: MathNode): boolean {
   return false
 }
 
-function sup(c: Ctx, base: MathBox, expNode: MathNode): MathBox {
-  const e = layout(strip(expNode), { ...c, size: c.size * 0.68, script: true })
-  const raise = Math.max(c.size * 0.42, base.asc - e.asc * 0.55)
+/** Size of exponents and indices relative to their base. */
+export const SCRIPT = 0.68
+
+/** How far an exponent box is raised / an index box is lowered next to a base of this height. */
+export const raiseOf = (c: Ctx, baseAsc: number, e: MathBox): number => Math.max(c.size * 0.42, baseAsc - e.asc * 0.55)
+export const dropOf = (c: Ctx, baseDesc: number, e: MathBox): number => Math.max(c.size * 0.24, baseDesc + e.asc * 0.35)
+
+/** `base` with a raised exponent and / or a lowered index (already laid out at script size). */
+export function scripts(c: Ctx, base: MathBox, up: MathBox | null, down: MathBox | null): MathBox {
   const out = row([base])
-  put(out, e, base.w + c.size * 0.04, -raise)
-  out.w = base.w + c.size * 0.04 + e.w
-  out.asc = Math.max(base.asc, raise + e.asc)
-  out.desc = Math.max(base.desc, e.desc - raise)
+  const x = base.w + c.size * 0.04
+  let w = 0
+  if (up) {
+    const raise = raiseOf(c, base.asc, up)
+    put(out, up, x, -raise)
+    out.asc = Math.max(out.asc, raise + up.asc)
+    out.desc = Math.max(out.desc, up.desc - raise)
+    w = up.w
+  }
+  if (down) {
+    const drop = dropOf(c, base.desc, down)
+    put(out, down, x, drop)
+    out.desc = Math.max(out.desc, drop + down.desc)
+    out.asc = Math.max(out.asc, down.asc - drop)
+    w = Math.max(w, down.w)
+  }
+  out.w = x + w
   return out
 }
 
-function frac(c: Ctx, num: MathBox, den: MathBox): MathBox {
+const script = (c: Ctx): Ctx => ({ ...c, size: c.size * SCRIPT, script: true })
+
+function sup(c: Ctx, base: MathBox, expNode: MathNode): MathBox {
+  return scripts(c, base, layout(strip(expNode), script(c)), null)
+}
+
+export function frac(c: Ctx, num: MathBox, den: MathBox): MathBox {
   const axis = c.size * 0.27
   const gap = c.size * 0.14
   const pad = c.size * 0.1
@@ -116,12 +156,13 @@ function frac(c: Ctx, num: MathBox, den: MathBox): MathBox {
   return out
 }
 
-function radical(c: Ctx, inner: MathBox, index?: string): MathBox {
+/** A radical sign over `inner`; `index` (laid out at half size) is the degree of the root. */
+export function radical(c: Ctx, inner: MathBox, index?: MathBox): MathBox {
   const s = c.size
   const gap = s * 0.12
   const top = inner.asc + gap
   const bottom = Math.max(inner.desc, s * 0.15)
-  const x0 = index ? s * 0.22 : 0
+  const x0 = index ? Math.max(s * 0.22, index.w - s * 0.03) : 0
   const left = x0 + s * 0.62
   const out = empty(left + inner.w + s * 0.1)
   out.lines.push({
@@ -134,25 +175,35 @@ function radical(c: Ctx, inner: MathBox, index?: string): MathBox {
       [left + inner.w + s * 0.06, -top]
     ]
   })
-  if (index) out.texts.push({ x: 0, y: -s * 0.5, s: index, size: s * 0.5, italic: false })
+  let asc = top + rule(c)
+  if (index) {
+    const iy = -s * 0.5 - index.desc
+    put(out, index, Math.max(0, x0 - s * 0.22), iy)
+    asc = Math.max(asc, index.asc - iy)
+  }
   put(out, inner, left, 0)
-  out.asc = top + rule(c)
+  out.asc = asc
   out.desc = bottom
   return out
 }
 
-/** `(…)` or `|…|` around a box; drawn as strokes when the content is taller than a line of text. */
-function fence(c: Ctx, inner: MathBox, kind: 'paren' | 'bar'): MathBox {
+/** `(…)`, `[…]` or `|…|` around a box; drawn as strokes when the content is taller than a line of text. */
+export function fence(c: Ctx, inner: MathBox, kind: 'paren' | 'bar' | 'square'): MathBox {
   const s = c.size
   const tall = inner.asc > s * 0.8 || inner.desc > s * 0.3
   if (kind === 'paren' && !tall) return row([text(c, '(', false), inner, text(c, ')', false)])
+  if (kind === 'square' && !tall) return row([text(c, '[', false), inner, text(c, ']', false)])
   const top = Math.max(inner.asc, s * 0.72) + s * 0.06
   const bot = Math.max(inner.desc, s * 0.2) + s * 0.06
-  const fw = kind === 'paren' ? s * 0.32 : s * 0.22
+  const fw = kind === 'bar' ? s * 0.22 : s * 0.32
   const out = empty(fw * 2 + inner.w)
+  const r = fw + inner.w
   if (kind === 'bar') {
     out.lines.push({ w: rule(c), pts: [[fw * 0.5, -top], [fw * 0.5, bot]] })
     out.lines.push({ w: rule(c), pts: [[fw * 1.5 + inner.w, -top], [fw * 1.5 + inner.w, bot]] })
+  } else if (kind === 'square') {
+    out.lines.push({ w: rule(c), pts: [[fw * 0.85, -top], [fw * 0.3, -top], [fw * 0.3, bot], [fw * 0.85, bot]] })
+    out.lines.push({ w: rule(c), pts: [[r + fw * 0.15, -top], [r + fw * 0.7, -top], [r + fw * 0.7, bot], [r + fw * 0.15, bot]] })
   } else {
     // Quadratic arcs: ends near the inner side, bulge outwards at mid-height.
     const arc = (xEnd: number, xMid: number): [number, number][] => {
@@ -165,7 +216,6 @@ function fence(c: Ctx, inner: MathBox, kind: 'paren' | 'bar'): MathBox {
       return pts
     }
     out.lines.push({ w: rule(c), pts: arc(fw * 0.85, -fw * 0.25) })
-    const r = fw + inner.w
     out.lines.push({ w: rule(c), pts: arc(r + fw * 0.15, r + fw * 1.25) })
   }
   put(out, inner, fw, 0)
@@ -193,10 +243,23 @@ function layout(n: MathNode, c: Ctx): MathBox {
       return sup(c, layout(n.a, c), n.b)
     case 'fn': {
       if (n.name === 'sqrt') return radical(c, layout(strip(n.a), c))
-      if (n.name === 'cbrt') return radical(c, layout(strip(n.a), c), '3')
+      if (n.name === 'cbrt') return radical(c, layout(strip(n.a), c), text({ ...c, size: s * 0.5 }, '3', false))
       if (n.name === 'abs') return fence(c, layout(strip(n.a), c), 'bar')
       if (n.name === 'exp') return sup(c, text(c, 'e', true), n.a)
       return row([text(c, n.name, false), empty(n.a.k === 'paren' ? s * 0.04 : s * 0.16), layout(n.a, c)])
+    }
+    case 'post':
+      return row([layout(n.a, c), text(c, n.op, false)])
+    case 'root':
+      return radical(c, layout(strip(n.a), c), layout(strip(n.index), { ...c, size: s * 0.5, script: true }))
+    case 'log': {
+      const name = scripts(c, text(c, 'log', false), null, layout(strip(n.base), script(c)))
+      return row([name, empty(n.a.k === 'paren' ? s * 0.04 : s * 0.16), layout(n.a, c)])
+    }
+    case 'comb': {
+      const sc = script(c)
+      const lower = (b: MathBox): MathBox => scripts(c, empty(), null, b)
+      return row([lower(layout(strip(n.n), sc)), text(c, n.kind, false), lower(layout(strip(n.r), sc))])
     }
     case 'bin': {
       if (n.op === '+' || n.op === '-') {
