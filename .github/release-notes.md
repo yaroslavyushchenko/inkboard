@@ -2,7 +2,23 @@
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
-## What's new in 0.6.0
+## What's new in 0.7.0
+
+- **Ruler and set squares:** all measuring and drawing instruments (ruler, 45° set square, 30°/60° set square,
+  protractor and compass) now live in a dedicated **Drawing tools** menu on the toolbar. Draw with the pen
+  along any edge of the ruler or set square for a straight segment measured in centimetres and millimetres
+  (`1 cm = 2 paper cells`).
+- **Grid snap for instruments:** hold `Ctrl` (`⌘` on macOS) while moving any instrument to snap its origin
+  (the ruler's `0 cm` mark, the set square's `90°` corner, the protractor's centre or the compass's needle)
+  to paper grid intersections.
+- **SQLite library storage:** boards, templates, tags and thumbnails are now stored in a local SQLite database
+  (`library.sqlite`) with raw binary image assets deduplicated by SHA-256 hash instead of gzipped archives
+  and inline base64 strings. Existing boards are migrated automatically on first launch, and standalone
+  `.inkboard` files are exported or imported on request.
+- **Quieter autosave:** changes are saved automatically after 5 seconds of inactivity (and immediately when
+  switching boards, closing the window or pressing `Ctrl+S`).
+
+## Also in 0.6.0
 
 - **Function graphs:** Graph menu → *Function graph…*, or select a coordinate plane and click **Function**.
   Type formulas such as `x^2`, `2x + 1`, `sin(x)`, `sqrt(x)`, `|x|` or `1/x` (up to 8 per plane): the

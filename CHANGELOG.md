@@ -3,6 +3,26 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
+## [0.7.0] (2026-11-12)
+
+### Added
+- Ruler and two set squares (45°/45°/90° and 30°/60°/90°) with centimetre and millimetre scales
+  (`1 cm = 2 paper cells`); drawing along any edge produces a straight segment with a live centimetre readout.
+- Dedicated **Drawing tools** dropdown menu on the top toolbar grouping the ruler, both set squares, the
+  protractor and the compass, with downward chevron indicators on all dropdown menus.
+- Hold `Ctrl` (`⌘` on macOS) while dragging any instrument to snap its origin to paper grid intersections.
+
+### Changed
+- Library storage moved from gzipped `.inkboard` files to Node's built-in SQLite (`library.sqlite` in WAL mode);
+  board JSON is stored uncompressed, and raster images are stored once by SHA-256 hash as raw binary BLOBs
+  instead of base64 strings. Existing libraries migrate automatically on startup.
+- Standalone `.inkboard` files are now plain UTF-8 JSON and are exported or imported only on explicit request.
+- Autosave waits for 5 seconds of inactivity before writing (while still flushing immediately on board switch,
+  app close or `Ctrl+S`).
+
+### Removed
+- Built-in version history snapshots (`VersionHistory` panel and `history/` directory).
+
 ## [0.6.0] (2026-11-12)
 
 ### Added
@@ -101,6 +121,8 @@ Boards saved by 0.5 can't be opened by older versions.
 First test build: infinite board, pressure-sensitive vector ink, eraser, paper backgrounds, images,
 lasso selection.
 
+[0.7.0]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.7.0
+[0.6.0]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.6.0
 [0.5.2]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.5.2
 [0.5.1]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.5.1
 [0.5.0]: https://github.com/yaroslavyushchenko/inkboard/releases/tag/v0.5.0
