@@ -16,178 +16,277 @@
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://yaroslavyushchenko.github.io/inkboard/img/social-preview.png">
-<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfaf6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/png" href="img/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Manrope:wght@400..800&display=swap">
 <style>
   :root {
-    --bg: #ffffff;
-    --bg-soft: #f7f7f5;
-    --text: #16181d;
-    --muted: #5b606e;
-    --faint: #8a8f9c;
-    --line: #e7e7e4;
+    --bg: #fbfaf6;
+    --bg-2: #ffffff;
+    --card: #ffffff;
+    --text: #14161b;
+    --muted: #575c69;
+    --faint: #8b909b;
+    --line: #e8e6df;
     --accent: #3b5bdb;
-    --accent-ink: #2f4ac0;
-    --accent-soft: #edf1ff;
-    --dot: #dcdcd8;
-    --frame: #e2e2de;
+    --accent-ink: #2c47b8;
+    --accent-soft: #e9eeff;
+    --red: #e03131;
+    --blue: #1971c2;
+    --green: #2f9e44;
+    --hl: #ffd43b;
+    --dot: #dad8d0;
+    --frame: #e1dfd8;
+    --display: "Manrope", system-ui, sans-serif;
+    --body: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --hand: "Caveat", "Segoe Print", cursive;
+    --ease: cubic-bezier(.2, .8, .2, 1);
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #111318;
-      --bg-soft: #171a20;
-      --text: #ecedf1;
-      --muted: #a3a7b4;
-      --faint: #7c8190;
-      --line: #262a33;
+      --bg: #0f1115;
+      --bg-2: #14171d;
+      --card: #171a21;
+      --text: #eceef3;
+      --muted: #a4a9b6;
+      --faint: #7b8090;
+      --line: #252a33;
       --accent: #7d93ff;
-      --accent-ink: #9fb0ff;
-      --accent-soft: #1d2340;
-      --dot: #2a2e38;
-      --frame: #30343e;
-      color-scheme: dark;
+      --accent-ink: #a3b2ff;
+      --accent-soft: #1c2240;
+      --red: #ff6b6b;
+      --blue: #4dabf7;
+      --green: #51cf66;
+      --dot: #262a33;
+      --frame: #2c313b;
+        color-scheme: dark;
     }
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+  html { scroll-behavior: smooth; scroll-padding-top: 76px; }
   body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Noto Sans", sans-serif;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.6 var(--body); -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
   a { color: var(--accent-ink); text-underline-offset: 3px; }
   img { max-width: 100%; }
-  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
-  h1, h2, h3 { letter-spacing: -.022em; line-height: 1.12; }
-  h2 { font-size: clamp(28px, 3.6vw, 40px); margin: 0 0 12px; }
-  .kicker { font-size: 13px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin: 0 0 14px; }
-  .sub { color: var(--muted); margin: 0 0 36px; max-width: 38em; font-size: 18px; }
-  section { padding: 96px 0; border-top: 1px solid var(--line); }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 800; letter-spacing: -.035em; line-height: 1.08; margin: 0; }
+  h2 { font-size: clamp(28px, 4vw, 46px); }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin: 0 0 16px; }
+  .eyebrow::before { content: ""; width: 18px; height: 2px; border-radius: 2px; background: currentColor; }
+  .sub { color: var(--muted); font-size: 18.5px; max-width: 36em; margin: 16px 0 0; }
+  .hand { font-family: var(--hand); font-weight: 600; }
+  section { padding: 112px 0; position: relative; }
+  main > section + section { border-top: 1px solid var(--line); }
+
+  /* reveal on scroll */
+  .rv { opacity: 0; transform: translateY(26px); transition: opacity .8s var(--ease), transform .8s var(--ease); }
+  .rv.in { opacity: 1; transform: none; }
+  .rv.d1 { transition-delay: .08s; } .rv.d2 { transition-delay: .16s; } .rv.d3 { transition-delay: .24s; }
 
   /* header */
-  header {
-    position: sticky; top: 0; z-index: 10;
-    background: color-mix(in srgb, var(--bg) 90%, transparent);
-    backdrop-filter: saturate(1.4) blur(12px);
-    -webkit-backdrop-filter: saturate(1.4) blur(12px);
-    border-bottom: 1px solid var(--line);
-  }
-  .bar { display: flex; align-items: center; gap: 16px; height: 60px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: var(--text); text-decoration: none; letter-spacing: -.01em; }
-  .brand img { width: 30px; height: 30px; border-radius: 7px; }
-  nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }
-  nav a { color: var(--muted); text-decoration: none; font-size: 15px; padding: 8px 10px; border-radius: 8px; }
-  nav a:hover { color: var(--text); background: var(--bg-soft); }
-  .lang { display: flex; margin-left: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
-  .lang button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; min-width: 44px; height: 34px; border-radius: 7px; cursor: pointer; }
-  .lang button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); }
+  header { position: sticky; top: 0; z-index: 20; transition: background .3s, box-shadow .3s; }
+  header.scrolled { background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(1.5) blur(14px); -webkit-backdrop-filter: saturate(1.5) blur(14px); box-shadow: 0 1px 0 var(--line); }
+  .bar { display: flex; align-items: center; gap: 12px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font: 650 17px var(--body); color: var(--text); text-decoration: none; letter-spacing: -.01em; }
+  .brand img { width: 30px; height: 30px; border-radius: 8px; }
+  nav { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 15px; font-weight: 500; padding: 8px 12px; border-radius: 999px; }
+  nav a:hover { color: var(--text); background: color-mix(in srgb, var(--text) 6%, transparent); }
+  nav a.nav-cta { color: var(--bg); background: var(--text); margin-left: 6px; }
+  nav a.nav-cta:hover { background: var(--accent); color: #fff; }
+  .lang { display: flex; margin-left: 8px; background: color-mix(in srgb, var(--text) 6%, transparent); border-radius: 999px; padding: 3px; position: relative; }
+  .lang button { position: relative; z-index: 1; border: 0; background: none; color: var(--muted); font: 600 12.5px var(--body); width: 46px; height: 32px; border-radius: 999px; cursor: pointer; transition: color .25s; }
+  .lang button[aria-pressed="true"] { color: var(--text); }
+  .lang .knob { position: absolute; top: 3px; left: 3px; width: 46px; height: 32px; border-radius: 999px; background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.12); transition: transform .35s var(--ease); }
+  html[lang="en"] .lang .knob { transform: translateX(46px); }
 
   /* hero */
-  .hero { padding: 88px 0 0; }
-  .hero h1 { font-size: clamp(38px, 6.2vw, 68px); margin: 0 0 20px; max-width: 13em; letter-spacing: -.03em; }
-  .hero .lead { font-size: clamp(18px, 2.1vw, 21px); color: var(--muted); max-width: 33em; margin: 0 0 32px; }
-  .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
-  .btn {
-    display: inline-flex; align-items: center; gap: 10px;
-    min-height: 52px; padding: 12px 22px; border-radius: 12px;
-    background: var(--accent); color: #fff; text-decoration: none; font-weight: 650; font-size: 17px;
+  .hero { padding: 64px 0 0; text-align: center; position: relative; overflow: hidden; }
+  .hero::before {
+    content: ""; position: absolute; inset: -64px 0 0; z-index: -1;
+    background-image: radial-gradient(var(--dot) 1.2px, transparent 1.3px); background-size: 26px 26px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 30%, transparent 80%);
+            mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, #000 30%, transparent 80%);
   }
-  @media (prefers-color-scheme: dark) { .btn { color: #0e1022; } }
-  .btn:hover { background: var(--accent-ink); }
+  .pill { display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border: 1px solid var(--line); background: var(--card); border-radius: 999px; font-size: 14px; color: var(--muted); text-decoration: none; }
+  .pill b { background: var(--text); color: var(--bg); border-radius: 999px; padding: 2px 10px; font-weight: 600; font-size: 12.5px; }
+  .pill:hover { border-color: var(--faint); }
+  .hero h1 { font-size: clamp(38px, 6.4vw, 76px); margin: 26px auto 0; max-width: 15em; line-height: 1.06; }
+  .scribble { position: relative; display: inline-block; white-space: nowrap; }
+  .scribble svg { position: absolute; left: -2%; bottom: -.28em; width: 104%; height: .42em; overflow: visible; }
+  .scribble path { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .8s var(--d, .5s) var(--ease) forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .hero .lead { font-size: clamp(17.5px, 2vw, 20.5px); color: var(--muted); max-width: 34em; margin: 26px auto 0; }
+  .cta { margin: 34px auto 0; display: inline-flex; flex-direction: column; align-items: center; gap: 14px; position: relative; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 12px; min-height: 58px; padding: 12px 26px; border-radius: 16px;
+    background: var(--text); color: var(--bg); text-decoration: none; font-weight: 600; font-size: 17.5px;
+    box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--text) 60%, transparent);
+    transition: transform .25s var(--ease), background .25s, box-shadow .25s;
+  }
+  .btn:hover { transform: translateY(-2px); background: var(--accent); color: #fff; box-shadow: 0 16px 36px -12px var(--accent); }
   .btn svg { width: 20px; height: 20px; flex: none; }
-  .btn small { font-weight: 500; opacity: .8; font-size: 13.5px; }
-  .other { color: var(--text); font-size: 16px; font-weight: 550; }
-  .facts { margin: 20px 0 0; color: var(--faint); font-size: 14.5px; }
-  .shot { margin: 56px 0 0; border-radius: 14px 14px 0 0; overflow: hidden; border: 1px solid var(--frame); border-bottom: 0; background: #fff; }
-  .shot img { display: block; width: 100%; height: auto; }
-  .heroshot { position: relative; }
-  .heroshot::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--line); }
+  .btn small { font-weight: 500; opacity: .7; font-size: 13.5px; }
+  .platforms { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; font-size: 15px; color: var(--muted); }
+  .platforms a { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); color: var(--text); text-decoration: none; font-weight: 600; transition: border-color .2s; }
+  .platforms a:hover { border-color: var(--faint); }
+  .platforms svg { width: 16px; height: 16px; }
+  .platforms span { margin-right: 4px; }
+  .os-note { font-size: 14.5px; color: var(--muted); max-width: 32em; margin: 0; }
+  .os-note b { color: var(--text); font-weight: 600; }
+  .free-note { position: absolute; left: 100%; top: -6px; width: 170px; text-align: left; color: var(--faint); font-size: 25px; line-height: 1; transform: rotate(-6deg); margin-left: 18px; }
+  .free-note svg { display: block; width: 58px; height: 34px; margin: 4px 0 0 -6px; }
+  .free-note path { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .8s 1.4s var(--ease) forwards; }
+
+  .stage { margin: 64px auto 0; perspective: 1600px; max-width: 1120px; }
+  .window {
+    border-radius: 16px; overflow: hidden; background: #fff; border: 1px solid var(--frame);
+    box-shadow: 0 40px 80px -30px rgba(20, 24, 40, .35), 0 0 0 6px color-mix(in srgb, var(--card) 70%, transparent);
+    transform-origin: 50% 0; transform: rotateX(var(--tilt, 14deg)) scale(var(--sc, .94)); will-change: transform;
+  }
+  .window img { display: block; width: 100%; height: auto; }
 
   /* examples */
-  .tabs { display: flex; gap: 6px; margin: 0 0 18px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-  .tabs::-webkit-scrollbar { display: none; }
-  .tabs button {
-    flex: none; border: 1px solid var(--line); background: none; color: var(--muted);
-    font: inherit; font-size: 15px; font-weight: 550; height: 40px; padding: 0 16px; border-radius: 999px; cursor: pointer;
-  }
-  .tabs button:hover { color: var(--text); border-color: var(--faint); }
-  .tabs button[aria-selected="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
-  .track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; gap: 24px; overscroll-behavior-x: contain; }
+  .ex-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 34px; }
+  .seg { position: relative; display: inline-flex; gap: 2px; padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .seg::-webkit-scrollbar { display: none; }
+  .seg button { position: relative; z-index: 1; flex: none; border: 0; background: none; color: var(--muted); font: 600 14.5px var(--body); height: 40px; padding: 0 18px; border-radius: 999px; cursor: pointer; transition: color .25s; }
+  .seg button:hover { color: var(--text); }
+  .seg button[aria-selected="true"] { color: var(--text); }
+  .seg .knob { position: absolute; top: 4px; left: 0; height: 40px; border-radius: 999px; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 4px 14px -4px rgba(0,0,0,.14); transition: transform .45s var(--ease), width .45s var(--ease); overflow: hidden; }
+  .seg .knob i { position: absolute; left: 16px; right: 16px; bottom: 5px; height: 2px; border-radius: 2px; background: var(--accent); transform-origin: left; transform: scaleX(0); }
+  .seg .knob i.run { animation: prog var(--dur, 7s) linear forwards; }
+  .seg:hover .knob i.run, .seg.paused .knob i.run { animation-play-state: paused; }
+  @keyframes prog { to { transform: scaleX(1); } }
+  .track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; gap: 28px; overscroll-behavior-x: contain; }
   .track::-webkit-scrollbar { display: none; }
-  .track figure { flex: 0 0 100%; margin: 0; scroll-snap-align: start; }
-  .frame { border: 1px solid var(--frame); border-radius: 14px; overflow: hidden; background: #fff; aspect-ratio: 16 / 10; }
-  .frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left center; }
-  figcaption { margin-top: 16px; color: var(--muted); max-width: 46em; }
-  figcaption b { color: var(--text); font-weight: 650; }
-  .dots { display: none; justify-content: center; gap: 8px; margin-top: 14px; }
-  .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
-  .dots i.on { background: var(--text); }
+  .track figure { flex: 0 0 100%; margin: 0; scroll-snap-align: start; display: grid; grid-template-columns: 1fr 300px; gap: 36px; align-items: center; }
+  .frame { border-radius: 16px; overflow: hidden; background: #fff; border: 1px solid var(--frame); aspect-ratio: 16 / 10; box-shadow: 0 24px 50px -28px rgba(20,24,40,.35); }
+  .frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left center; transition: transform 1.2s var(--ease); }
+  .track figure.cur .frame img { transform: scale(1.015); }
+  figcaption h3 { font: 600 22px/1.25 var(--body); letter-spacing: -.015em; margin-bottom: 10px; }
+  figcaption p { margin: 0; color: var(--muted); }
 
-  /* features */
-  .feats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px 40px; margin: 0; }
-  .feats div { border-top: 1px solid var(--line); padding-top: 16px; }
-  .feats dt { font-weight: 650; margin: 0 0 4px; }
-  .feats dd { margin: 0; color: var(--muted); font-size: 16px; }
+  /* bento */
+  .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 48px; }
+  .tile { background: var(--bg-2); border: 1px solid var(--line); border-radius: 22px; padding: 26px; display: flex; flex-direction: column; gap: 10px; min-height: 250px; overflow: hidden; position: relative; transition: transform .35s var(--ease), border-color .35s; }
+  .tile:hover { border-color: color-mix(in srgb, var(--text) 18%, var(--line)); }
+  .tile.wide { grid-column: span 2; }
+  .tile h3 { font: 600 18px/1.3 var(--body); letter-spacing: -.01em; }
+  .tile p { margin: 0; color: var(--muted); font-size: 15.5px; max-width: 30em; }
+  .art { flex: 1; display: grid; place-items: center; min-height: 110px; }
+  .art svg { width: 100%; max-width: 360px; height: 120px; overflow: visible; }
+  .draw { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1.6s var(--ease); }
+  .tile.in .draw, .in .draw { stroke-dashoffset: 0; }
+  .ants { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 6; animation: ants 1s linear infinite; }
+  @keyframes ants { to { stroke-dashoffset: -12; } }
+  .keys { display: flex; align-items: center; gap: 10px; font: 600 20px var(--body); }
+  .key { min-width: 64px; height: 56px; padding: 0 16px; display: grid; place-items: center; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 4px 0 var(--line); }
+  .tile.in .key.k2 { animation: press 2.4s 1s ease-in-out infinite; }
+  @keyframes press { 0%, 70%, 100% { transform: none; box-shadow: 0 4px 0 var(--line); } 80% { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); } }
+  .tpl { font-family: var(--hand); font-size: 26px; line-height: 1.25; text-align: left; color: var(--muted); }
+  .tpl b { color: var(--text); }
+  .tpl b { font-weight: 600; }
+  .langs { font: 800 56px var(--display); letter-spacing: -.04em; display: flex; gap: 14px; align-items: baseline; }
+  .langs span:last-child { color: var(--accent); }
 
-  /* safety */
-  .safe { display: grid; grid-template-columns: 1fr 1.25fr; gap: 56px; align-items: start; }
-  .safe ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 18px; }
-  .safe li { color: var(--muted); padding-left: 26px; position: relative; }
-  .safe li::before { content: ""; position: absolute; left: 0; top: .62em; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--accent); }
-  .safe li b { color: var(--text); font-weight: 650; }
+  /* reliability */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 56px; border-top: 1px solid var(--line); }
+  .stat { padding: 28px 24px 0 0; }
+  .stat + .stat { padding-left: 24px; border-left: 1px solid var(--line); }
+  .stat .num { font: 800 clamp(42px, 5vw, 64px)/1 var(--display); letter-spacing: -.045em; }
+  .stat .num small { font: 500 .36em var(--body); letter-spacing: 0; margin-left: 6px; color: var(--muted); }
+  .stat p { margin: 12px 0 0; color: var(--muted); font-size: 15.5px; }
+  .plug { margin-top: 40px; color: var(--muted); font-size: 15.5px; }
 
   /* download */
-  .dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .os { border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
-  .os.mine { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-  .os h3 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 20px; }
-  .os h3 svg { width: 22px; height: 22px; }
-  .req { margin: -8px 0 0; color: var(--faint); font-size: 14.5px; }
-  .files { display: grid; gap: 8px; }
-  a.file {
-    display: flex; justify-content: space-between; align-items: center; gap: 10px;
-    min-height: 48px; padding: 10px 16px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-ink);
-    text-decoration: none; font-weight: 650; font-size: 15.5px;
-  }
-  a.file:hover { background: color-mix(in srgb, var(--accent-soft) 80%, var(--accent) 20%); }
-  a.file span { font-weight: 500; font-size: 13.5px; opacity: .85; white-space: nowrap; }
-  .os ol, .mac ol { margin: 0; padding-left: 1.3em; color: var(--muted); font-size: 15.5px; display: grid; gap: 6px; }
-  .os ol b, .mac ol b { color: var(--text); font-weight: 650; }
-  .os .note { margin: 0; color: var(--muted); font-size: 15px; }
-  .snap img { display: block; height: 48px; width: auto; }
-  .ver { margin: 22px 0 0; color: var(--faint); font-size: 14.5px; }
+  .dl-head { text-align: center; }
+  .dl-head .sub { margin-inline: auto; }
+  .dl-head .seg { margin-top: 32px; }
+  .seg.os button { height: 46px; padding: 0 22px; font-size: 15.5px; display: inline-flex; align-items: center; gap: 8px; }
+  .seg.os .knob { height: 46px; }
+  .seg.os svg { width: 18px; height: 18px; }
+  .panel { margin-top: 32px; display: grid; grid-template-columns: 360px 1fr; gap: 20px; animation: fadeup .5s var(--ease); }
+  .panel[hidden] { display: none; }
+  @keyframes fadeup { from { opacity: 0; transform: translateY(12px); } }
+  .get { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+  .get h3 { font: 600 24px var(--body); letter-spacing: -.02em; }
+  .req { margin: -4px 0 6px; color: var(--faint); font-size: 14.5px; }
+  .get .btn { width: 100%; justify-content: center; flex-wrap: wrap; row-gap: 0; }
+  .get .btn small { flex-basis: 100%; text-align: center; }
+  .alt { display: grid; gap: 8px; }
+  .alt a { display: flex; justify-content: space-between; align-items: center; min-height: 48px; padding: 10px 16px; border-radius: 12px; border: 1px solid var(--line); color: var(--text); text-decoration: none; font-weight: 600; font-size: 15.5px; transition: border-color .2s, background .2s; }
+  .alt a:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .alt a span { font-weight: 500; color: var(--faint); font-size: 13.5px; white-space: nowrap; }
+  .upd { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14.5px; color: var(--muted); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; margin-bottom: 8px; }
+  .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
+  .badge { background: var(--bg); border: 1px solid var(--line); color: var(--text); }
+  .badge.auto::before { background: var(--green); }
+  .badge.manual::before { background: #f59f00; }
+  .steps-card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 28px; }
+  .steps-card > h4 { margin: 0 0 18px; font: 600 17px var(--body); }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; counter-reset: s; }
+  .steps li { counter-increment: s; display: flex; flex-direction: column; gap: 10px; font-size: 15px; color: var(--muted); }
+  .steps li b { color: var(--text); font-weight: 600; }
+  .steps.four { grid-template-columns: 1fr 1fr; }
+  .steps .cap::before { content: counter(s); display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--text); color: var(--bg); font: 600 12.5px var(--body); margin-right: 8px; vertical-align: 1px; }
 
-  .mac { margin-top: 16px; display: grid; grid-template-columns: 1fr 1.35fr; gap: 40px; border: 1px solid var(--line); border-radius: 14px; padding: 32px; background: var(--bg-soft); }
-  .mac h3 { margin: 0 0 10px; font-size: 22px; }
-  .mac p { margin: 0 0 12px; color: var(--muted); font-size: 16px; }
-  .mac ol { font-size: 16.5px; gap: 12px; counter-reset: s; list-style: none; padding: 0; }
-  .mac ol li { counter-increment: s; position: relative; padding-left: 42px; min-height: 28px; }
-  .mac ol li::before {
-    content: counter(s); position: absolute; left: 0; top: -1px;
-    width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
-    background: var(--bg); border: 1px solid var(--line); color: var(--text); font-size: 14px; font-weight: 650;
-  }
+  /* tiny UI mocks for the steps */
+  .mock { height: 116px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); display: grid; place-items: center; padding: 12px; position: relative; overflow: hidden; }
+  .mock .dlg { width: 100%; max-width: 170px; background: var(--card); border-radius: 10px; box-shadow: 0 6px 20px -6px rgba(0,0,0,.25); padding: 10px; display: grid; gap: 6px; }
+  .mock .ln { height: 6px; border-radius: 4px; background: var(--line); }
+  .mock .ln.s { width: 60%; }
+  .mock .mb { font: 600 11px var(--body); text-align: center; padding: 5px 8px; border-radius: 6px; background: var(--line); color: var(--muted); }
+  .mock .mb.hot, .mock .hot { background: var(--accent); color: #fff; box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); animation: ring 2s infinite; }
+  @keyframes ring { 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+  .mock .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .mock .side { width: 100%; max-width: 170px; display: grid; gap: 5px; }
+  .mock .side div { font: 500 11px var(--body); padding: 4px 8px; border-radius: 6px; color: var(--muted); }
+  .mock .side div.hot { animation: none; color: #fff; }
+  .mock .drag { display: flex; align-items: center; gap: 10px; }
+  .mock .drag img { width: 44px; height: 44px; border-radius: 10px; animation: dragx 2.6s var(--ease) infinite; }
+  @keyframes dragx { 0%, 15% { transform: none; opacity: 1; } 60% { transform: translateX(62px); opacity: .9; } 70%, 100% { transform: translateX(62px) scale(.6); opacity: 0; } }
+  .mock .drag svg { width: 50px; height: 44px; color: var(--accent); }
+  .mock .ss { width: 100%; max-width: 180px; background: #1f5fbf; color: #fff; border-radius: 8px; padding: 10px; display: grid; gap: 6px; text-align: left; }
+  .mock .ss b { font: 600 11.5px var(--body); }
+  .mock .ss .ln { background: #ffffff55; }
+  .mock .ss u { font: 600 11px var(--body); color: #fff; text-decoration-thickness: 2px; text-decoration-color: var(--hl); }
+  .mock .ss .mb { justify-self: end; background: #ffffff33; color: #fff; }
+  .mock .ss .mb.hot { background: #fff; color: #1f5fbf; }
+  .mock .file { display: grid; justify-items: center; gap: 6px; font: 500 11.5px var(--body); color: var(--text); }
+  .mock .file img { width: 44px; height: 44px; border-radius: 10px; animation: pop 2.4s var(--ease) infinite; }
+  @keyframes pop { 0%, 60%, 100% { transform: none; } 70% { transform: scale(.9); } 80% { transform: scale(1.06); } }
+  .mock .chk { font: 500 12px var(--body); color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .mock .chk i { width: 16px; height: 16px; border-radius: 4px; background: var(--accent); display: grid; place-items: center; }
+  .mock .chk i::after { content: ""; width: 7px; height: 4px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
 
-  /* updates */
-  .upd { width: 100%; border-collapse: collapse; font-size: 16px; }
-  .upd th, .upd td { text-align: left; vertical-align: top; padding: 16px 16px 16px 0; border-top: 1px solid var(--line); }
-  .upd th { font-weight: 650; width: 30%; }
-  .upd td { color: var(--muted); }
-  .upd .tag { display: inline-block; font-size: 13px; font-weight: 650; padding: 2px 10px; border-radius: 999px; margin-bottom: 6px; }
-  .tag.auto { background: #e6f4ea; color: #1e6b34; }
-  .tag.manual { background: #fff3db; color: #8a5300; }
-  @media (prefers-color-scheme: dark) {
-    .tag.auto { background: #163222; color: #8fd6a4; }
-    .tag.manual { background: #3a2a10; color: #f5c46a; }
-  }
-  .upd-note { margin: 20px 0 0; color: var(--muted); font-size: 15.5px; max-width: 46em; }
+  .why { margin-top: 4px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); }
+  .why summary { cursor: pointer; list-style: none; padding: 16px 20px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  .why summary::-webkit-details-marker { display: none; }
+  .why summary::before { content: "?"; display: grid; place-items: center; width: 24px; height: 24px; flex: none; border-radius: 50%; background: var(--text); color: var(--bg); font-size: 13px; }
+  .why summary::after { content: "+"; margin-left: auto; font-size: 20px; color: var(--faint); transition: transform .3s; }
+  .why[open] summary::after { transform: rotate(45deg); }
+  .why .body { padding: 0 20px 18px 54px; color: var(--muted); font-size: 15.5px; }
+  .why .body p { margin: 0 0 10px; }
+  .get .why .body { padding-left: 20px; }
+  .why ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+  .ver { text-align: center; margin: 28px 0 0; color: var(--faint); font-size: 14.5px; }
 
-  footer { padding: 36px 0 48px; color: var(--faint); font-size: 14.5px; border-top: 1px solid var(--line); }
+  /* final cta */
+  .final { text-align: center; padding: 120px 0; overflow: hidden; }
+  .final h2 { font-size: clamp(30px, 5vw, 58px); max-width: 14em; margin: 0 auto; }
+  .final .btn { margin-top: 36px; }
+  .final .note { display: block; color: var(--muted); font-size: 15px; margin-top: 16px; }
+
+  footer { padding: 32px 0 44px; color: var(--faint); font-size: 14.5px; border-top: 1px solid var(--line); }
   footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; }
   footer a { color: var(--muted); }
 
@@ -195,47 +294,66 @@
   img[data-only="en"], html[lang="en"] img[data-only="uk"] { display: none !important; }
   html[lang="en"] img[data-only="en"] { display: block !important; }
 
-  @media (max-width: 900px) {
-    .feats { grid-template-columns: repeat(2, 1fr); }
-    .dl { grid-template-columns: 1fr; }
-    .mac { grid-template-columns: 1fr; gap: 20px; padding: 24px; }
-    .safe { grid-template-columns: 1fr; gap: 24px; }
+  @media (max-width: 1100px) { .free-note { display: none; } }
+  @media (max-width: 960px) {
+    .track figure { grid-template-columns: 1fr; gap: 20px; }
+    .bento { grid-template-columns: 1fr 1fr; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .panel { grid-template-columns: 1fr; }
   }
   @media (max-width: 640px) {
+    body { font-size: 16.5px; }
     .wrap { padding: 0 16px; }
     nav a.hide-sm { display: none; }
-    .hero { padding-top: 48px; }
-    .hero .lead { margin-bottom: 26px; }
-    .btn { width: 100%; justify-content: center; flex-wrap: wrap; row-gap: 0; }
+    nav a.nav-cta { display: none; }
+    section { padding: 76px 0; }
+    .hero { padding-top: 40px; }
+    .hero h1 { margin-top: 22px; }
+    .cta, .btn { width: 100%; }
+    .btn { justify-content: center; flex-wrap: wrap; row-gap: 0; }
     .btn small { flex-basis: 100%; text-align: center; }
-    .cta { justify-content: center; }
-    .facts { text-align: center; }
-    .shot { margin-top: 40px; border-radius: 12px 12px 0 0; }
-    .shot img { aspect-ratio: 4 / 3; object-fit: cover; object-position: 12% center; }
-    section { padding: 64px 0; }
-    .sub { font-size: 17px; margin-bottom: 26px; }
+    .stage { margin-top: 44px; }
+    .window { border-radius: 12px; }
+    .window img { aspect-ratio: 4 / 3; object-fit: cover; object-position: 12% center; }
+    .ex-head { margin-bottom: 22px; }
+    .seg:not(.os) { width: calc(100% + 32px); margin-inline: -16px; border-radius: 0; padding-inline: 16px; background: none; }
+    .seg:not(.os) button { border: 1px solid var(--line); }
+    .seg:not(.os) .knob { display: none; }
+    .seg:not(.os) button[aria-selected="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
     .frame { aspect-ratio: 4 / 3; border-radius: 12px; }
     .frame img { object-position: 25% center; }
-    .track { gap: 12px; }
-    .dots { display: flex; }
-    .feats { grid-template-columns: 1fr; gap: 22px; }
-    .os { padding: 20px; }
-    .mac { padding: 20px; }
-    .upd, .upd tbody, .upd tr, .upd th, .upd td { display: block; width: 100%; }
-    .upd th { padding: 16px 0 2px; }
-    .upd td { border-top: 0; padding: 0 0 16px; }
+    .track { gap: 14px; }
+    .bento { grid-template-columns: 1fr; }
+    .tile.wide { grid-column: auto; }
+    .tile { min-height: 0; }
+    .stats { gap: 10px; }
+    .stat { padding: 18px; }
+    .seg.os { width: 100%; }
+    .seg.os button { flex: 1; padding: 0 8px; justify-content: center; }
+    .get, .steps-card { padding: 20px; }
+    .steps { grid-template-columns: 1fr 1fr; }
+    .why .body { padding-left: 20px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .rv { opacity: 1; transform: none; }
+    .draw, .scribble path, .free-note path { stroke-dashoffset: 0; }
+    .window { transform: none; }
+    html { scroll-behavior: auto; }
   }
 </style>
 </head>
 <body>
-<header>
+<header id="hdr">
   <div class="wrap bar">
     <a class="brand" href="#top"><img src="img/icon.png" alt="">Inkboard</a>
     <nav>
       <a class="hide-sm" href="#examples" data-i18n="nav.examples">Приклади</a>
-      <a href="#download" data-i18n="nav.download">Завантажити</a>
+      <a class="hide-sm" href="#features" data-i18n="nav.features">Можливості</a>
       <a class="hide-sm" href="https://github.com/yaroslavyushchenko/inkboard">GitHub</a>
+      <a class="nav-cta" href="#download" data-i18n="nav.download">Завантажити</a>
       <div class="lang" role="group" aria-label="Мова / Language">
+        <span class="knob" aria-hidden="true"></span>
         <button type="button" data-lang="uk" aria-pressed="true">УКР</button>
         <button type="button" data-lang="en" aria-pressed="false">EN</button>
       </div>
@@ -246,19 +364,21 @@
 <main id="top">
   <div class="hero">
     <div class="wrap">
-      <h1 data-i18n="hero.title">Нескінченна дошка для графічного планшета</h1>
-      <p class="lead" data-i18n="hero.lead">Пишіть пером, кресліть транспортиром і циркулем, будуйте графіки й об’ємні фігури. Для вчителів і всіх, хто пояснює рукою. Безкоштовно, без акаунта й без інтернету.</p>
+      <a class="pill rv in" href="https://github.com/yaroslavyushchenko/inkboard"><b data-i18n="hero.pill.b">GPL-3.0</b><span data-i18n="hero.pill">Безкоштовно й з відкритим кодом</span></a>
+      <h1 data-i18n-html="hero.title">Нескінченна дошка для <span class="scribble">графічного планшета</span></h1>
+      <p class="lead" data-i18n="hero.lead">Пишіть пером як на папері, кресліть транспортиром і циркулем, будуйте графіки й об’ємні фігури. Без акаунта, без інтернету, і жоден рядок не загубиться, навіть коли зникне світло.</p>
       <div class="cta">
-        <a class="btn" id="primary" href="#download">
+        <a class="btn primary" href="#download">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
-          <span id="primary-label" data-i18n="hero.download">Завантажити</span>
-          <small id="primary-meta"></small>
+          <span class="p-label" data-i18n="hero.download">Завантажити</span>
+          <small class="p-meta"></small>
         </a>
-        <a class="other" href="#download" data-i18n="hero.other">Інші системи</a>
+        <div class="platforms"><span data-i18n="hero.for">Для</span><a href="#download" data-pick="win"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5l7.5-1v7H3zM11.5 4.4L21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.4z"/></svg>Windows</a><a href="#download" data-pick="mac"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.7.9-.8 0-2-.9-3.2-.9-1.7 0-3.2 1-4.1 2.4-1.8 3.1-.5 7.6 1.3 10.1.8 1.2 1.8 2.6 3.1 2.5 1.2-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.6-1-2.7-4.1zM14 5.3c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg>macOS</a><a href="#download" data-pick="linux"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c-2.2 0-3.5 1.8-3.5 4.5 0 1.6.4 2.6-.8 4.4C6.4 13.8 5 15.6 5.5 18c.4 1.8 2.6 2.6 6.5 2.6s6.1-.8 6.5-2.6c.5-2.4-.9-4.2-2.2-6.1-1.2-1.8-.8-2.8-.8-4.4C15.5 4.8 14.2 3 12 3z"/><path d="M10.3 8h.01M13.7 8h.01M11 10.2l1 .8 1-.8"/></svg>Linux</a></div>
+        <p class="os-note" id="os-note"></p>
+        <div class="free-note hand" aria-hidden="true"><span data-i18n="hero.free">безкоштовно, назавжди</span><svg viewBox="0 0 58 34"><path pathLength="1" d="M52 4C40 6 22 12 8 28m0 0l2-11m-2 11l11-3"/></svg></div>
       </div>
-      <p class="facts" data-i18n="hero.facts">Windows, macOS і Linux · Відкритий код (GPL-3.0) · Українською та англійською</p>
-      <div class="heroshot">
-        <div class="shot">
+      <div class="stage">
+        <div class="window" id="window">
           <img data-only="uk" src="img/hero-uk.webp" width="2000" height="1250" alt="Inkboard: дошка «Геометрія, урок 14» з транспортиром, шестикутною пірамідою і колом, накресленим циркулем на координатній площині">
           <img data-only="en" src="img/hero-en.webp" width="2000" height="1250" loading="lazy" alt="Inkboard: the board “Geometry, lesson 14” with a protractor, a hexagonal pyramid and a circle drawn with the compass on a coordinate plane">
         </div>
@@ -268,166 +388,244 @@
 
   <section id="examples">
     <div class="wrap">
-      <p class="kicker" data-i18n="ex.kicker">Приклади</p>
-      <h2 data-i18n="ex.title">Так виглядає урок</h2>
-      <p class="sub" data-i18n="ex.sub">Справжні знімки екрана Inkboard, без монтажу.</p>
-      <div class="tabs" role="tablist" aria-label="Приклади">
-        <button type="button" role="tab" aria-selected="true" data-i18n="ex.t1">Геометрія</button>
-        <button type="button" role="tab" aria-selected="false" data-i18n="ex.t2">Графіки</button>
-        <button type="button" role="tab" aria-selected="false" data-i18n="ex.t3">Об’ємні фігури</button>
-        <button type="button" role="tab" aria-selected="false" data-i18n="ex.t4">Текст</button>
-        <button type="button" role="tab" aria-selected="false" data-i18n="ex.t5">Усі дошки</button>
+      <div class="ex-head">
+        <div class="rv">
+          <p class="eyebrow" data-i18n="ex.kicker">Приклади</p>
+          <h2 data-i18n="ex.title">Так виглядає урок</h2>
+          <p class="sub" data-i18n="ex.sub">Справжні знімки екрана Inkboard, без монтажу.</p>
+        </div>
+        <div class="seg rv d1" id="ex-tabs" role="tablist" aria-label="Приклади">
+          <span class="knob" aria-hidden="true"><i></i></span>
+          <button type="button" role="tab" aria-selected="true" data-i18n="ex.t1">Геометрія</button>
+          <button type="button" role="tab" aria-selected="false" data-i18n="ex.t2">Графіки</button>
+          <button type="button" role="tab" aria-selected="false" data-i18n="ex.t3">3D-фігури</button>
+          <button type="button" role="tab" aria-selected="false" data-i18n="ex.t4">Текст</button>
+          <button type="button" role="tab" aria-selected="false" data-i18n="ex.t5">Усі дошки</button>
+        </div>
       </div>
-      <div class="track" id="track">
-        <figure>
+      <div class="track rv d2" id="track">
+        <figure class="cur">
           <div class="frame">
             <img data-only="uk" src="img/ex-geometry-uk.webp" width="2000" height="1250" loading="lazy" alt="Побудова рівностороннього трикутника: дуги циркулем, кут 60° на транспортирі">
             <img data-only="en" src="img/ex-geometry-en.webp" width="2000" height="1250" loading="lazy" alt="Constructing an equilateral triangle: compass arcs and a 60° angle on the protractor">
           </div>
-          <figcaption data-i18n-html="ex.c1"><b>Транспортир і циркуль.</b> Транспортир підписує градуси дуги, циркуль креслить кола й дуги потрібного радіуса. Обидва можна крутити й тягнути пером.</figcaption>
+          <figcaption><h3 data-i18n="ex.h1">Транспортир і циркуль</h3><p data-i18n="ex.c1">Транспортир сам підписує градуси дуги, циркуль креслить кола й дуги потрібного радіуса. Обидва крутяться й перетягуються пером.</p></figcaption>
         </figure>
         <figure>
           <div class="frame">
             <img data-only="uk" src="img/ex-graphs-uk.webp" width="2000" height="1250" loading="lazy" alt="Координатна площина з параболою y = x² − 2 і прямою y = x/2 + 1 та точками їх перетину">
             <img data-only="en" src="img/ex-graphs-en.webp" width="2000" height="1250" loading="lazy" alt="A coordinate plane with the parabola y = x² − 2, the line y = x/2 + 1 and their intersection points">
           </div>
-          <figcaption data-i18n-html="ex.c2"><b>Координати й графіки.</b> Впишіть формулу, і графік з’явиться на площині з підписом. Є також числова пряма й осі x, y, z.</figcaption>
+          <figcaption><h3 data-i18n="ex.h2">Координати й графіки</h3><p data-i18n="ex.c2">Впишіть формулу, і графік з’явиться на площині разом із підписом. Є також числова пряма й осі x, y, z.</p></figcaption>
         </figure>
         <figure>
           <div class="frame">
             <img data-only="uk" src="img/ex-solids-uk.webp" width="2000" height="1250" loading="lazy" alt="Куб, призма, піраміда, циліндр, конус, куля і шестикутна піраміда з пунктирними невидимими ребрами">
             <img data-only="en" src="img/ex-solids-en.webp" width="2000" height="1250" loading="lazy" alt="Cube, prism, pyramid, cylinder, cone, sphere and a hexagonal pyramid with hidden edges dashed">
           </div>
-          <figcaption data-i18n-html="ex.c3"><b>Призми, піраміди й тіла обертання.</b> Невидимі ребра малюються пунктиром. Кількість кутів основи можна змінити будь-коли.</figcaption>
+          <figcaption><h3 data-i18n="ex.h3">Призми, піраміди, тіла обертання</h3><p data-i18n="ex.c3">Невидимі ребра малюються пунктиром. Кількість кутів основи можна змінити будь-коли.</p></figcaption>
         </figure>
         <figure>
           <div class="frame">
             <img data-only="uk" src="img/ex-text-uk.webp" width="2000" height="1250" loading="lazy" alt="Задача на теорему косинусів: «Дано», «Знайти», «Розв’язання» різними кольорами, відповідь виділено маркером">
             <img data-only="en" src="img/ex-text-en.webp" width="2000" height="1250" loading="lazy" alt="A law of cosines problem: Given, Find and Solution in different colours, the answer highlighted">
           </div>
-          <figcaption data-i18n-html="ex.c4"><b>Текст.</b> Друкуйте прямо на дошці. Окремі слова можна зробити жирними, курсивом, іншого кольору чи розміру.</figcaption>
+          <figcaption><h3 data-i18n="ex.h4">Текст із форматуванням</h3><p data-i18n="ex.c4">Друкуйте прямо на дошці. Окремі слова можна зробити жирними, курсивом, іншого кольору чи розміру.</p></figcaption>
         </figure>
         <figure>
           <div class="frame">
             <img data-only="uk" src="img/ex-home-uk.webp" width="2000" height="1250" loading="lazy" alt="Екран «Усі дошки»: прев’ю дощок, теги класів і тем, закріплені дошки, пошук">
             <img data-only="en" src="img/ex-home-en.webp" width="2000" height="1250" loading="lazy" alt="The All boards screen: board previews, class and topic tags, pinned boards, search">
           </div>
-          <figcaption data-i18n-html="ex.c5"><b>Усі дошки.</b> Прев’ю кожної дошки, кольорові теги для класів і тем, пошук, закріплені дошки й кошик на 30 днів.</figcaption>
+          <figcaption><h3 data-i18n="ex.h5">Усі дошки</h3><p data-i18n="ex.c5">Прев’ю кожної дошки, кольорові теги для класів і тем, пошук, закріплені дошки й кошик на 30 днів.</p></figcaption>
         </figure>
       </div>
-      <div class="dots" id="dots" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i><i></i></div>
     </div>
   </section>
 
   <section id="features">
     <div class="wrap">
-      <p class="kicker" data-i18n="f.kicker">Можливості</p>
-      <h2 data-i18n="f.title">Усе для уроку на одній дошці</h2>
-      <p class="sub" data-i18n="f.sub">Зроблено для вчительки з планшетом Wacom, якій бракувало Microsoft Whiteboard. Тепер для всіх.</p>
-      <dl class="feats">
-        <div><dt data-i18n="f.ink.t">Перо з натиском</dt><dd data-i18n="f.ink.d">Лінії векторні й лишаються різкими за будь-якого збільшення. Долоня на екрані не малює.</dd></div>
-        <div><dt data-i18n="f.wacom.t">Для Wacom та інших планшетів</dt><dd data-i18n="f.wacom.d">Зворотний кінець пера стирає. Бічні кнопки й ExpressKeys налаштовуються, гарячі клавіші працюють на будь-якій розкладці.</dd></div>
-        <div><dt data-i18n="f.lines.t">Лінії й фігури</dt><dd data-i18n="f.lines.d">Прямі, стрілки, пунктир, прямокутники й кола. Кінці ліній можна потім перетягнути.</dd></div>
-        <div><dt data-i18n="f.img.t">Зображення</dt><dd data-i18n="f.img.d">Вставляйте картинки й скриншоти через Ctrl+V або просто перетягніть файл на дошку.</dd></div>
-        <div><dt data-i18n="f.tpl.t">Шаблони</dt><dd data-i18n="f.tpl.d">Збережіть «Дано / Знайти / Розв’язання» чи будь-що інше один раз і вставляйте в будь-яку дошку.</dd></div>
-        <div><dt data-i18n="f.select.t">Виділення, групи, замок</dt><dd data-i18n="f.select.d">Ласо або пензель для виділення. Замок захищає важливе від випадкового стирання.</dd></div>
-      </dl>
+      <div class="rv">
+        <p class="eyebrow" data-i18n="f.kicker">Можливості</p>
+        <h2 data-i18n="f.title">Зроблено для пера, а не для мишки</h2>
+        <p class="sub" data-i18n="f.sub">Inkboard з’явився для вчительки з планшетом Wacom, якій бракувало Microsoft Whiteboard. Тепер він для всіх.</p>
+      </div>
+      <div class="bento">
+        <div class="tile wide rv">
+          <div class="art"><svg viewBox="0 0 400 120" aria-hidden="true">
+            <path class="draw" pathLength="1" stroke="var(--text)" stroke-width="6" d="M10 86c26-50 52-66 66-40s-8 52 18 46 34-70 64-72 18 64 46 62 30-44 54-46 22 40 46 36 36-30 66-38"/>
+            <path class="draw" pathLength="1" stroke="var(--accent)" stroke-width="3" style="transition-delay:.6s" d="M30 108c80-8 220-8 340-14"/>
+          </svg></div>
+          <h3 data-i18n="f.ink.t">Перо з натиском</h3>
+          <p data-i18n="f.ink.d">Сильніше тиснете, товща лінія. Лінії векторні й лишаються різкими за будь-якого збільшення, а долоня на екрані не малює.</p>
+        </div>
+        <div class="tile rv d1">
+          <div class="art"><svg viewBox="0 0 160 120" aria-hidden="true">
+            <rect class="draw" pathLength="1" x="20" y="34" width="120" height="56" rx="12" stroke="var(--text)" stroke-width="3"/>
+            <circle class="draw" pathLength="1" cx="44" cy="62" r="8" stroke="var(--accent)" stroke-width="3" style="transition-delay:.4s"/>
+            <circle class="draw" pathLength="1" cx="72" cy="62" r="8" stroke="var(--accent)" stroke-width="3" style="transition-delay:.5s"/>
+            <path class="draw" pathLength="1" d="M96 52h28M96 72h18" stroke="var(--faint)" stroke-width="3" style="transition-delay:.6s"/>
+          </svg></div>
+          <h3 data-i18n="f.wacom.t">Wacom та інші планшети</h3>
+          <p data-i18n="f.wacom.d">Гумка на зворотному кінці пера, бічні кнопки й ExpressKeys. Гарячі клавіші працюють на будь-якій розкладці.</p>
+        </div>
+        <div class="tile rv">
+          <div class="art"><div class="tpl" data-i18n-html="f.tpl.art"><b>Дано:</b> …<br><b>Знайти:</b> …<br><b>Розв’язання:</b></div></div>
+          <h3 data-i18n="f.tpl.t">Шаблони</h3>
+          <p data-i18n="f.tpl.d">Збережіть будь-що один раз і вставляйте в будь-яку дошку.</p>
+        </div>
+        <div class="tile rv d1">
+          <div class="art"><div class="keys"><span class="key">Ctrl</span>+<span class="key k2">V</span></div></div>
+          <h3 data-i18n="f.img.t">Картинки й скриншоти</h3>
+          <p data-i18n="f.img.d">Вставляйте з буфера або просто перетягніть файл на дошку.</p>
+        </div>
+        <div class="tile rv d2">
+          <div class="art"><svg viewBox="0 0 160 120" aria-hidden="true">
+            <path class="ants" d="M28 70c-6-34 30-52 62-46s48 30 38 52-48 30-72 22-24-10-28-28z"/>
+            <path class="draw" pathLength="1" d="M58 66l16 14 28-34" stroke="var(--text)" stroke-width="4"/>
+          </svg></div>
+          <h3 data-i18n="f.select.t">Виділення, групи, замок</h3>
+          <p data-i18n="f.select.d">Ласо або пензель для виділення. Замок береже важливе від випадкового стирання.</p>
+        </div>
+        <div class="tile rv">
+          <div class="art"><div class="langs"><span>Аа</span><span>Aa</span></div></div>
+          <h3 data-i18n="f.lang.t">Українською та англійською</h3>
+          <p data-i18n="f.lang.d">Інтерфейс обома мовами, перемикається в налаштуваннях.</p>
+        </div>
+        <div class="tile wide rv d1">
+          <div class="art"><svg viewBox="0 0 400 120" aria-hidden="true">
+            <rect class="draw" pathLength="1" x="40" y="22" width="110" height="76" rx="10" stroke="var(--text)" stroke-width="3"/>
+            <path class="draw" pathLength="1" d="M60 46h70M60 62h50M60 78h60" stroke="var(--faint)" stroke-width="3" style="transition-delay:.3s"/>
+            <path class="draw" pathLength="1" d="M170 60h60m0 0l-12-10m12 10l-12 10" stroke="var(--accent)" stroke-width="3" style="transition-delay:.5s"/>
+            <rect class="draw" pathLength="1" x="250" y="14" width="74" height="92" rx="8" stroke="var(--accent)" stroke-width="3" style="transition-delay:.7s"/>
+            <text x="287" y="68" text-anchor="middle" font-family="Manrope, sans-serif" font-weight="800" font-size="20" fill="var(--accent)">PDF</text>
+          </svg></div>
+          <h3 data-i18n="f.exp.t">Експорт у PNG і PDF</h3>
+          <p data-i18n="f.exp.d">Роздайте учням конспект уроку або надрукуйте його. Без акаунта й без хмари: дошки лишаються на вашому комп’ютері.</p>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section>
-    <div class="wrap safe">
-      <div>
-        <p class="kicker" data-i18n="s.kicker">Надійність</p>
+  <section class="calm">
+    <div class="wrap">
+      <div class="rv">
+        <p class="eyebrow" data-i18n="s.kicker">Надійність</p>
         <h2 data-i18n="s.title">Світло зникло, а дошка лишилась</h2>
-        <p class="sub" data-i18n="s.sub">Кнопки «Зберегти» немає, вона не потрібна. Ми перевіряли, висмикуючи шнур з розетки: після вимкнення дошка відкривається з усіма лініями.</p>
+        <p class="sub" data-i18n="s.sub">Кнопки «Зберегти» немає, бо вона не потрібна. Inkboard записує кожну дошку на диск сам, безпечно, і тримає попередні версії.</p>
       </div>
-      <ul>
-        <li data-i18n-html="s.1"><b>Автозбереження на диск</b> не пізніше ніж за 5 секунд, навіть поки ви малюєте.</li>
-        <li data-i18n-html="s.2"><b>Безпечний запис.</b> Файл ніколи не лишається напівзаписаним, попередня версія завжди поруч.</li>
-        <li data-i18n-html="s.3"><b>Історія версій</b> кожні 5 хвилин, щоб повернутися до будь-якої з них.</li>
-        <li data-i18n-html="s.4"><b>Резервна папка</b> на флешці чи в Google Drive / OneDrive. Копія оновлюється сама.</li>
-        <li data-i18n-html="s.5"><b>Експорт у PNG і PDF</b>, щоб роздати учням або надрукувати.</li>
-      </ul>
+      <div class="stats">
+        <div class="stat rv"><div class="num"><span data-count="5">5</span><small data-i18n="s.u1">с</small></div><p data-i18n="s.d1">щонайбільше до запису на диск, навіть поки ви малюєте</p></div>
+        <div class="stat rv d1"><div class="num"><span data-count="5">5</span><small data-i18n="s.u2">хв</small></div><p data-i18n="s.d2">крок історії версій: можна повернутися до будь-якої</p></div>
+        <div class="stat rv d2"><div class="num"><span data-count="30">30</span><small data-i18n="s.u3">днів</small></div><p data-i18n="s.d3">дошки лежать у кошику, перш ніж зникнуть</p></div>
+        <div class="stat rv d3"><div class="num"><span data-count="0">0</span></div><p data-i18n="s.d4">напівзаписаних файлів: попередня версія завжди поруч</p></div>
+      </div>
+      <p class="plug rv" data-i18n="s.plug">Перевірено висмикуванням шнура з розетки. Резервну копію можна тримати на флешці або в Google Drive / OneDrive.</p>
     </div>
   </section>
 
   <section id="download">
     <div class="wrap">
-      <p class="kicker" data-i18n="d.kicker">Завантаження</p>
-      <h2 data-i18n="d.title">Завантажити Inkboard</h2>
-      <p class="sub" data-i18n="d.sub">Безкоштовно, без реєстрації. Дошки зберігаються лише на вашому комп’ютері.</p>
-      <div class="dl">
-        <div class="os" data-os="win">
-          <h3><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5l7.5-1v7H3zM11.5 4.4L21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.4z"/></svg>Windows</h3>
-          <p class="req" data-i18n="d.win.req">Windows 10 або 11, 64-біт</p>
-          <div class="files"><a class="file" data-asset="exe" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><b data-i18n="d.installer">Інсталятор</b><span>.exe</span></a></div>
-          <ol data-i18n-html="d.win.steps">
-            <li>Запустіть інсталятор.</li>
-            <li>Якщо з’явиться «Windows захистив ваш ПК», натисніть <b>Докладніше</b> → <b>Усе одно запустити</b>. Програма ще не має підпису Microsoft, тому Windows питає один раз.</li>
-          </ol>
-        </div>
-        <div class="os" data-os="mac">
-          <h3><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.7.9-.8 0-2-.9-3.2-.9-1.7 0-3.2 1-4.1 2.4-1.8 3.1-.5 7.6 1.3 10.1.8 1.2 1.8 2.6 3.1 2.5 1.2-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.6-1-2.7-4.1zM14 5.3c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg>macOS</h3>
-          <p class="req" data-i18n="d.mac.req">macOS 12 або новіша, Intel і Apple Silicon</p>
-          <div class="files"><a class="file" data-asset="dmg" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><b data-i18n="d.dmg">Образ диска</b><span>.dmg</span></a></div>
-          <p class="note" data-i18n-html="d.mac.note">Перший запуск потребує одного дозволу в налаштуваннях. <a href="#mac">Як це зробити</a></p>
-        </div>
-        <div class="os" data-os="linux">
-          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c-2.2 0-3.5 1.8-3.5 4.5 0 1.6.4 2.6-.8 4.4C6.4 13.8 5 15.6 5.5 18c.4 1.8 2.6 2.6 6.5 2.6s6.1-.8 6.5-2.6c.5-2.4-.9-4.2-2.2-6.1-1.2-1.8-.8-2.8-.8-4.4C15.5 4.8 14.2 3 12 3z"/><path d="M10.3 8h.01M13.7 8h.01M11 10.2l1 .8 1-.8"/></svg>Linux</h3>
-          <p class="req" data-i18n="d.linux.req">64-біт (x86_64)</p>
-          <div class="files">
-            <a class="file" data-asset="appimage" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><b>AppImage</b><span>.AppImage</span></a>
-            <a class="file" data-asset="deb" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><b>Ubuntu / Debian</b><span>.deb</span></a>
-          </div>
-          <div class="snap" data-i18n-html="d.snap"><a href="https://snapcraft.io/inkboard"><img src="https://snapcraft.io/uk/dark/install.svg" alt="Завантажте з Snap Store" width="182" height="48"></a></div>
-          <p class="note" data-i18n-html="d.linux.note">AppImage: у властивостях файлу дозвольте <b>запуск як програми</b> і відкрийте. Нічого доставляти не треба.</p>
+      <div class="dl-head rv">
+        <p class="eyebrow" data-i18n="d.kicker">Завантаження</p>
+        <h2 data-i18n="d.title">Встановіть за хвилину</h2>
+        <p class="sub" data-i18n="d.sub">Безкоштовно, без реєстрації. Оберіть свою систему: тут файл, перший запуск і як приходять оновлення.</p>
+        <div class="seg os" id="os-tabs" role="tablist" aria-label="OS">
+          <span class="knob" aria-hidden="true"></span>
+          <button type="button" role="tab" data-os="win" aria-selected="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5l7.5-1v7H3zM11.5 4.4L21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.4z"/></svg>Windows</button>
+          <button type="button" role="tab" data-os="mac" aria-selected="false"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.7.9-.8 0-2-.9-3.2-.9-1.7 0-3.2 1-4.1 2.4-1.8 3.1-.5 7.6 1.3 10.1.8 1.2 1.8 2.6 3.1 2.5 1.2-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.6-1-2.7-4.1zM14 5.3c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg>macOS</button>
+          <button type="button" role="tab" data-os="linux" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c-2.2 0-3.5 1.8-3.5 4.5 0 1.6.4 2.6-.8 4.4C6.4 13.8 5 15.6 5.5 18c.4 1.8 2.6 2.6 6.5 2.6s6.1-.8 6.5-2.6c.5-2.4-.9-4.2-2.2-6.1-1.2-1.8-.8-2.8-.8-4.4C15.5 4.8 14.2 3 12 3z"/><path d="M10.3 8h.01M13.7 8h.01M11 10.2l1 .8 1-.8"/></svg>Linux</button>
         </div>
       </div>
 
-      <div class="mac" id="mac">
-        <div>
-          <h3 data-i18n="m.title">Перший запуск на macOS</h3>
-          <p data-i18n="m.why">Inkboard безкоштовний і поки не має платного акаунта розробника Apple, тому Apple не перевіряла програму. macOS через це спершу її блокує.</p>
-          <p data-i18n="m.once">Дозволити треба лише один раз. Ці ж кроки показує вікно .dmg.</p>
+      <!-- Windows -->
+      <div class="panel" data-panel="win" role="tabpanel">
+        <div class="get">
+          <h3>Windows</h3>
+          <p class="req" data-i18n="d.win.req">Windows 10 або 11, 64-біт</p>
+          <a class="btn" data-asset="exe" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg><span data-i18n="d.get.exe">Завантажити .exe</span><small class="size"></small></a>
+          <details class="why">
+          <summary data-i18n="why.q">Чому з’являється попередження і чи це безпечно?</summary>
+          <div class="body">
+            <p data-i18n="why.p">Windows і macOS довіряють програмам із платним підписом розробника. В Apple це 99 $ на рік, сертифікат для Windows коштує сотні доларів на рік. Inkboard безкоштовний, тому поки що без підпису. Попередження означає «розробник не платив за підпис», а не «знайдено вірус».</p>
+            <ul>
+              <li data-i18n-html="why.1">Увесь код відкритий: <a href="https://github.com/yaroslavyushchenko/inkboard">github.com/yaroslavyushchenko/inkboard</a>.</li>
+              <li data-i18n="why.2">Файли для завантаження публічно збирає GitHub Actions прямо з цього коду.</li>
+              <li data-i18n="why.3">Програма не збирає даних і виходить в інтернет лише щоб перевірити оновлення на GitHub.</li>
+            </ul>
+          </div>
+        </details>
+          <div class="upd"><span class="badge auto" data-i18n="u.auto">Оновлюється сама</span><br><span data-i18n="u.win">Нова версія завантажується у фоні й встановлюється, коли ви перезапустите програму.</span></div>
         </div>
-        <ol data-i18n-html="m.steps">
-          <li>Відкрийте .dmg і перетягніть Inkboard у папку <b>Програми</b>.</li>
-          <li>Відкрийте Inkboard. macOS скаже, що не може перевірити програму. Натисніть <b>Готово</b>.</li>
-          <li>Відкрийте <b>Системні параметри</b> → <b>Приватність і безпека</b>.</li>
-          <li>Прокрутіть донизу. Біля повідомлення про Inkboard натисніть <b>Усе одно відкрити</b> і підтвердьте паролем.</li>
-        </ol>
+        <div class="steps-card">
+          <h4 data-i18n="d.first">Перший запуск</h4>
+          <ol class="steps">
+            <li><div class="mock"><div class="ss"><b data-i18n="mk.ss">Windows захистив ваш ПК</b><span class="ln"></span><span class="ln s"></span><u data-i18n="mk.more">Докладніше</u></div></div><span class="cap" data-i18n-html="d.win.s1">Запустіть файл. Якщо з’явиться синє вікно, натисніть <b>Докладніше</b>.</span></li>
+            <li><div class="mock"><div class="ss"><b data-i18n="mk.ss">Windows захистив ваш ПК</b><span class="ln"></span><span class="mb hot" data-i18n="mk.run">Усе одно запустити</span></div></div><span class="cap" data-i18n-html="d.win.s2">Натисніть <b>Усе одно запустити</b>. Далі звичайне встановлення.</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- macOS -->
+      <div class="panel" data-panel="mac" role="tabpanel" hidden>
+        <div class="get">
+          <h3>macOS</h3>
+          <p class="req" data-i18n="d.mac.req">macOS 12 або новіша, Intel і Apple Silicon</p>
+          <a class="btn" data-asset="dmg" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg><span data-i18n="d.get.dmg">Завантажити .dmg</span><small class="size"></small></a>
+          <details class="why">
+          <summary data-i18n="why.q">Чому з’являється попередження і чи це безпечно?</summary>
+          <div class="body">
+            <p data-i18n="why.p">Windows і macOS довіряють програмам із платним підписом розробника. В Apple це 99 $ на рік, сертифікат для Windows коштує сотні доларів на рік. Inkboard безкоштовний, тому поки що без підпису. Попередження означає «розробник не платив за підпис», а не «знайдено вірус».</p>
+            <ul>
+              <li data-i18n-html="why.1">Увесь код відкритий: <a href="https://github.com/yaroslavyushchenko/inkboard">github.com/yaroslavyushchenko/inkboard</a>.</li>
+              <li data-i18n="why.2">Файли для завантаження публічно збирає GitHub Actions прямо з цього коду.</li>
+              <li data-i18n="why.3">Програма не збирає даних і виходить в інтернет лише щоб перевірити оновлення на GitHub.</li>
+            </ul>
+          </div>
+        </details>
+          <div class="upd"><span class="badge manual" data-i18n="u.manual">Оновлення вручну</span><br><span data-i18n="u.mac">Поки що macOS не дає програмі без підпису Apple оновитися самій. Inkboard покаже «Є нова версія»: завантажте новий .dmg і замініть програму. Дошки нікуди не зникнуть, а macOS може ще раз попросити дозвіл.</span></div>
+        </div>
+        <div class="steps-card">
+          <h4 data-i18n="d.first.mac">Перший запуск: один раз дозволити</h4>
+          <ol class="steps four">
+            <li><div class="mock"><div class="drag"><img src="img/icon.png" alt=""><svg viewBox="0 0 50 44" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a4 4 0 0 1 4-4h11l5 5h20a4 4 0 0 1 4 4v23a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/></svg></div></div><span class="cap" data-i18n-html="d.mac.s1">Відкрийте .dmg і перетягніть Inkboard у <b>Програми</b>.</span></li>
+            <li><div class="mock"><div class="dlg"><span class="ln"></span><span class="ln s"></span><div class="row2"><span class="mb hot" data-i18n="mk.done">Готово</span><span class="mb">…</span></div></div></div><span class="cap" data-i18n-html="d.mac.s2">Відкрийте Inkboard. macOS скаже, що не може перевірити програму. Натисніть <b>Готово</b>.</span></li>
+            <li><div class="mock"><div class="side"><div class="ln"></div><div class="hot" data-i18n="mk.privacy">Приватність і безпека</div><div class="ln s"></div></div></div><span class="cap" data-i18n-html="d.mac.s3">Відкрийте <b>Системні параметри</b> → <b>Приватність і безпека</b>.</span></li>
+            <li><div class="mock"><div class="dlg"><span class="ln"></span><span class="ln s"></span><span class="mb hot" data-i18n="mk.open">Усе одно відкрити</span></div></div><span class="cap" data-i18n-html="d.mac.s4">Унизу біля повідомлення про Inkboard натисніть <b>Усе одно відкрити</b> і введіть пароль.</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Linux -->
+      <div class="panel" data-panel="linux" role="tabpanel" hidden>
+        <div class="get">
+          <h3>Linux</h3>
+          <p class="req" data-i18n="d.linux.req">64-біт (x86_64)</p>
+          <a class="btn" data-asset="appimage" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg><span data-i18n="d.get.appimage">Завантажити .AppImage</span><small class="size"></small></a>
+          <div class="alt"><a data-asset="deb" href="https://github.com/yaroslavyushchenko/inkboard/releases/latest"><b data-i18n="d.get.deb">.deb для Ubuntu / Debian</b><span class="size"></span></a><a href="https://snapcraft.io/inkboard"><b data-i18n="d.get.snap">Snap Store</b><span data-i18n="d.snap.note">оновлюється сама</span></a></div>
+          <div class="upd"><span class="badge auto" data-i18n="u.auto">Оновлюється сама</span><br><span data-i18n="u.linux">AppImage оновлюється сама, Snap оновлює Snap Store. Для .deb Inkboard покаже «Є нова версія»: завантажте новий файл і відкрийте.</span></div>
+        </div>
+        <div class="steps-card">
+          <h4 data-i18n="d.first">Перший запуск</h4>
+          <ol class="steps">
+            <li><div class="mock"><div class="chk"><i></i><span data-i18n="mk.exec">Дозволити запуск як програми</span></div></div><span class="cap" data-i18n-html="d.linux.s1">AppImage: у <b>Властивостях</b> файлу дозвольте запуск як програми.</span></li>
+            <li><div class="mock"><div class="file"><img src="img/icon.png" alt=""><span>Inkboard.AppImage</span></div></div><span class="cap" data-i18n-html="d.linux.s2">Відкрийте файл. Нічого доставляти не треба. Або встановіть <b>.deb</b> чи зі <b>Snap Store</b>.</span></li>
+          </ol>
+        </div>
       </div>
       <p class="ver" id="ver"></p>
     </div>
   </section>
 
-  <section id="updates">
-    <div class="wrap">
-      <p class="kicker" data-i18n="u.kicker">Оновлення</p>
-      <h2 data-i18n="u.title">Як приходять нові версії</h2>
-      <p class="sub" data-i18n="u.sub">Inkboard сам перевіряє, чи вийшла нова версія. Чи встановить він її сам, залежить від системи.</p>
-      <table class="upd">
-        <tbody>
-          <tr>
-            <th data-i18n="u.win.t">Windows</th>
-            <td><span class="tag auto" data-i18n="u.auto">Автоматично</span><br><span data-i18n="u.win.d">Нова версія завантажується у фоні й встановлюється, коли ви перезапустите програму.</span></td>
-          </tr>
-          <tr>
-            <th data-i18n="u.lin.t">Linux: AppImage і Snap</th>
-            <td><span class="tag auto" data-i18n="u.auto">Автоматично</span><br><span data-i18n="u.lin.d">AppImage оновлюється так само, як на Windows. Snap оновлює сам Snap Store.</span></td>
-          </tr>
-          <tr>
-            <th data-i18n="u.mac.t">macOS</th>
-            <td><span class="tag manual" data-i18n="u.manual">Вручну</span><br><span data-i18n="u.mac.d">Поки що macOS не дає програмі без підпису Apple оновитися самій. Inkboard покаже «Є нова версія»: завантажте новий .dmg і замініть програму в папці Програми. Дошки нікуди не зникнуть. macOS може ще раз попросити дозвіл: ті самі кроки, що й при першому запуску.</span></td>
-          </tr>
-          <tr>
-            <th data-i18n="u.deb.t">Linux: .deb</th>
-            <td><span class="tag manual" data-i18n="u.manual">Вручну</span><br><span data-i18n="u.deb.d">Inkboard покаже «Є нова версія». Завантажте новий .deb і відкрийте його, він встановиться поверх старого.</span></td>
-          </tr>
-        </tbody>
-      </table>
-      <p class="upd-note" data-i18n="u.note">Свою версію видно на екрані «Усі дошки», поруч із заголовком. Версії до 0.3.0 оновлюватися ще не вміли: якщо у вас така, встановіть нову один раз вручну.</p>
+  <section class="final">
+    <div class="wrap rv">
+      <h2 data-i18n="cta.title">Спробуйте на наступному уроці</h2>
+      <a class="btn primary" href="#download">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
+        <span class="p-label" data-i18n="hero.download">Завантажити</span>
+        <small class="p-meta"></small>
+      </a>
+      <span class="note" data-i18n="cta.hand">без акаунта, без реклами, без підписки</span>
     </div>
   </section>
 </main>
@@ -446,93 +644,128 @@
   const REPO = 'yaroslavyushchenko/inkboard'
   const EN = {
     'nav.examples': 'Examples',
+    'nav.features': 'Features',
     'nav.download': 'Download',
-    'hero.title': 'An infinite whiteboard for your pen tablet',
-    'hero.lead': 'Write with a pen, draw with a protractor and compass, plot graphs and 3D solids. For teachers and anyone who explains things by hand. Free, with no account and no internet needed.',
+    'hero.pill.b': 'GPL-3.0',
+    'hero.pill': 'Free and open source',
+    'hero.title': 'An infinite whiteboard for your <span class="scribble">pen tablet</span>',
+    'hero.lead': 'Write with a pen like on paper, draw with a protractor and compass, plot graphs and 3D solids. No account, no internet, and not a single line is lost, even when the power goes out.',
     'hero.download': 'Download',
-    'hero.other': 'Other systems',
-    'hero.facts': 'Windows, macOS and Linux · Open source (GPL-3.0) · English and Ukrainian',
+    'hero.free': 'free, forever',
+    'hero.for': 'For',
     'ex.kicker': 'Examples',
     'ex.title': 'What a lesson looks like',
     'ex.sub': 'Real screenshots of Inkboard, not mockups.',
-    'ex.t1': 'Geometry',
-    'ex.t2': 'Graphs',
-    'ex.t3': '3D solids',
-    'ex.t4': 'Text',
-    'ex.t5': 'All boards',
-    'ex.c1': '<b>Protractor and compass.</b> The protractor labels the arc in degrees; the compass draws circles and arcs of any radius. Turn and drag both with the pen.',
-    'ex.c2': '<b>Coordinates and graphs.</b> Type a formula and the graph appears on the plane with its label. There’s also a number line and x, y, z axes.',
-    'ex.c3': '<b>Prisms, pyramids and solids of revolution.</b> Hidden edges are dashed. Change the number of base sides at any time.',
-    'ex.c4': '<b>Text.</b> Type right on the board. Make single words bold, italic, or a different colour or size.',
-    'ex.c5': '<b>All boards.</b> A preview of every board, colour tags for classes and topics, search, pinned boards and a 30-day bin.',
+    'ex.t1': 'Geometry', 'ex.t2': 'Graphs', 'ex.t3': '3D solids', 'ex.t4': 'Text', 'ex.t5': 'All boards',
+    'ex.h1': 'Protractor and compass',
+    'ex.c1': 'The protractor labels the arc in degrees; the compass draws circles and arcs of any radius. Turn and drag both with the pen.',
+    'ex.h2': 'Coordinates and graphs',
+    'ex.c2': 'Type a formula and the graph appears on the plane with its label. There’s also a number line and x, y, z axes.',
+    'ex.h3': 'Prisms, pyramids, solids of revolution',
+    'ex.c3': 'Hidden edges are dashed. Change the number of base sides at any time.',
+    'ex.h4': 'Formatted text',
+    'ex.c4': 'Type right on the board. Make single words bold, italic, or a different colour or size.',
+    'ex.h5': 'All boards',
+    'ex.c5': 'A preview of every board, colour tags for classes and topics, search, pinned boards and a 30-day bin.',
     'f.kicker': 'Features',
-    'f.title': 'Everything for a lesson on one board',
-    'f.sub': 'Made for a teacher with a Wacom tablet who missed Microsoft Whiteboard. Now for everyone.',
+    'f.title': 'Made for a pen, not a mouse',
+    'f.sub': 'Inkboard started for a teacher with a Wacom tablet who missed Microsoft Whiteboard. Now it’s for everyone.',
     'f.ink.t': 'Pressure-sensitive pen',
-    'f.ink.d': 'Lines are vector and stay sharp at any zoom. Your palm on the screen doesn’t draw.',
-    'f.wacom.t': 'For Wacom and other tablets',
-    'f.wacom.d': 'The back of the pen erases. Side buttons and ExpressKeys are configurable, and shortcuts work on any keyboard layout.',
-    'f.lines.t': 'Lines and shapes',
-    'f.lines.d': 'Straight lines, arrows, dashes, rectangles and circles. Drag a line’s ends to adjust it later.',
-    'f.img.t': 'Images',
-    'f.img.d': 'Paste pictures and screenshots with Ctrl+V, or drag a file onto the board.',
+    'f.ink.d': 'Press harder for a thicker line. Lines are vector and stay sharp at any zoom, and your palm on the screen doesn’t draw.',
+    'f.wacom.t': 'Wacom and other tablets',
+    'f.wacom.d': 'Eraser on the back of the pen, side buttons and ExpressKeys. Shortcuts work on any keyboard layout.',
+    'f.tpl.art': '<b>Given:</b> …<br><b>Find:</b> …<br><b>Solution:</b>',
     'f.tpl.t': 'Templates',
-    'f.tpl.d': 'Save “Given / Find / Solution” or anything else once and insert it into any board.',
+    'f.tpl.d': 'Save anything once and insert it into any board.',
+    'f.img.t': 'Pictures and screenshots',
+    'f.img.d': 'Paste from the clipboard or just drag a file onto the board.',
     'f.select.t': 'Select, group, lock',
-    'f.select.d': 'Lasso or brush to select. A lock protects what matters from accidental erasing.',
+    'f.select.d': 'Lasso or brush to select. A lock keeps what matters safe from accidental erasing.',
+    'f.lang.t': 'English and Ukrainian',
+    'f.lang.d': 'The interface speaks both; switch in Settings.',
+    'f.exp.t': 'Export to PNG and PDF',
+    'f.exp.d': 'Share the lesson notes with students or print them. No account and no cloud: your boards stay on your computer.',
     's.kicker': 'Reliability',
     's.title': 'Power cut? The board is still there',
-    's.sub': 'There’s no Save button because you don’t need one. We tested it by pulling the plug: after the shutdown the board opens with every line.',
-    's.1': '<b>Autosaved to disk</b> within 5 seconds, even while you draw.',
-    's.2': '<b>Safe writes.</b> A file is never left half-written; the previous version is always kept.',
-    's.3': '<b>Version history</b> every 5 minutes, so you can go back to any of them.',
-    's.4': '<b>Backup folder</b> on a USB stick or in Google Drive / OneDrive. The copy updates by itself.',
-    's.5': '<b>Export to PNG and PDF</b> to share with students or print.',
+    's.sub': 'There’s no Save button because you don’t need one. Inkboard writes every board to disk by itself, safely, and keeps earlier versions.',
+    's.u1': 's', 's.d1': 'at most until it’s on disk, even while you draw',
+    's.u2': 'min', 's.d2': 'between history versions, so you can go back to any',
+    's.u3': 'days', 's.d3': 'deleted boards wait in the bin before they’re gone',
+    's.d4': 'half-written files: the previous version is always kept',
+    's.plug': 'Tested by pulling the plug. You can keep a backup copy on a USB stick or in Google Drive / OneDrive.',
     'd.kicker': 'Download',
-    'd.title': 'Download Inkboard',
-    'd.sub': 'Free, no sign-up. Your boards stay on your computer.',
+    'd.title': 'Set up in a minute',
+    'd.sub': 'Free, no sign-up. Pick your system: the file, the first launch and how updates arrive are all here.',
     'd.win.req': 'Windows 10 or 11, 64-bit',
-    'd.installer': 'Installer',
-    'd.win.steps': '<li>Run the installer.</li><li>If you see “Windows protected your PC”, click <b>More info</b> → <b>Run anyway</b>. The app isn’t signed by Microsoft yet, so Windows asks once.</li>',
+    'd.get.exe': 'Download .exe',
+    'd.get.dmg': 'Download .dmg',
+    'd.get.appimage': 'Download .AppImage',
+    'd.get.deb': '.deb for Ubuntu / Debian',
     'd.mac.req': 'macOS 12 or later, Intel and Apple silicon',
-    'd.dmg': 'Disk image',
-    'd.mac.note': 'The first launch needs one permission in System Settings. <a href="#mac">How to do it</a>',
     'd.linux.req': '64-bit (x86_64)',
-    'd.snap': '<a href="https://snapcraft.io/inkboard"><img src="https://snapcraft.io/en/dark/install.svg" alt="Get it from the Snap Store" width="182" height="48"></a>',
-    'd.linux.note': 'AppImage: in the file’s Properties allow <b>Executable as Program</b> and open it. Nothing else to install.',
-    'm.title': 'First launch on macOS',
-    'm.why': 'Inkboard is free and doesn’t have a paid Apple developer account yet, so Apple hasn’t checked the app. Because of that, macOS blocks it at first.',
-    'm.once': 'You only need to allow it once. The .dmg window shows the same steps.',
-    'm.steps': '<li>Open the .dmg and drag Inkboard to the <b>Applications</b> folder.</li><li>Open Inkboard. macOS says it can’t verify the app. Click <b>Done</b>.</li><li>Open <b>System Settings</b> → <b>Privacy &amp; Security</b>.</li><li>Scroll down. Next to the message about Inkboard, click <b>Open Anyway</b> and confirm with your password.</li>',
-    'u.kicker': 'Updates',
-    'u.title': 'How new versions arrive',
-    'u.sub': 'Inkboard checks for new versions by itself. Whether it can also install them depends on your system.',
-    'u.auto': 'Automatic',
-    'u.manual': 'Manual',
-    'u.win.t': 'Windows',
-    'u.win.d': 'The new version downloads in the background and installs when you restart the app.',
-    'u.lin.t': 'Linux: AppImage and Snap',
-    'u.lin.d': 'The AppImage updates the same way as on Windows. The Snap Store updates the snap by itself.',
-    'u.mac.t': 'macOS',
-    'u.mac.d': 'For now, macOS doesn’t let an app without Apple’s signature update itself. Inkboard shows “New version available”: download the new .dmg and replace the app in Applications. Your boards stay where they are. macOS may ask for permission again: same steps as the first launch.',
-    'u.deb.t': 'Linux: .deb',
-    'u.deb.d': 'Inkboard shows “New version available”. Download the new .deb and open it; it installs over the old one.',
-    'u.note': 'Your version is shown on the All boards screen, next to the title. Versions before 0.3.0 couldn’t update yet: if you have one, install the new version once by hand.',
+    'd.first': 'First launch',
+    'd.first.mac': 'First launch: allow it once',
+    'd.win.s1': 'Run the file. If a blue window appears, click <b>More info</b>.',
+    'd.win.s2': 'Click <b>Run anyway</b>. Then it installs as usual.',
+    'd.mac.s1': 'Open the .dmg and drag Inkboard to <b>Applications</b>.',
+    'd.mac.s2': 'Open Inkboard. macOS says it can’t verify the app. Click <b>Done</b>.',
+    'd.mac.s3': 'Open <b>System Settings</b> → <b>Privacy &amp; Security</b>.',
+    'd.mac.s4': 'At the bottom, next to the message about Inkboard, click <b>Open Anyway</b> and enter your password.',
+    'd.linux.s1': 'AppImage: in the file’s <b>Properties</b>, allow running it as a program.',
+    'd.linux.s2': 'Open the file. Nothing else to install. Or use the <b>.deb</b> or the <b>Snap Store</b>.',
+    'd.get.snap': 'Snap Store',
+    'd.snap.note': 'updates itself',
+    'mk.ss': 'Windows protected your PC',
+    'mk.more': 'More info',
+    'mk.run': 'Run anyway',
+    'mk.done': 'Done',
+    'mk.privacy': 'Privacy & Security',
+    'mk.open': 'Open Anyway',
+    'mk.exec': 'Allow executing as program',
+    'u.auto': 'Updates itself',
+    'u.manual': 'Manual updates',
+    'u.win': 'The new version downloads in the background and installs when you restart the app.',
+    'u.mac': 'For now, macOS doesn’t let an app without Apple’s signature update itself. Inkboard shows “New version available”: download the new .dmg and replace the app. Your boards stay, and macOS may ask for permission again.',
+    'u.linux': 'The AppImage updates itself; the Snap Store updates the snap. With the .deb, Inkboard shows “New version available”: download the new file and open it.',
+    'why.q': 'Why the warning, and is it safe?',
+    'why.p': 'Windows and macOS trust apps with a paid developer signature. Apple charges $99 a year; a Windows certificate costs hundreds of dollars a year. Inkboard is free, so it isn’t signed yet. The warning means “the developer didn’t pay for a signature”, not “a virus was found”.',
+    'why.1': 'All the code is open: <a href="https://github.com/yaroslavyushchenko/inkboard">github.com/yaroslavyushchenko/inkboard</a>.',
+    'why.2': 'The download files are built publicly by GitHub Actions straight from that code.',
+    'why.3': 'The app collects no data and only goes online to check GitHub for updates.',
+    'cta.title': 'Try it in your next lesson',
+    'cta.hand': 'no account, no ads, no subscription',
     'foot.license': 'free software under the GPL-3.0',
     'foot.code': 'Source code',
     'foot.issues': 'Report a problem',
     'foot.releases': 'All versions'
   }
+  const NOTE = {
+    uk: {
+      win: 'Windows може попередити про невідомого видавця: <b>Докладніше</b> → <b>Усе одно запустити</b>. <a href="#download">Чому так</a>',
+      mac: 'Перший запуск: macOS попросить один раз дозволити програму в налаштуваннях. <a href="#download">Як і чому</a>',
+      linux: 'AppImage, .deb або Snap Store. <a href="#download">Усі варіанти</a>',
+      none: 'Відкрийте цю сторінку на комп’ютері, щоб завантажити.'
+    },
+    en: {
+      win: 'Windows may warn about an unknown publisher: <b>More info</b> → <b>Run anyway</b>. <a href="#download">Why</a>',
+      mac: 'First launch: macOS asks you to allow the app once in Settings. <a href="#download">How and why</a>',
+      linux: 'AppImage, .deb or the Snap Store. <a href="#download">All options</a>',
+      none: 'Open this page on a computer to download.'
+    }
+  }
+  const SCRIBBLE = '<svg viewBox="0 0 300 20" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M3 14C60 6 140 4 200 7s70 4 97 1"/></svg>'
+
   // Ukrainian lives in the HTML itself; remember it so switching back works.
   const UK = {}
   document.querySelectorAll('[data-i18n]').forEach((el) => (UK[el.dataset.i18n] = el.textContent))
   document.querySelectorAll('[data-i18n-html]').forEach((el) => (UK[el.dataset.i18nHtml] = el.innerHTML))
   const META = {
-    uk: { title: document.title, win: 'для Windows', mac: 'для macOS', linux: 'для Linux', latest: 'Остання версія', released: 'від', examples: 'Приклади' },
-    en: { title: 'Inkboard: free whiteboard for pen tablets', win: 'for Windows', mac: 'for macOS', linux: 'for Linux', latest: 'Latest version', released: 'released', examples: 'Examples' }
+    uk: { title: document.title, win: 'для Windows', mac: 'для macOS', linux: 'для Linux', latest: 'Остання версія', released: 'від', examples: 'Приклади', os: 'Система' },
+    en: { title: 'Inkboard: free whiteboard for pen tablets', win: 'for Windows', mac: 'for macOS', linux: 'for Linux', latest: 'Latest version', released: 'released', examples: 'Examples', os: 'System' }
   }
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  const os = (() => {
+  const visitorOs = (() => {
     const ua = navigator.userAgent
     if (/android|iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return null
     const p = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || ua).toLowerCase()
@@ -543,13 +776,22 @@
   })()
   let release = null
   let lang = 'uk'
-
   const store = {
     get() { try { return localStorage.getItem('inkboard-site-lang') } catch { return null } },
     set(v) { try { localStorage.setItem('inkboard-site-lang', v) } catch {} }
   }
+  const mb = (bytes) => Math.round(bytes / 1048576) + ' MB'
+  const assetOf = { win: 'exe', mac: 'dmg', linux: 'appimage' }
+  const extOf = { win: '.exe', mac: '.dmg', linux: '.AppImage' }
 
-  function mb(bytes) { return Math.round(bytes / 1048576) + ' MB' }
+  // Segmented controls: a knob slides under the selected button.
+  function placeKnob(seg) {
+    const knob = seg.querySelector('.knob')
+    const cur = seg.querySelector('[aria-selected="true"]')
+    if (!knob || !cur) return
+    knob.style.width = cur.offsetWidth + 'px'
+    knob.style.transform = 'translateX(' + cur.offsetLeft + 'px)'
+  }
 
   function render() {
     const dict = lang === 'en' ? EN : UK
@@ -557,17 +799,21 @@
     document.title = META[lang].title
     document.querySelectorAll('[data-i18n]').forEach((el) => { const v = dict[el.dataset.i18n]; if (v != null) el.textContent = v })
     document.querySelectorAll('[data-i18n-html]').forEach((el) => { const v = dict[el.dataset.i18nHtml]; if (v != null) el.innerHTML = v })
+    // Hand-drawn underline: one stroke per word, so it wraps cleanly on phones.
+    document.querySelectorAll('.scribble').forEach((s) => {
+      s.outerHTML = s.textContent.trim().split(/\s+/).map((w, i) => '<span class="scribble" style="--d:' + (0.5 + i * 0.35) + 's">' + w + SCRIBBLE + '</span>').join(' ')
+    })
     document.querySelectorAll('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)))
-    document.querySelector('.tabs').setAttribute('aria-label', META[lang].examples)
-    // Primary button: the visitor's own system (phones and tablets go to the download section).
-    const label = document.getElementById('primary-label')
-    const meta = document.getElementById('primary-meta')
-    const primary = document.getElementById('primary')
-    label.textContent = dict['hero.download'] + (os ? ' ' + META[lang][os] : '')
-    const main = os && release && release[os === 'win' ? 'exe' : os === 'mac' ? 'dmg' : 'appimage']
-    primary.href = main ? main.url : os ? 'https://github.com/' + REPO + '/releases/latest' : '#download'
-    meta.textContent = os && release ? release.version + (main ? ' · ' + mb(main.size) : '') : ''
-    document.querySelectorAll('.os').forEach((c) => c.classList.toggle('mine', c.dataset.os === os))
+    document.getElementById('ex-tabs').setAttribute('aria-label', META[lang].examples)
+    document.getElementById('os-tabs').setAttribute('aria-label', META[lang].os)
+    // Download buttons: the visitor's own system (phones and tablets go to the download section).
+    const main = visitorOs && release && release[assetOf[visitorOs]]
+    document.querySelectorAll('.btn.primary').forEach((b) => {
+      b.querySelector('.p-label').textContent = dict['hero.download'] + (visitorOs ? ' ' + META[lang][visitorOs] : '')
+      b.href = main ? main.url : '#download'
+      b.querySelector('.p-meta').textContent = visitorOs && release ? release.version + ' · ' + extOf[visitorOs] + (main ? ' · ' + mb(main.size) : '') : ''
+    })
+    document.getElementById('os-note').innerHTML = NOTE[lang][visitorOs || 'none']
     const ver = document.getElementById('ver')
     if (release) {
       const d = new Date(release.date).toLocaleDateString(lang === 'en' ? 'en-GB' : 'uk-UA', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -577,40 +823,112 @@
       a.textContent = META[lang].latest + ': ' + release.version
       ver.append(a, ' · ' + META[lang].released + ' ' + d)
     }
+    requestAnimationFrame(() => document.querySelectorAll('.seg').forEach(placeKnob))
   }
 
   document.querySelectorAll('.lang button').forEach((b) =>
     b.addEventListener('click', () => { lang = b.dataset.lang; store.set(lang); render() })
   )
 
-  // Examples: tabs scroll the strip; swiping the strip moves the tabs.
-  const track = document.getElementById('track')
-  const tabs = [...document.querySelectorAll('.tabs button')]
-  const dots = [...document.querySelectorAll('#dots i')]
-  const figs = [...track.children]
-  const mark = (i) => {
-    tabs.forEach((t, k) => t.setAttribute('aria-selected', String(k === i)))
-    dots.forEach((d, k) => d.classList.toggle('on', k === i))
+  // Header gets a background once the page scrolls.
+  const hdr = document.getElementById('hdr')
+  const onScroll = () => hdr.classList.toggle('scrolled', scrollY > 8)
+  addEventListener('scroll', onScroll, { passive: true }); onScroll()
+
+  // Hero window straightens as it scrolls into view.
+  const win = document.getElementById('window')
+  if (!reduced) {
+    let ticking = false
+    const tilt = () => {
+      ticking = false
+      const r = win.getBoundingClientRect()
+      const p = Math.min(1, Math.max(0, (innerHeight - r.top) / (innerHeight * 0.75)))
+      win.style.setProperty('--tilt', (14 * (1 - p)).toFixed(2) + 'deg')
+      win.style.setProperty('--sc', (0.94 + 0.06 * p).toFixed(3))
+    }
+    addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(tilt) } }, { passive: true })
+    tilt()
+  } else {
+    win.style.setProperty('--tilt', '0deg'); win.style.setProperty('--sc', '1')
   }
-  tabs.forEach((t, i) => t.addEventListener('click', () => {
+
+  // Reveal on scroll + count-up numbers.
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (!e.isIntersecting) return
+    e.target.classList.add('in')
+    io.unobserve(e.target)
+    e.target.querySelectorAll('[data-count]').forEach((n) => {
+      const to = +n.dataset.count
+      if (reduced || !to) return
+      const t0 = performance.now()
+      const step = (t) => { const k = Math.min(1, (t - t0) / 1100); n.textContent = Math.round(to * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step) }
+      n.textContent = '0'; requestAnimationFrame(step)
+    })
+  }), { threshold: 0.18 })
+  document.querySelectorAll('.rv, .tile').forEach((el) => io.observe(el))
+
+  // Examples: the switcher scrolls the strip, swiping the strip moves the switcher,
+  // and it advances by itself (with a progress line) until the visitor takes over.
+  const exTabs = document.getElementById('ex-tabs')
+  const tabs = [...exTabs.querySelectorAll('button')]
+  const track = document.getElementById('track')
+  const figs = [...track.children]
+  const bar = exTabs.querySelector('.knob i')
+  let cur = 0, auto = !reduced, inView = false
+  const restartBar = () => {
+    bar.classList.remove('run'); void bar.offsetWidth
+    if (auto && inView) bar.classList.add('run')
+  }
+  const mark = (i) => {
+    cur = i
+    tabs.forEach((t, k) => t.setAttribute('aria-selected', String(k === i)))
+    figs.forEach((f, k) => f.classList.toggle('cur', k === i))
+    placeKnob(exTabs)
+    restartBar()
+  }
+  const go = (i) => {
     mark(i)
-    track.scrollTo({ left: figs[i].offsetLeft - track.offsetLeft, behavior: 'smooth' })
-    t.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
-  }))
+    track.scrollTo({ left: figs[i].offsetLeft - track.offsetLeft, behavior: reduced ? 'auto' : 'smooth' })
+    const t = tabs[i]
+    exTabs.scrollTo({ left: t.offsetLeft - (exTabs.clientWidth - t.offsetWidth) / 2, behavior: reduced ? 'auto' : 'smooth' })
+  }
+  const stopAuto = () => { auto = false; bar.classList.remove('run') }
+  tabs.forEach((t, i) => t.addEventListener('click', () => { stopAuto(); go(i) }))
+  bar.addEventListener('animationend', () => { if (auto) go((cur + 1) % figs.length) })
+  track.addEventListener('pointerdown', stopAuto, { passive: true })
+  track.addEventListener('touchstart', stopAuto, { passive: true })
+  track.addEventListener('wheel', (e) => { if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) stopAuto() }, { passive: true })
   let raf = 0
   track.addEventListener('scroll', () => {
     cancelAnimationFrame(raf)
     raf = requestAnimationFrame(() => {
       const w = figs[0].getBoundingClientRect().width || 1
       const gap = parseFloat(getComputedStyle(track).columnGap) || 0
-      mark(Math.min(figs.length - 1, Math.round(track.scrollLeft / (w + gap))))
+      const i = Math.min(figs.length - 1, Math.round(track.scrollLeft / (w + gap)))
+      if (i !== cur && !auto) mark(i)
     })
   }, { passive: true })
+  new IntersectionObserver(([e]) => { inView = e.isIntersecting; if (inView) restartBar(); else bar.classList.remove('run') }, { threshold: 0.4 }).observe(track)
+
+  // Download: one switcher for the three systems, preselected to the visitor's.
+  const osTabs = document.getElementById('os-tabs')
+  const osBtns = [...osTabs.querySelectorAll('button')]
+  const panels = [...document.querySelectorAll('.panel')]
+  const pickOs = (os) => {
+    osBtns.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.os === os)))
+    panels.forEach((p) => (p.hidden = p.dataset.panel !== os))
+    placeKnob(osTabs)
+  }
+  osBtns.forEach((b) => b.addEventListener('click', () => pickOs(b.dataset.os)))
+  document.querySelectorAll('[data-pick]').forEach((a) => a.addEventListener('click', () => pickOs(a.dataset.pick)))
+  pickOs(visitorOs || 'win')
 
   const saved = store.get()
   const prefersUk = (navigator.languages || [navigator.language]).some((l) => /^uk\b/i.test(l || ''))
   lang = saved === 'uk' || saved === 'en' ? saved : prefersUk ? 'uk' : 'en'
   render()
+  addEventListener('resize', () => document.querySelectorAll('.seg').forEach(placeKnob))
+  if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('.seg').forEach(placeKnob))
 
   // Direct links to the newest files (falls back to the Releases page if GitHub can't be reached).
   fetch('https://api.github.com/repos/' + REPO + '/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
@@ -621,12 +939,12 @@
         version: j.tag_name, date: j.published_at, page: j.html_url,
         exe: find(/Setup.*\.exe$/i), dmg: find(/\.dmg$/i), appimage: find(/\.AppImage$/i), deb: find(/\.deb$/i)
       }
-      document.querySelectorAll('a.file[data-asset]').forEach((a) => {
+      document.querySelectorAll('[data-asset]').forEach((a) => {
         const f = release[a.dataset.asset]
         if (!f) return
         a.href = f.url
-        const s = a.querySelector('span')
-        s.textContent = s.textContent.split(' · ')[0] + ' · ' + mb(f.size)
+        const s = a.querySelector('.size')
+        if (s) s.textContent = s.closest('.alt') ? mb(f.size) : release.version + ' · ' + mb(f.size)
       })
       render()
     })
