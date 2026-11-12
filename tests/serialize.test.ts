@@ -105,3 +105,21 @@ test('encodeBoard writes plain UTF-8 JSON and decodeBoard accepts both plain JSO
   assert.equal(fromGzip.background, 'grid')
   assert.equal(fromGzip.items.length, 1)
 })
+
+test('a function drawn on a range keeps its range, name and variable, and needs version 7', () => {
+  const rows = [...'3t+1'].reduce(typeChar, EMPTY_FORMULA).rows
+  const fn = { expr: rowsToText(rows, 't'), color: '#e03131', rows, name: 's', arg: 't', from: 3, to: 7 }
+  const g: GraphItem = { ...plane, fns: [fn], bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
+  const file = JSON.parse(JSON.stringify(serializeBoard({ items: [g], background: 'dots', camera: { x: 0, y: 0, zoom: 1 } }))) as BoardFile
+  assert.equal(file.version, 7)
+  assert.deepEqual((deserializeBoard(file).items[0] as GraphItem).fns, [fn])
+  // Name and variable alone change only how it is labelled: older versions may still open it.
+  const named: GraphItem = { ...g, fns: [{ ...fn, from: undefined, to: undefined }] }
+  delete named.fns![0].from
+  delete named.fns![0].to
+  assert.equal(serializeBoard({ items: [named], background: 'dots', camera: { x: 0, y: 0, zoom: 1 } }).version, 6)
+  // A reversed range is put right; a variable without its keypad formula, or a bad name, is dropped.
+  const bad = { ...plane, fns: [{ expr: 'x', color: '#e03131', from: 5, to: -2, arg: 't', name: 'xy' }] }
+  const f2 = { format: 'inkboard', version: 7, background: 'dots', camera: { x: 0, y: 0, zoom: 1 }, assets: {}, items: [bad] } as unknown as BoardFile
+  assert.deepEqual((deserializeBoard(f2).items[0] as GraphItem).fns, [{ expr: 'x', color: '#e03131', from: -2, to: 5 }])
+})

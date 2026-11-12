@@ -90,12 +90,29 @@ export const CONSTS: Record<string, number> = { pi: Math.PI, e: Math.E }
 /** Every name a run of letters can be split into, longest first (so `exp` wins over `e`·`x`·`p`). */
 export const NAMES = ['x', ...Object.keys(FUNCS), ...Object.keys(CONSTS)].sort((a, b) => b.length - a.length)
 
+const namesByVar = new Map<string, readonly string[]>([['x', NAMES]])
+/**
+ * The names a run of letters can hold when the function's variable is `v` (t, a, φ… instead of x):
+ * `v` takes the place of x, and x becomes an unknown letter. An equation in x and y (`withY`) also
+ * knows y.
+ */
+export function namesFor(v: string, withY = false): readonly string[] {
+  const key = withY ? `${v} y` : v
+  let names = namesByVar.get(key)
+  if (!names) {
+    const own = [...(/^[a-z]$/.test(v) ? [v] : []), ...(withY ? ['y'] : [])]
+    names = [...NAMES.filter((n) => n !== 'x'), ...own].sort((a, b) => b.length - a.length)
+    namesByVar.set(key, names)
+  }
+  return names
+}
+
 /** Split a run of letters into known names: `xsin` -> x, sin; `pix` -> pi, x. */
-export function splitNames(word: string, fail: (offset: number, rest: string) => never): { name: string; offset: number }[] {
+export function splitNames(word: string, fail: (offset: number, rest: string) => never, names: readonly string[] = NAMES): { name: string; offset: number }[] {
   const out: { name: string; offset: number }[] = []
   let j = 0
   while (j < word.length) {
-    const name = NAMES.find((n) => word.startsWith(n, j))
+    const name = names.find((n) => word.startsWith(n, j))
     if (!name) fail(j, word.slice(j))
     out.push({ name: name!, offset: j })
     j += name!.length

@@ -10,19 +10,34 @@ All notable changes to Inkboard. Downloads for every version are on the
   powers and indices, logarithms, trigonometry, limits, derivatives, integrals, sums, matrices,
   determinants, combinations, Greek letters. Empty slots show as dotted squares; keys with a red dot have
   more variants on a long press (or right click). A formula stays vector, can be moved, scaled, recoloured
-  and edited again (double-click). Typing works too: `/` makes a fraction, `^` a power, `_` an index,
+  and edited again (double-click). Typing works too: `/` divides (`:` or `÷`, like the keypad's division key), `Alt + /` makes a fraction, `^` a power, `_` an index,
   `sqrt`, `sin`, `pi` turn into their signs. Recent formulas are kept in the keypad's history.
-- When a formula is plain arithmetic its value is offered next to it (`= 14`, `≈ 0.3333`); a click or
-  `Tab` adds it to the formula. Trigonometry is in radians; there is a `°` key for degrees.
+- When a formula is plain arithmetic, a **Show answer** button appears next to it, so the class can work
+  it out first. It reveals the value (`= 14`, `≈ 0.3333`); a click on the value (or `Tab`, then `Tab`
+  again) adds it to the formula. Trigonometry is in radians; there is a `°` key for degrees.
 - The same keypad and field in the **Functions** panel of a coordinate plane. The label next to a curve
   is written exactly as the formula was built. New in formulas of x: factorial, per cent, degrees,
   hyperbolic functions, `sec`, `csc`, `arcctg`.
+- **Plot formulas from the board.** Select one formula (`y = x²`, `f(x) = …`, `3t + 1`) or several and
+  press the plot button: a coordinate plane appears next to them with all their graphs.
+- Functions can have other names and variables: click `y =` in the Functions panel to pick `f(x)`,
+  `s(t)`, `v(t)`, a variable `t`, `a`, `n`, `k` or `φ` (the formula is rewritten in it). The axes are
+  named after them.
+- A curve can be drawn on a range only: `x` from … to … and `y` from … to … under each function (for
+  example `√x` from 3 to 7, or a parabola only up to `y = 4`).
+- **Equations in x and y** are drawn as curves: a circle `x² + y² = 4`, an ellipse, a hyperbola
+  `x·y = 1`, a vertical line `x = 3`, a sideways parabola `x = y²`. Type them in the Functions panel or
+  plot them from the board. The left side can also be typed by hand (`s(t) = 2t`, `w(z) = z²`); the
+  `y =` button is then hidden, and the formula is kept exactly as written.
+- **Fit to graphs**: a button in the Functions panel and on the bar above a plane sets the plane's axes
+  to just hold its curves. It grows a plane that is too small as well as shrinking a large one, and
+  gives the same result when pressed again. Undoable.
 
 ### Changed
 - The bar above a selection is icon-only and smaller (names and shortcuts are in the tooltips); its
   popovers (Style, Shape, Save as template) and the text format bar are more compact.
-- File format version 7 (formula objects). A board without formulas is still saved as version 6, so
-  0.7.2 keeps opening it; boards with formulas need this version or newer.
+- File format version 7 (formula objects, functions drawn on a range of x or y, equations in x and y). A board without them is still
+  saved as version 6, so 0.7.2 keeps opening it; boards with them need this version or newer.
 
 ### Fixed
 - The selection bar, its popovers and the text format bar could end up partly or fully off screen (near

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { editor } from '../editor'
 import type { FormulaState, Row } from '../engine/formula'
 import { numericResult } from '../engine/formulaexpr'
@@ -12,7 +12,8 @@ const PAD = 8
 
 /**
  * The formula being built on the board: an editable field exactly where the formula will be drawn,
- * at the board's zoom. When the formula is plain arithmetic its value is offered beside it.
+ * at the board's zoom. When the formula is plain arithmetic, a "Show answer" button sits beside it
+ * (so the class can work it out first); once shown, the value can be added to the formula.
  */
 export function FormulaEditor() {
   const t = useT()
@@ -28,6 +29,13 @@ export function FormulaEditor() {
     () => (result ? typesetRows([{ t: 'c', s: result.approx ? '≈' : '=' }, ...result.atoms], Math.max(14, Math.min(size, 28)), false) : null),
     [result, size]
   )
+  // The answer stays hidden until asked for, again for every formula edited and after it can't be worked out.
+  const session = fe ? `${fe.id ?? 'new'}:${fe.x}:${fe.baseline}` : ''
+  const [revealed, setRevealed] = useState('')
+  const open = !!result && revealed === session
+  useEffect(() => {
+    if (!result && revealed) setRevealed('')
+  }, [result, revealed])
   // A long formula grows past the window edge: keep the caret in sight by moving the board.
   const caret = fe && lay ? caretOf(lay, fe.cur) : undefined
   const caretX = fe && caret ? (fe.x - cam.x) * cam.zoom + caret.x : null
@@ -46,6 +54,11 @@ export function FormulaEditor() {
   }
   const accept = (): boolean => {
     if (!result) return false
+    // Tab first shows the answer, a second Tab writes it.
+    if (!open) {
+      setRevealed(session)
+      return true
+    }
     // An approximate value is written with ≈ unless the formula already ends with =.
     const lead: Row = result.hasEq ? [] : [{ t: 'c', s: result.approx ? '≈' : '=' }]
     const next = [...fe.rows, ...lead, ...result.atoms]
@@ -65,12 +78,22 @@ export function FormulaEditor() {
         size={size}
         pad={PAD}
         autoFocus
-        fieldKey={`${fe.id ?? 'new'}:${fe.x}:${fe.baseline}`}
+        fieldKey={session}
         onDone={() => editor.commitFormula()}
         onBlur={() => editor.commitFormula()}
         onTab={accept}
       />
-      {shown && (
+      {result && !open && (
+        <button
+          className="formula-result formula-reveal"
+          title={t('formula.showAnswerTitle')}
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={() => setRevealed(session)}
+        >
+          {t('formula.showAnswer')}
+        </button>
+      )}
+      {shown && open && (
         <button
           className="formula-result"
           title={t('formula.insertResult')}

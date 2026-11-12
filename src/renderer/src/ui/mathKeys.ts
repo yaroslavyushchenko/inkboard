@@ -47,7 +47,12 @@ const FRAC: MathKey = { face: [{ t: 'frac', n: [], d: [] }], act: { k: 'frac' } 
 
 /** Multiplication and division signs: the dot and the colon in Ukrainian schools, × and ÷ elsewhere. */
 const times = (lang: Lang): MathKey => (lang === 'uk' ? t('·', [t('×')]) : t('×', [t('·')]))
-const divide = (lang: Lang): MathKey => (lang === 'uk' ? t(':', [t('÷')]) : t('÷', [t(':')]))
+/** The division sign of a school: also what `/` types on the keyboard (a fraction is Alt+/ or the fraction key). */
+export const divSign = (lang: Lang): string => (lang === 'uk' ? ':' : '÷')
+const divide = (lang: Lang): MathKey => {
+  const s = divSign(lang)
+  return t(s, [t(s === ':' ? '÷' : ':'), FRAC])
+}
 /** Tangent and cotangent are tg / ctg in Ukrainian textbooks. */
 const trigNames = (lang: Lang): { tan: string; cot: string; atan: string; acot: string } =>
   lang === 'uk' ? { tan: 'tg', cot: 'ctg', atan: 'arctg', acot: 'arcctg' } : { tan: 'tan', cot: 'cot', atan: 'arctan', acot: 'arccot' }

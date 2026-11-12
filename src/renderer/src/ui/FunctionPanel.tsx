@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { editor } from '../editor'
 import { isBlank, type FormulaState, type Row } from '../engine/formula'
-import { nodeToRows, parseRows } from '../engine/formulaexpr'
+import { fnHead, FN_NAMES, FN_VARS, isEquation, nodeToRows, parseRows, plotHead, renameVar } from '../engine/formulaexpr'
 import { FN_COLORS, liveFns, MAX_FNS, type FnRow } from '../engine/graph'
 import { parseExpr } from '../engine/mathexpr'
 import type { GraphItem, PlotFn } from '../engine/types'
@@ -9,6 +9,7 @@ import { useT, type MessageKey } from '../i18n'
 import { useUI } from '../store'
 import { dockBeside } from './dock'
 import { FormulaField } from './FormulaField'
+import { Popover } from './Popover'
 
 const PANEL_W = 320
 
@@ -22,8 +23,9 @@ function rowsOfFn(f: PlotFn): Row {
 }
 const rowsOf = (g: GraphItem): FnRow[] =>
   (g.fns ?? []).map((f) => {
+    // A left side typed into the formula (x = y², w(z) = …) stays there, as it was written.
     const rows = rowsOfFn(f)
-    return { key: nextKey++, color: f.color, st: at(rows), shown: rows }
+    return { key: nextKey++, color: f.color, st: at(rows), shown: rows, name: f.name, arg: f.arg, from: f.from, to: f.to, yFrom: f.yFrom, yTo: f.yTo }
   })
 const blankRow = (color: string): FnRow => ({ key: nextKey++, color, st: at([]), shown: null })
 const stampOf = (g: GraphItem | undefined): string => (g ? JSON.stringify([g.fns ?? [], !!g.hideFormulas]) : '')
@@ -31,6 +33,73 @@ const freeColor = (rows: FnRow[]): string => {
   const used = new Set(rows.map((r) => r.color))
   return FN_COLORS.find((c) => !used.has(c)) ?? FN_COLORS[rows.length % FN_COLORS.length]
 }
+/** The left side as the panel shows it: y =, y(t) =, f(x) =. */
+const headText = (name: string, arg: string): string => (name === 'y' && arg === 'x' ? 'y =' : `${name}(${arg}) =`)
+
+/** A number typed with a dot or a comma; empty = no limit. Keeps what is typed while it is half done (−, 2,). */
+function LimitInput({ value, onChange, title }: { value: number | undefined; onChange: (v: number | undefined) => void; title: string }) {
+  const [text, setText] = useState(value === undefined ? '' : String(value))
+  const [editing, setEditing] = useState(false)
+  const comma = useUI((s) => s.lang) === 'uk'
+  const shown = editing ? text : value === undefined ? '' : String(value).replace('-', '−').replace('.', comma ? ',' : '.')
+  return (
+    <input
+      className="fn-limit"
+      inputMode="decimal"
+      title={title}
+      value={shown}
+      onFocus={() => {
+        setText(shown)
+        setEditing(true)
+      }}
+      onBlur={() => setEditing(false)}
+      onChange={(e) => {
+        setText(e.target.value)
+        const s = e.target.value.trim().replace(/[−–]/g, '-').replace(',', '.')
+        if (!s) onChange(undefined)
+        else if (/^-?(\d+\.?\d*|\.\d+)$/.test(s)) onChange(Number(s))
+      }}
+      onKeyDown={(e) => {
+        if (e.code === 'Enter') e.currentTarget.blur()
+      }}
+    />
+  )
+}
+
+/** The left side of a function: opens the choice of its name and its variable. */
+function HeadPicker({ name, arg, onPick }: { name: string; arg: string; onPick: (name: string, arg: string) => void }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
+  return (
+    <div className="menu-anchor">
+      <button data-popover-anchor className="fn-label fn-head" title={t('graph.fnHead')} onClick={() => setOpen((v) => !v)}>
+        {headText(name, arg)}
+      </button>
+      {open && (
+        <Popover onClose={close} className="fn-head-popover" fit="below">
+          <div className="fn-head-title">{t('graph.fnName')}</div>
+          <div className="fn-head-chips">
+            {FN_NAMES.map((n) => (
+              <button key={n} className={`chip fn-chip ${n === name ? 'active' : ''}`} disabled={n === arg} onClick={() => onPick(n, arg)}>
+                {n}
+              </button>
+            ))}
+          </div>
+          <div className="fn-head-title">{t('graph.fnVar')}</div>
+          <div className="fn-head-chips">
+            {FN_VARS.map((v) => (
+              <button key={v} className={`chip fn-chip ${v === arg ? 'active' : ''}`} disabled={v === name} onClick={() => onPick(name, v)}>
+                {v}
+              </button>
+            ))}
+          </div>
+        </Popover>
+      )}
+    </div>
+  )
+}
+
 const focusRow = (key: number): void => document.querySelector<HTMLElement>(`[data-fn-key="${key}"] .formula-field`)?.focus()
 
 /**
@@ -119,9 +188,14 @@ export function FunctionPanel() {
         </button>
       </div>
       {rows.map((r, i) => {
-        const res = isBlank(r.st.rows) ? null : parseRows(r.st.rows)
+        const head = fnHead({ rows: r.st.rows, name: r.name, arg: r.arg })
+        // A formula with its own left side (s(t) =, x = y², x² + y² = 4) needs no button for one.
+        const ownHead = isEquation(r.st.rows) || plotHead(r.st.rows).len > 0
+        const res = isBlank(r.st.rows) ? null : parseRows(r.st.rows, r.arg)
         const bad = res && !res.ok ? res : null
-        const err = bad ? t(`graph.fnError.${bad.code}` as MessageKey, { s: bad.detail ?? '' }) : null
+        // y on its own is the vertical axis: it takes an equation (x = y², x² + y² = 4).
+        const code = bad?.code === 'unknownName' && bad.detail === 'y' ? 'yAxis' : bad?.code
+        const err = bad ? t(`graph.fnError.${code}` as MessageKey, { s: bad.detail ?? '', v: head.arg }) : null
         return (
           <div key={r.key} className="fn-item">
             <div className="fn-row" data-fn-key={r.key}>
@@ -131,7 +205,20 @@ export function FunctionPanel() {
                 title={t('graph.fnColor')}
                 onClick={() => setRow(r.key, { color: FN_COLORS[(FN_COLORS.indexOf(r.color) + 1) % FN_COLORS.length] })}
               />
-              <span className="fn-label">y =</span>
+              {!ownHead && (
+                <HeadPicker
+                  name={head.name}
+                  arg={head.arg}
+                  onPick={(name, arg) => {
+                    // A left side typed into the formula gives way to the one picked here.
+                    const len = plotHead(r.st.rows).len
+                    let st = len ? at(r.st.rows.slice(len)) : r.st
+                    // A new variable is written into the formula too: x² becomes t².
+                    if (arg !== head.arg) st = at(renameVar(st.rows, head.arg, arg))
+                    setRow(r.key, { st, name, arg })
+                  }}
+                />
+              )}
               <FormulaField
                 className={`fn-field ${bad ? 'invalid' : ''}`}
                 value={r.st}
@@ -154,14 +241,35 @@ export function FunctionPanel() {
               </button>
             </div>
             {err && <div className="fn-error">{err}</div>}
+            <div className="fn-range" title={t('graph.fnRange')}>
+              <span className="fn-range-var">{head.arg}</span>
+              <span>{t('graph.fnFrom')}</span>
+              <LimitInput title={t('graph.fnRange')} value={r.from} onChange={(from) => setRow(r.key, { from })} />
+              <span>{t('graph.fnTo')}</span>
+              <LimitInput title={t('graph.fnRange')} value={r.to} onChange={(to) => setRow(r.key, { to })} />
+            </div>
+            <div className="fn-range" title={t('graph.fnYRange')}>
+              <span className="fn-range-var">{head.name}</span>
+              <span>{t('graph.fnFrom')}</span>
+              <LimitInput title={t('graph.fnYRange')} value={r.yFrom} onChange={(yFrom) => setRow(r.key, { yFrom })} />
+              <span>{t('graph.fnTo')}</span>
+              <LimitInput title={t('graph.fnYRange')} value={r.yTo} onChange={(yTo) => setRow(r.key, { yTo })} />
+            </div>
           </div>
         )
       })}
-      {rows.length < MAX_FNS && (
-        <button className="text-btn outline" onClick={addRow}>
-          {t('graph.addFunction')}
-        </button>
-      )}
+      <div className="fn-actions">
+        {rows.length < MAX_FNS && (
+          <button className="text-btn outline" onClick={addRow}>
+            {t('graph.addFunction')}
+          </button>
+        )}
+        {!!g.fns?.length && (
+          <button className="text-btn outline" title={t('graph.fit')} onClick={() => editor.fitGraph(g.id)}>
+            {t('graph.fitShort')}
+          </button>
+        )}
+      </div>
       <p className="settings-hint">{t('graph.fnHint')}</p>
       <label className="fn-check">
         <input type="checkbox" checked={!hide} onChange={(e) => write(rows, !e.target.checked)} />

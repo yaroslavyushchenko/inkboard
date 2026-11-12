@@ -128,6 +128,9 @@ in progress and the pen cursor (so drawing never forces a full board redraw).
 - [x] One grammar for typed and keypad formulas: lexers (`mathlex.ts`, `formulalex.ts`) → parser
       (`mathparse.ts`) → evaluator (`mathexpr.ts`); numeric result offered for plain arithmetic
 - [x] The keypad in the Functions panel of a coordinate plane
+- [x] Plot selected formulas on a new plane; function names and variables (`s(t)`), ranges of x and y (`from`/`to`)
+- [x] Equations in x and y as curves (marching squares, `plotImplicit`); fit a plane to its graphs
+- [x] The value of an arithmetic formula is hidden behind "Show answer"
 - [x] Selection bar and its popovers always stay inside the window; compact, icon-only bar
 
 ### Stage 4: content

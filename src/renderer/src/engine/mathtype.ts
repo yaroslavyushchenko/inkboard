@@ -231,6 +231,8 @@ function layout(n: MathNode, c: Ctx): MathBox {
       return text(c, c.comma ? n.text.replace('.', ',') : n.text, false)
     case 'x':
       return text(c, 'x', true)
+    case 'y':
+      return text(c, 'y', true)
     case 'const':
       return n.name === 'pi' ? text(c, 'π', false) : text(c, 'e', true)
     case 'neg':

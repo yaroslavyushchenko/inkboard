@@ -5,7 +5,7 @@
  * brackets) are parsed on the spot and handed over as finished parts.
  */
 import type { Atom, Row } from './formula'
-import { FUNCS, ParseError, RELATIONS, splitNames, type Tok, type TokAt } from './mathlex'
+import { FUNCS, namesFor, ParseError, RELATIONS, splitNames, type Tok, type TokAt } from './mathlex'
 import { Parser, type MathNode } from './mathparse'
 
 const OPS: Record<string, '+' | '-' | '*' | '/' | '(' | ')' | '|' | '!' | '%' | '°'> = {
@@ -18,6 +18,10 @@ const isChar = (a: Atom | undefined, re: RegExp): a is { t: 'c'; s: string } => 
 export interface LexInfo {
   /** A decimal comma was used (results are then written with a comma too). */
   comma: boolean
+  /** The variable of the function (x unless set): t, a, φ… It reaches the parser as x. */
+  arg?: string
+  /** Reading one side of an equation in x and y: y is a variable too. */
+  y?: boolean
 }
 
 /** Tokens of the atoms `from`…`to` of a row (no end token). */
@@ -53,10 +57,15 @@ export function lexRow(row: Row, path: number[], info: LexInfo, from = 0, to = r
         let word = ''
         let j = k
         while (j < to && isChar(row[j], /^[a-z]$/)) word += (row[j++] as { s: string }).s
-        for (const n of splitNames(word, (off, rest) => {
-          throw new ParseError('unknownName', 0, rest, at(k + off))
-        })) {
-          out.push({ t: 'name', v: n.name, pos: 0, at: at(k + n.offset) })
+        const v = info.arg ?? 'x'
+        for (const n of splitNames(
+          word,
+          (off, rest) => {
+            throw new ParseError('unknownName', 0, rest, at(k + off))
+          },
+          namesFor(v, info.y)
+        )) {
+          out.push({ t: 'name', v: n.name === v ? 'x' : n.name, pos: 0, at: at(k + n.offset) })
         }
         k = j
         continue
@@ -69,7 +78,8 @@ export function lexRow(row: Row, path: number[], info: LexInfo, from = 0, to = r
         k += 2
         continue
       }
-      if (a.s === 'π') out.push({ t: 'name', v: 'pi', pos: 0, at: here })
+      if (a.s === info.arg) out.push({ t: 'name', v: 'x', pos: 0, at: here })
+      else if (a.s === 'π') out.push({ t: 'name', v: 'pi', pos: 0, at: here })
       else if (OPS[a.s]) out.push({ t: 'op', v: OPS[a.s], pos: 0, at: here })
       else if (RELATIONS.includes(a.s)) out.push({ t: 'rel', v: a.s, pos: 0, at: here })
       else if (/^\p{L}$/u.test(a.s)) throw new ParseError('unknownName', 0, a.s, here)

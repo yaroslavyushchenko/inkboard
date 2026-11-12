@@ -11,10 +11,19 @@ import { Parser, type MathNode } from './mathparse'
 export type { ParseErrorCode } from './mathlex'
 export type { MathNode } from './mathparse'
 
-export type MathFn = (x: number) => number
+/** A formula as a closure; `y` is only read by equations in x and y. */
+export type MathFn = (x: number, y?: number) => number
 
 export type ParseResult =
-  | { ok: true; fn: MathFn; node: MathNode; /** The formula was typed with a decimal comma (0,5). */ comma: boolean }
+  | {
+      ok: true
+      fn: MathFn
+      node: MathNode
+      /** The formula was typed with a decimal comma (0,5). */
+      comma: boolean
+      /** An equation in x and y (x² + y² = 4): its two sides; `fn` is their difference, drawn where it is 0. */
+      eq?: [MathNode, MathNode]
+    }
   | { ok: false; code: ParseErrorCode; pos: number; detail?: string; /** Keypad formulas: the place to point at. */ at?: TokAt }
 
 /** Longest expressions we accept (file data is validated against the same cap). */
@@ -55,59 +64,61 @@ export function compile(n: MathNode): MathFn {
     }
     case 'x':
       return (x) => x
+    case 'y':
+      return (_x, y) => y ?? NaN
     case 'const': {
       const v = CONSTS[n.name]
       return () => v
     }
     case 'neg': {
       const a = compile(n.a)
-      return (x) => -a(x)
+      return (x, y) => -a(x, y)
     }
     case 'paren':
       return compile(n.a)
     case 'abs': {
       const a = compile(n.a)
-      return (x) => Math.abs(a(x))
+      return (x, y) => Math.abs(a(x, y))
     }
     case 'pow': {
       const a = compile(n.a)
       const b = compile(n.b)
-      return (x) => power(a(x), b(x))
+      return (x, y) => power(a(x, y), b(x, y))
     }
     case 'fn': {
       const f = FUNCS[n.name]
       const a = compile(n.a)
-      return (x) => f(a(x))
+      return (x, y) => f(a(x, y))
     }
     case 'post': {
       const a = compile(n.a)
-      if (n.op === '!') return (x) => factorial(a(x))
-      if (n.op === '%') return (x) => a(x) / 100
-      return (x) => (a(x) * Math.PI) / 180
+      if (n.op === '!') return (x, y) => factorial(a(x, y))
+      if (n.op === '%') return (x, y) => a(x, y) / 100
+      return (x, y) => (a(x, y) * Math.PI) / 180
     }
     case 'root': {
       const a = compile(n.a)
       const i = compile(n.index)
-      return (x) => power(a(x), 1 / i(x))
+      return (x, y) => power(a(x, y), 1 / i(x, y))
     }
     case 'log': {
       const a = compile(n.a)
       const b = compile(n.base)
-      return (x) => Math.log(a(x)) / Math.log(b(x))
+      return (x, y) => Math.log(a(x, y)) / Math.log(b(x, y))
     }
     case 'comb': {
       const a = compile(n.n)
       const b = compile(n.r)
       const kind = n.kind
-      return (x) => choose(kind, a(x), b(x))
+      return (x, y) => choose(kind, a(x, y), b(x, y))
     }
     case 'bin': {
       const a = compile(n.a)
       const b = compile(n.b)
-      if (n.op === '+') return (x) => a(x) + b(x)
-      if (n.op === '-') return (x) => a(x) - b(x)
-      if (n.op === '*') return (x) => a(x) * b(x)
-      return (x) => a(x) / b(x)
+      if (n.op === '+') return (x, y) => a(x, y) + b(x, y)
+      if (n.op === '-') return (x, y) => a(x, y) - b(x, y)
+      if (n.op === '*') return (x, y) => a(x, y) * b(x, y)
+      return (x, y) => a(x, y) / b(x, y)
     }
   }
 }
@@ -120,6 +131,8 @@ export function usesX(n: MathNode): boolean {
       return false
     case 'x':
       return true
+    case 'y':
+      return false
     case 'neg':
     case 'paren':
     case 'abs':
@@ -138,9 +151,36 @@ export function usesX(n: MathNode): boolean {
   }
 }
 
+/** Does the formula use the y of an equation in x and y? */
+export function usesY(n: MathNode): boolean {
+  switch (n.k) {
+    case 'y':
+      return true
+    case 'num':
+    case 'const':
+    case 'x':
+      return false
+    case 'neg':
+    case 'paren':
+    case 'abs':
+    case 'fn':
+    case 'post':
+      return usesY(n.a)
+    case 'pow':
+    case 'bin':
+      return usesY(n.a) || usesY(n.b)
+    case 'root':
+      return usesY(n.a) || usesY(n.index)
+    case 'log':
+      return usesY(n.a) || usesY(n.base)
+    case 'comb':
+      return usesY(n.n) || usesY(n.r)
+  }
+}
+
 /** The value of a formula without x, or null when it has an x or no finite value (1/0, √−1). */
 export function evaluate(n: MathNode): number | null {
-  if (usesX(n)) return null
+  if (usesX(n) || usesY(n)) return null
   const v = compile(n)(NaN)
   return Number.isFinite(v) ? v : null
 }
