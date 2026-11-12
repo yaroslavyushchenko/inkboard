@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rename, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
@@ -84,7 +84,7 @@ test('stores boards in SQLite and extracts images as raw binary BLOBs without ba
   }
 })
 
-test('migrates legacy gzipped .inkboard library and removes old folders', async () => {
+test('migrates legacy gzipped .inkboard library and moves the old files into legacy-0.6', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'inkboard-migrate-'))
   try {
     await mkdir(join(dir, 'boards'), { recursive: true })
@@ -122,11 +122,13 @@ test('migrates legacy gzipped .inkboard library and removes old folders', async 
     const lib = new Library(dir)
     await lib.init()
 
-    // Old file-based library folders and index.json should be removed after migration.
+    // Old files are moved aside, never deleted.
     assert.equal(existsSync(join(dir, 'index.json')), false)
     assert.equal(existsSync(join(dir, 'boards')), false)
-    assert.equal(existsSync(join(dir, 'thumbs')), false)
-    assert.equal(existsSync(join(dir, 'templates')), false)
+    assert.equal(existsSync(join(dir, 'legacy-0.6', 'index.json')), true)
+    assert.equal(existsSync(join(dir, 'legacy-0.6', 'boards', 'legacy-1.inkboard')), true)
+    assert.equal(existsSync(join(dir, 'legacy-0.6', 'thumbs', 'legacy-1.webp')), true)
+    assert.equal(existsSync(join(dir, 'legacy-0.6', 'templates', 'tpl-1.inkboard')), true)
     assert.equal(existsSync(join(dir, 'library.sqlite')), true)
 
     const state = await lib.list()
@@ -160,9 +162,10 @@ test('exports standalone .inkboard on request and imports both plain JSON and le
     await lib.saveAsFile(b.id, exportPath, sampleBoardBytes(true))
 
     const exportedRaw = await readFile(exportPath)
-    // Exported file is plain UTF-8 JSON (not gzipped) and has no .bak littering the folder.
+    // Exported file is plain UTF-8 JSON (not gzipped).
     assert.equal(exportedRaw[0], '{'.charCodeAt(0))
-    assert.equal(existsSync(`${exportPath}.bak`), false)
+    // Opening the exported file, unchanged, opens the same board instead of a copy.
+    assert.equal((await lib.importFile(exportPath)).id, b.id)
 
     // Importing a legacy gzipped file converts it into SQLite.
     const legacyFile = join(dir, 'LegacyArchive.inkboard')
@@ -175,6 +178,88 @@ test('exports standalone .inkboard on request and imports both plain JSON and le
     assert.equal(loaded.assets.img1, PIXEL_DATA_URL)
 
     lib.close()
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('opening the same file twice opens one board; a changed file is imported again', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'inkboard-dedupe-'))
+  try {
+    const lib = new Library(dir)
+    await lib.init()
+    const file = join(dir, 'Lesson.inkboard')
+    await writeFile(file, sampleBoardBytes())
+    const first = await lib.importFile(file)
+    assert.equal((await lib.importFile(file)).id, first.id)
+
+    // In "Recently deleted": opening the file brings it back.
+    await lib.remove(first.id)
+    const again = await lib.importFile(file)
+    assert.equal(again.id, first.id)
+    assert.equal(again.deletedAt, undefined)
+
+    // The file changed on disk since: import it as a new board.
+    await writeFile(file, sampleBoardBytes(true))
+    await utimes(file, new Date(), new Date(Date.now() + 60_000))
+    assert.notEqual((await lib.importFile(file)).id, first.id)
+    assert.equal((await lib.list()).boards.length, 2)
+    lib.close()
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('migration keeps unreadable boards on disk and a re-run never overwrites migrated rows', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'inkboard-migrate-safe-'))
+  try {
+    await mkdir(join(dir, 'boards'), { recursive: true })
+    await writeFile(join(dir, 'boards', 'good.inkboard'), gzipSync(Buffer.from(sampleBoardBytes())))
+    await writeFile(join(dir, 'boards', 'broken.inkboard'), Buffer.from('not a board'))
+    const index = {
+      version: 1,
+      boards: [
+        { id: 'good', title: 'Good', kind: 'draft', createdAt: 1, updatedAt: 2, openedAt: 3, tagIds: [] },
+        { id: 'broken', title: 'Broken', kind: 'draft', createdAt: 1, updatedAt: 2, openedAt: 3, tagIds: [] }
+      ],
+      tags: [],
+      templates: [],
+      lastOpenedId: null,
+      backupDir: null
+    }
+    await writeFile(join(dir, 'index.json'), JSON.stringify(index))
+
+    let lib = new Library(dir)
+    await lib.init()
+    assert.deepEqual((await lib.list()).boards.map((b) => b.title), ['Good'])
+    assert.equal(existsSync(join(dir, 'legacy-0.6', 'boards', 'broken.inkboard')), true)
+    lib.close()
+
+    // Simulate a crash before the old files were moved: boards/ is back without index.json.
+    await rename(join(dir, 'legacy-0.6', 'boards'), join(dir, 'boards'))
+    lib = new Library(dir)
+    await lib.init()
+    const boards = (await lib.list()).boards
+    assert.deepEqual(boards.map((b) => b.title), ['Good'], 'the migrated title must not be replaced by "Board"')
+    assert.equal(boards[0].createdAt, 1)
+    assert.equal(existsSync(join(dir, 'boards')), false)
+    lib.close()
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('schema version is recorded and a newer library is refused', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'inkboard-schema-'))
+  try {
+    const lib = new Library(dir)
+    await lib.init()
+    lib.close()
+    const db = new DatabaseSync(join(dir, 'library.sqlite'))
+    assert.equal((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 1)
+    db.exec('PRAGMA user_version = 99')
+    db.close()
+    await assert.rejects(new Library(dir).init(), /newer version/)
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

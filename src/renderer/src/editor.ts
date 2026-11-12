@@ -28,10 +28,11 @@ const CLIPBOARD_MIME = 'application/x-inkboard'
 /** Line ends fit any open line: freehand ink, straight lines, the Line shape (not closed shapes or arrows). */
 export const canHaveEnds = (s: StrokeItem): boolean => !s.shape || s.shape.kind === 'line'
 /**
- * Autosave: wait for a 5 s pause in editing before writing to disk. Leaving the board, closing the
- * app, sleep and Ctrl+S still save right away.
+ * Autosave: write at most 5 s after the first unsaved change, even while drawing non-stop, so a crash
+ * or power cut loses at most 5 s of work. Leaving the board, closing the app, sleep and Ctrl+S save
+ * right away.
  */
-const SAVE_DEBOUNCE_MS = 5000
+const SAVE_DELAY_MS = 5000
 /** Thumbnails are re-rendered at most this often while editing (always on leaving a board). */
 const THUMB_INTERVAL_MS = 10_000
 const DEFAULT_CAMERA: Camera = { x: -80, y: -80, zoom: 1 }
@@ -710,8 +711,9 @@ class Editor {
   }
 
   private scheduleSave(): void {
-    if (this.saveTimer) clearTimeout(this.saveTimer)
-    this.saveTimer = setTimeout(() => void this.flush(), SAVE_DEBOUNCE_MS)
+    // Not reset by further edits: the first unsaved change starts the clock.
+    if (this.saveTimer) return
+    this.saveTimer = setTimeout(() => void this.flush(), SAVE_DELAY_MS)
   }
 
   /**

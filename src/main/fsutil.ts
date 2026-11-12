@@ -1,10 +1,11 @@
-import { open, readFile, rename, rm } from 'node:fs/promises'
+import { copyFile, open, readFile, rename, rm } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 
 /**
  * Crash- and power-loss-safe write:
  * 1. write to `<path>.tmp` and fsync it (data is physically on disk),
- * 2. atomically rename the temp file over the target.
+ * 2. keep the previous version as `<path>.bak`,
+ * 3. atomically rename the temp file over the target.
  * A power cut at any moment leaves either the old or the new file intact, never a half-written one.
  */
 export async function writeDurable(path: string, data: Uint8Array | string): Promise<void> {
@@ -16,16 +17,21 @@ export async function writeDurable(path: string, data: Uint8Array | string): Pro
   } finally {
     await fh.close()
   }
+  try {
+    await copyFile(path, `${path}.bak`)
+  } catch {
+    // No previous version yet.
+  }
   await rename(tmp, path)
 }
 
-/** Read a file, falling back to a legacy .bak copy if the main file fails `validate`. */
+/** Read a file written by writeDurable, falling back to its .bak if the main copy fails `validate`. */
 export async function readDurable(path: string, validate: (b: Buffer) => boolean): Promise<Buffer> {
   try {
     const b = await readFile(path)
     if (validate(b)) return b
   } catch {
-    // fall through to the legacy backup
+    // fall through to the backup
   }
   const bak = await readFile(`${path}.bak`)
   if (!validate(bak)) throw new Error(`Corrupt file: ${path}`)

@@ -128,16 +128,9 @@ function registerIpc(): void {
     return library.importFile(r.filePaths[0])
   })
 
-  h('library:locate', async (e, id: string) => {
-    const r = await dialog.showOpenDialog(winOf(e), { properties: ['openFile'], filters: FILE_FILTERS })
-    if (r.canceled || !r.filePaths[0]) return null
-    return library.locate(id, r.filePaths[0])
-  })
-
-  h('library:show-in-folder', (_e, id: string) => {
-    const p = library.filePath(id)
-    if (p) shell.showItemInFolder(p)
-  })
+  // Every board lives in the library since 0.7; kept so older renderer calls resolve harmlessly.
+  h('library:locate', () => null)
+  h('library:show-in-folder', () => undefined)
 
   h('library:take-pending-open', async () => {
     const path = pendingPaths.shift()
