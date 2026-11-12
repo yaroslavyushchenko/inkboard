@@ -3,6 +3,21 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
+## [0.6.0] (2026-11-12)
+
+### Added
+- Function graphs on coordinate planes: up to 8 formulas per plane, typed in a panel beside the plane
+  (Graph menu → Function graph…, or the Function button on a selected plane). Curves update as you type;
+  formulas are typeset next to the curves and can be hidden. File format version 6.
+- Protractor: hover highlight and hints, the degree under the pointer on the edge, snapping of arcs and
+  rays to a step set with its new ⚙ handle (off, 1°, 5°, 15°).
+- Compass: hover highlight and hints, cell marks on the radius line, arcs snap to quarter turns.
+
+### Changed
+- The compass radius always snaps to half cells.
+- On narrow windows the top toolbar moves aside or to a second row instead of covering the menu.
+- The protractor scale is drawn with fewer canvas calls.
+
 ## [0.5.2] (2026-11-11)
 
 ### Changed

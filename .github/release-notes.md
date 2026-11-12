@@ -2,7 +2,21 @@
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
-## What's new in 0.5.2
+## What's new in 0.6.0
+
+- **Function graphs:** Graph menu → *Function graph…*, or select a coordinate plane and click **Function**.
+  Type formulas such as `x^2`, `2x + 1`, `sin(x)`, `sqrt(x)`, `|x|` or `1/x` (up to 8 per plane): the
+  curves appear as you type, with the formula written next to each one as in a textbook.
+- **The protractor follows the pointer:** the part under the pen lights up with a hint, the edge shows the
+  degree you are pointing at, and arcs and rays snap to whole degrees. The new ⚙ handle sets the step
+  (off, 1°, 5° or 15°).
+- **The compass follows the pointer too:** lit parts and hints, cell marks on the radius, and arcs snap to
+  quarter, half and full turns.
+- **Narrow windows:** the top toolbar no longer covers the menu; it moves aside or to a second row.
+
+Boards saved by 0.6 can't be opened by older versions, so update every computer you use.
+
+## Also in 0.5.2
 
 - **macOS:** the `.dmg` window now shows how to install Inkboard and how to open it the first time.
 
