@@ -118,3 +118,30 @@ test('errors are reported with a code and position', () => {
   const r = parseExpr('x + q')
   assert.ok(!r.ok && r.pos === 4 && r.detail === 'q')
 })
+
+test('factorial, per cent and degrees are written after the number', () => {
+  const at = (src: string, x = 0): number => {
+    const r = parseExpr(src)
+    if (!r.ok) assert.fail(`"${src}" failed to parse: ${r.code}`)
+    return r.fn(x)
+  }
+  assert.equal(at('5!'), 120)
+  assert.equal(at('0!'), 1)
+  assert.ok(Number.isNaN(at('2.5!')))
+  assert.equal(at('50%'), 0.5)
+  assert.ok(Math.abs(at('sin 30°') - 0.5) < 1e-12)
+  assert.ok(Math.abs(at('sin(x°)', 90) - 1) < 1e-12)
+  assert.equal(at('3!^2'), 36)
+  assert.equal(at('2*3!'), 12)
+})
+
+test('a relation is not a formula of x', () => {
+  const r = parseExpr('x^2 = 4')
+  assert.ok(!r.ok && r.code === 'unexpected' && r.detail === '=')
+})
+
+test('more functions: hyperbolic, secant, arc cotangent', () => {
+  const r = parseExpr('sinh x + sec x + arcctg x')
+  assert.ok(r.ok)
+  if (r.ok) assert.ok(Math.abs(r.fn(1) - (Math.sinh(1) + 1 / Math.cos(1) + (Math.PI / 2 - Math.atan(1)))) < 1e-12)
+})

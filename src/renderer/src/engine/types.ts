@@ -1,3 +1,4 @@
+import type { Row } from './formula'
 import type { ShapeKind } from './shapes'
 
 /** A sampled input point in world coordinates: x, y and pen pressure (0..1). */
@@ -106,6 +107,12 @@ export interface GraphParams {
 export interface PlotFn {
   expr: string
   color: string
+  /**
+   * The formula as built on the math keypad (engine/formula.ts), when it was. It is what gets
+   * plotted and written next to the curve; `expr` then holds the same function as plain text for
+   * versions without the keypad.
+   */
+  rows?: Row
 }
 
 export interface GraphItem extends ItemBase, GraphParams {
