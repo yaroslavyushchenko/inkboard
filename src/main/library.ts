@@ -142,7 +142,12 @@ export class Library {
       PRAGMA synchronous = FULL;
       PRAGMA foreign_keys = ON;
     `)
-    this.migrateSchema()
+    try {
+      this.migrateSchema()
+    } catch (err) {
+      this.close()
+      throw err
+    }
 
     await this.migrateLegacyLibrary()
     if (legacyRecovery) await this.migrateLegacyRecovery(legacyRecovery.bytes, legacyRecovery.meta)

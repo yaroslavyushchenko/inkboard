@@ -33,17 +33,29 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      # The Linux build also makes the snap, which needs snapcraft and an LXD container.
+      # The Linux build also makes the snap, which needs snapcraft and an LXD container. Both come
+      # from the Snap Store; when it is down, the release still ships the AppImage and .deb.
       - name: Set up LXD for snapcraft
+        id: lxd
         if: runner.os == 'Linux'
+        continue-on-error: true
         uses: canonical/setup-lxd@v1
       # snapcraft 9 looks for the desktop file before copying snap/gui into the snap, which
       # breaks electron-builder 26's core24 snaps; 8.x builds them fine.
       - name: Install snapcraft
-        if: runner.os == 'Linux'
+        id: snapcraft
+        if: runner.os == 'Linux' && steps.lxd.outcome == 'success'
+        continue-on-error: true
         run: sudo snap install snapcraft --classic --channel=8.x/stable
       - name: Package
-        run: npx electron-builder ${{ matrix.target }} --publish never
+        shell: bash
+        run: |
+          targets="${{ matrix.target }}"
+          if [ "$RUNNER_OS" = Linux ] && [ "${{ steps.snapcraft.outcome }}" != success ]; then
+            echo "::warning::Snap Store unreachable, building AppImage and .deb without the snap."
+            targets="--linux AppImage deb"
+          fi
+          npx electron-builder $targets --publish never
         env:
           # Don't try to find signing certificates on CI (none configured yet).
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
@@ -63,7 +75,7 @@ jobs:
         if: runner.os == 'Linux'
         with:
           name: snap
-          if-no-files-found: error
+          if-no-files-found: warn
           path: dist/*.snap
 
   release:
