@@ -963,13 +963,37 @@ button:disabled {
   white-space: nowrap;
 }
 
+/* Placed by Popover's `fit` (ui/dock.ts fitBox); the rules here are only the starting point. */
 .sel-popover {
   position: absolute;
-  bottom: 50px;
+  bottom: 42px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 30;
-  min-width: 300px;
+  min-width: 240px;
+  max-width: calc(100vw - 16px);
+  padding: 8px;
+}
+
+.sel-popover .swatches {
+  grid-template-columns: repeat(6, 24px);
+  gap: 6px;
+  justify-content: space-between;
+}
+
+.sel-popover .swatch {
+  width: 24px;
+  height: 24px;
+}
+
+.sel-popover .sizes {
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.sel-popover .size {
+  width: 32px;
+  height: 32px;
 }
 
 .tag-new.flat {
@@ -1210,6 +1234,16 @@ button:disabled {
 
 .selection-toolbar {
   align-items: center;
+  max-width: calc(100vw - 16px);
+}
+
+/* Compact: icons only, names and shortcuts are in the tooltips. */
+.selection-toolbar .labeled-btn,
+.selection-toolbar .icon-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
 }
 
 .selection-toolbar .sep {
@@ -1348,8 +1382,7 @@ button:disabled {
 }
 
 .style-popover {
-  min-width: 260px;
-  padding: 12px;
+  min-width: 220px;
 }
 
 /* 2D / 3D shapes: a quiet divider, no headings */
@@ -1405,8 +1438,7 @@ button:disabled {
 }
 
 .shape-popover {
-  min-width: 230px;
-  padding: 10px;
+  min-width: 0;
 }
 
 .labeled-btn.locked {
@@ -1517,11 +1549,20 @@ button:disabled {
 .text-format {
   position: fixed;
   z-index: 40;
-  transform: translate(-50%, calc(-100% - 10px));
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px;
+  gap: 4px;
+  padding: 6px;
+  max-width: calc(100vw - 16px);
+}
+.text-format .swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.text-format .swatch.small {
+  width: 20px;
+  height: 20px;
 }
 .text-format .tf-row {
   display: flex;

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { canHaveEnds, editor } from '../editor'
 import { SELECTION_PAD } from '../engine/renderer'
 import { editableShape } from '../engine/shapeItems'
@@ -12,6 +12,7 @@ import { BookmarkIcon, DuplicateIcon, FunctionIcon, GearIcon, GroupIcon, LockIco
 import { BaseRow, ShapePreview, TemplateThumb } from './InsertMenus'
 import type { TemplateEntry } from '../../../shared/library'
 import { LineStyleControls, SizeSlider } from './LineStyle'
+import { fitBox, screenArea } from './dock'
 import { Popover } from './Popover'
 
 /** Small floating action bar above the current selection (like Whiteboard's context menu). */
@@ -35,6 +36,12 @@ export function SelectionToolbar() {
     setReplacing(null)
   }, [])
   const closeStyle = useCallback(() => setStyling(false), [])
+  const ref = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ w: 320, h: 40 })
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (el && (el.offsetWidth !== size.w || el.offsetHeight !== size.h)) setSize({ w: el.offsetWidth, h: el.offsetHeight })
+  })
   if (!selectedIds.length || view !== 'board') return null
   const box = editor.selectionBBox()
   if (!box) return null
@@ -64,16 +71,22 @@ export function SelectionToolbar() {
   const hasStraight = strokes.some(canHaveEnds)
   const firstText = items.find((i): i is TextItem => i.type === 'text' && !i.locked)
   const cam = editor.camera
-  const left = ((box.minX + box.maxX) / 2 - cam.x) * cam.zoom
-  const top = (box.minY - cam.y) * cam.zoom - SELECTION_PAD
-  const below = top < 64
-  const y = below ? (box.maxY - cam.y) * cam.zoom + SELECTION_PAD + 12 : top - 12
+  // Above the selection when there is room, else below it; always fully inside the window.
+  const place = fitBox(
+    {
+      left: (box.minX - cam.x) * cam.zoom,
+      right: (box.maxX - cam.x) * cam.zoom,
+      top: (box.minY - cam.y) * cam.zoom - SELECTION_PAD,
+      bottom: (box.maxY - cam.y) * cam.zoom + SELECTION_PAD
+    },
+    size.w,
+    size.h,
+    screenArea(),
+    'above',
+    12
+  )
   return (
-    <div
-      className="panel selection-toolbar"
-      style={{ left, top: y, transform: `translate(-50%, ${below ? '0' : '-100%'})` }}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
+    <div ref={ref} className="panel selection-toolbar" style={{ left: place.left, top: place.top }} onPointerDown={(e) => e.stopPropagation()}>
       {graph && (
         <>
           <button
@@ -82,7 +95,6 @@ export function SelectionToolbar() {
             onClick={() => useUI.setState({ graphDialog: { mode: 'edit', id: graph.id, params: { ...graph } } })}
           >
             <GearIcon />
-            <span>{t('sel.settings')}</span>
           </button>
           {graph.kind === 'plane' && (
             <button
@@ -91,7 +103,6 @@ export function SelectionToolbar() {
               onClick={() => useUI.setState({ fnPanel: fnPanel?.id === graph.id ? null : { id: graph.id, session: Date.now() } })}
             >
               <FunctionIcon />
-              <span>{t('graph.plot')}</span>
             </button>
           )}
           <div className="sep" />
@@ -101,10 +112,9 @@ export function SelectionToolbar() {
         <div className="menu-anchor">
           <button data-popover-anchor className="labeled-btn" title={t('sel.shapeTitle')} onClick={() => setShaping((v) => !v)}>
             <ShapesIcon />
-            <span>{t('sel.shape')}</span>
           </button>
           {shaping && (
-            <Popover onClose={closeShape} className="sel-popover shape-popover">
+            <Popover onClose={closeShape} className="sel-popover shape-popover" fit={place.side}>
               <div className="shape-grid">
                 {family.map((k) => (
                   <button
@@ -131,17 +141,15 @@ export function SelectionToolbar() {
       {firstText && items.length === 1 && (
         <button className="labeled-btn" title={t('text.edit')} onClick={() => editor.editText(firstText)}>
           <TextIcon />
-          <span>{t('text.edit')}</span>
         </button>
       )}
       {(first || firstText) && (
         <div className="menu-anchor">
           <button data-popover-anchor className="labeled-btn" title={t('sel.style')} onClick={() => setStyling((v) => !v)}>
             <StyleIcon />
-            <span>{t('sel.style')}</span>
           </button>
           {styling && (
-            <Popover onClose={closeStyle} className="sel-popover style-popover">
+            <Popover onClose={closeStyle} className="sel-popover style-popover" fit={place.side}>
               <div className="swatches">
                 {PEN_COLORS.map((c) => (
                   <button
@@ -188,15 +196,11 @@ export function SelectionToolbar() {
       {canGroup && (
         <button className="labeled-btn" title={`${t('sel.group')} (Ctrl+G)`} onClick={() => editor.groupSelection()}>
           <GroupIcon />
-          <span>{t('sel.group')}</span>
-          <kbd>Ctrl+G</kbd>
         </button>
       )}
       {canUngroup && (
         <button className="labeled-btn" title={`${t('sel.ungroup')} (Ctrl+Shift+G)`} onClick={() => editor.ungroupSelection()}>
           <UngroupIcon />
-          <span>{t('sel.ungroup')}</span>
-          <kbd>Ctrl+Shift+G</kbd>
         </button>
       )}
       {(canGroup || canUngroup) && <div className="sep" />}
@@ -206,14 +210,13 @@ export function SelectionToolbar() {
         onClick={() => editor.toggleLockSelection()}
       >
         {allLocked ? <LockIcon /> : <UnlockIcon />}
-        <span>{allLocked ? t('sel.unlock') : t('sel.lock')}</span>
       </button>
       <div className="menu-anchor">
         <button data-popover-anchor className="icon-btn" title={t('tpl.saveSelection')} onClick={() => setSaving((v) => !v)}>
           <BookmarkIcon />
         </button>
         {saving && (
-          <Popover onClose={close} className="sel-popover tpl-popover">
+          <Popover onClose={close} className="sel-popover tpl-popover" fit={place.side}>
             {replacing ? (
               // Explicit second step, so a template can't be overwritten by a slip of the pen.
               <div className="tpl-confirm">
