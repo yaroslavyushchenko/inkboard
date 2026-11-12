@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Inkboard: безкоштовна дошка для графічного планшета</title>
-<meta name="description" content="Безкоштовна нескінченна дошка для графічного планшета: для пояснень, лекцій і конспектів. Перо з натиском, транспортир і циркуль, графіки функцій, об’ємні фігури, текст. Зберігає все саме, навіть коли зникає світло. Windows, macOS, Linux.">
+<meta name="description" content="Безкоштовна нескінченна дошка для графічного планшета: для пояснень, лекцій і конспектів. Перо з натиском, транспортир і циркуль, формули й графіки за ними, об’ємні фігури, текст. Зберігає все саме, навіть коли зникає світло. Windows, macOS, Linux.">
 <meta property="og:title" content="Inkboard: free whiteboard for pen tablets">
-<meta property="og:description" content="Infinite canvas, pressure-sensitive ink, protractor and compass, function graphs, 3D solids and text. Free and open source for Windows, macOS and Linux.">
+<meta property="og:description" content="Infinite canvas, pressure-sensitive ink, protractor and compass, formulas and their graphs, 3D solids and text. Free and open source for Windows, macOS and Linux.">
 <meta property="og:image" content="https://yaroslavyushchenko.github.io/inkboard/img/social-preview.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
@@ -153,26 +153,40 @@
   }
   .window img { display: block; width: 100%; height: auto; }
 
-  /* examples */
-  .ex-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 34px; }
+  /* examples: on wide screens the page scroll walks through them (sticky stage) */
+  .ex-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 28px; }
   .seg { position: relative; display: inline-flex; gap: 2px; padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   .seg::-webkit-scrollbar { display: none; }
   .seg button { position: relative; z-index: 1; flex: none; border: 0; background: none; color: var(--muted); font: 600 14.5px var(--body); height: 40px; padding: 0 18px; border-radius: 999px; cursor: pointer; transition: color .25s; }
   .seg button:hover { color: var(--text); }
   .seg button[aria-selected="true"] { color: var(--text); }
   .seg .knob { position: absolute; top: 4px; left: 0; height: 40px; border-radius: 999px; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 4px 14px -4px rgba(0,0,0,.14); transition: transform .45s var(--ease), width .45s var(--ease); overflow: hidden; }
-  .seg .knob i { position: absolute; left: 16px; right: 16px; bottom: 5px; height: 2px; border-radius: 2px; background: var(--accent); transform-origin: left; transform: scaleX(0); }
-  .seg .knob i.run { animation: prog var(--dur, 7s) linear forwards; }
-  .seg:hover .knob i.run, .seg.paused .knob i.run { animation-play-state: paused; }
-  @keyframes prog { to { transform: scaleX(1); } }
-  .track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; gap: 28px; overscroll-behavior-x: contain; }
-  .track::-webkit-scrollbar { display: none; }
-  .track figure { flex: 0 0 100%; margin: 0; scroll-snap-align: start; display: grid; grid-template-columns: 1fr 300px; gap: 36px; align-items: center; }
-  .frame { border-radius: 16px; overflow: hidden; background: #fff; border: 1px solid var(--frame); aspect-ratio: 16 / 10; box-shadow: 0 24px 50px -28px rgba(20,24,40,.35); }
-  .frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left center; transition: transform 1.2s var(--ease); }
-  .track figure.cur .frame img { transform: scale(1.015); }
+  .seg .knob i { position: absolute; left: 16px; right: 16px; bottom: 5px; height: 2px; border-radius: 2px; background: var(--accent); transform-origin: left; transform: scaleX(var(--p, 0)); }
+  .new { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .02em; vertical-align: 1px; }
+  #examples { padding-bottom: 0; }
+  .ex-scroll { position: relative; height: calc(var(--n) * 75vh + 100vh); }
+  .ex-sticky { position: sticky; top: 64px; height: calc(100vh - 64px); display: flex; flex-direction: column; justify-content: center; padding-bottom: 24px; }
+  .track { display: grid; }
+  .track figure { grid-area: 1 / 1; margin: 0; display: grid; grid-template-columns: minmax(0, min(100%, calc((100vh - 330px) * 1.6))) 300px; justify-content: center; gap: 40px; align-items: center; visibility: hidden; }
+  .track figure.cur { visibility: visible; }
+  .frame { border-radius: 16px; overflow: hidden; background: #fff; border: 1px solid var(--frame); aspect-ratio: 16 / 10; box-shadow: 0 24px 50px -28px rgba(20,24,40,.35); opacity: 0; transform: translateY(18px) scale(.985); transition: opacity .55s var(--ease), transform .7s var(--ease); }
+  .frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left center; }
+  figcaption { opacity: 0; transform: translateY(14px); transition: opacity .5s var(--ease), transform .6s var(--ease); }
+  .track figure.cur .frame, .track figure.cur figcaption { opacity: 1; transform: none; }
+  .track figure.cur figcaption { transition-delay: .08s; }
+  figcaption .step { font: 600 13px var(--body); color: var(--faint); letter-spacing: .06em; margin: 0 0 12px; }
   figcaption h3 { font: 600 22px/1.25 var(--body); letter-spacing: -.015em; margin-bottom: 10px; }
   figcaption p { margin: 0; color: var(--muted); }
+  /* Narrow or short windows: a plain list, one example after another. */
+  @media (max-width: 960px), (max-height: 600px) {
+    #examples { padding-bottom: 112px; }
+    .ex-scroll { height: auto; }
+    .ex-sticky { position: static; height: auto; display: block; padding: 0; }
+    #ex-tabs { display: none; }
+    .track { gap: 56px; }
+    .track figure { grid-area: auto; grid-template-columns: 1fr; gap: 18px; visibility: visible; }
+    .frame, figcaption { opacity: 1; transform: none; }
+  }
 
   /* bento */
   .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 48px; }
@@ -194,6 +208,11 @@
   .tpl { font-family: var(--hand); font-size: 26px; line-height: 1.25; text-align: left; color: var(--muted); }
   .tpl b { color: var(--text); }
   .tpl b { font-weight: 600; }
+  .fx { display: flex; align-items: center; gap: 12px; font: 400 34px "Times New Roman", serif; font-style: normal; }
+  .fx .fr { display: inline-grid; text-align: center; line-height: 1.05; }
+  .fx .fr i { font-style: normal; padding: 0 4px; }
+  .fx .fr i:first-child { border-bottom: 2px solid currentColor; }
+  .fx b { font-weight: 400; color: var(--accent); background: var(--accent-soft); padding: 2px 12px; border-radius: 10px; }
   .langs { font: 800 56px var(--display); letter-spacing: -.04em; display: flex; gap: 14px; align-items: baseline; }
   .langs span:last-child { color: var(--accent); }
 
@@ -296,7 +315,6 @@
 
   @media (max-width: 1100px) { .free-note { display: none; } }
   @media (max-width: 960px) {
-    .track figure { grid-template-columns: 1fr; gap: 20px; }
     .bento { grid-template-columns: 1fr 1fr; }
     .stats { grid-template-columns: 1fr 1fr; }
     .panel { grid-template-columns: 1fr; }
@@ -316,13 +334,10 @@
     .window { border-radius: 12px; }
     .window img { aspect-ratio: 4 / 3; object-fit: cover; object-position: 12% center; }
     .ex-head { margin-bottom: 22px; }
-    .seg:not(.os) { width: calc(100% + 32px); margin-inline: -16px; border-radius: 0; padding-inline: 16px; background: none; }
-    .seg:not(.os) button { border: 1px solid var(--line); }
-    .seg:not(.os) .knob { display: none; }
-    .seg:not(.os) button[aria-selected="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
     .frame { aspect-ratio: 4 / 3; border-radius: 12px; }
     .frame img { object-position: 25% center; }
-    .track { gap: 14px; }
+    #examples { padding-bottom: 76px; }
+    .track { gap: 40px; }
     .bento { grid-template-columns: 1fr; }
     .tile.wide { grid-column: auto; }
     .tile { min-height: 0; }
@@ -366,7 +381,7 @@
     <div class="wrap">
       <a class="pill rv in" href="https://github.com/yaroslavyushchenko/inkboard"><b data-i18n="hero.pill.b">GPL-3.0</b><span data-i18n="hero.pill">Безкоштовно й з відкритим кодом</span></a>
       <h1 data-i18n-html="hero.title">Нескінченна дошка для <span class="scribble">графічного планшета</span></h1>
-      <p class="lead" data-i18n="hero.lead">Пишіть пером як на папері, кресліть транспортиром і циркулем, будуйте графіки й об’ємні фігури. Без акаунта, без інтернету, і жоден рядок не загубиться, навіть коли зникне світло.</p>
+      <p class="lead" data-i18n="hero.lead">Пишіть пером як на папері, кресліть транспортиром і циркулем, набирайте формули й будуйте за ними графіки. Без акаунта, без інтернету, і жоден рядок не загубиться, навіть коли зникне світло.</p>
       <div class="cta">
         <a class="btn primary" href="#download">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
@@ -387,6 +402,8 @@
   </div>
 
   <section id="examples">
+    <div class="ex-scroll" id="ex-scroll" style="--n: 6">
+    <div class="ex-sticky">
     <div class="wrap">
       <div class="ex-head">
         <div class="rv">
@@ -396,7 +413,8 @@
         </div>
         <div class="seg rv d1" id="ex-tabs" role="tablist" aria-label="Приклади">
           <span class="knob" aria-hidden="true"><i></i></span>
-          <button type="button" role="tab" aria-selected="true" data-i18n="ex.t1">Геометрія</button>
+          <button type="button" role="tab" aria-selected="true"><span data-i18n="ex.t0">Формули</span><span class="new" data-i18n="ex.new">нове</span></button>
+          <button type="button" role="tab" aria-selected="false" data-i18n="ex.t1">Геометрія</button>
           <button type="button" role="tab" aria-selected="false" data-i18n="ex.t2">Графіки</button>
           <button type="button" role="tab" aria-selected="false" data-i18n="ex.t3">3D-фігури</button>
           <button type="button" role="tab" aria-selected="false" data-i18n="ex.t4">Текст</button>
@@ -405,6 +423,13 @@
       </div>
       <div class="track rv d2" id="track">
         <figure class="cur">
+          <div class="frame">
+            <img data-only="uk" src="img/ex-formulas-uk.webp" width="2000" height="1250" alt="Формули з клавіатури формул: парабола з обмеженням по x, функція g(x) = √(x + 4) і половина кола x² + y² = 9, обмежена по y, на одній площині; поруч 3/4 + 1/2 з відповіддю 1,25">
+            <img data-only="en" src="img/ex-formulas-en.webp" width="2000" height="1250" alt="Formulas from the math keypad: a parabola limited in x, the function g(x) = √(x + 4) and half of the circle x² + y² = 9, limited in y, on one plane; beside them 3/4 + 1/2 with the answer 1.25">
+          </div>
+          <figcaption><h3 data-i18n="ex.h0">Формули й графіки за ними</h3><p data-i18n="ex.c0">Набирайте дроби, корені й степені на клавіатурі формул, і Inkboard порахує відповідь. Виділіть формули, і вони стануть графіками: функції, рівняння на зразок кола, з обмеженнями по x і по y.</p></figcaption>
+        </figure>
+        <figure>
           <div class="frame">
             <img data-only="uk" src="img/ex-geometry-uk.webp" width="2000" height="1250" loading="lazy" alt="Побудова рівностороннього трикутника: дуги циркулем, кут 60° на транспортирі">
             <img data-only="en" src="img/ex-geometry-en.webp" width="2000" height="1250" loading="lazy" alt="Constructing an equilateral triangle: compass arcs and a 60° angle on the protractor">
@@ -441,6 +466,8 @@
         </figure>
       </div>
     </div>
+    </div>
+    </div>
   </section>
 
   <section id="features">
@@ -469,6 +496,11 @@
           <h3 data-i18n="f.wacom.t">Wacom та інші планшети</h3>
           <p data-i18n="f.wacom.d">Гумка на зворотному кінці пера, бічні кнопки й ExpressKeys. Гарячі клавіші працюють на будь-якій розкладці.</p>
         </div>
+        <div class="tile wide rv">
+          <div class="art"><div class="fx"><span class="fr"><i>3</i><i>4</i></span>+<span class="fr"><i>1</i><i>2</i></span><b>= <span data-i18n="f.fx.ans">1,25</span></b></div></div>
+          <h3 data-i18n="f.fx.t">Клавіатура формул</h3>
+          <p data-i18n="f.fx.d">Дроби, корені, степені, тригонометрія й інтеграли. Відповідь з’являється, коли попросите. Формули стають графіками з обмеженнями по x і y, і графік сам підлаштовує осі.</p>
+        </div>
         <div class="tile rv">
           <div class="art"><div class="tpl" data-i18n-html="f.tpl.art"><b>Дано:</b> …<br><b>Знайти:</b> …<br><b>Розв’язання:</b></div></div>
           <h3 data-i18n="f.tpl.t">Шаблони</h3>
@@ -479,7 +511,7 @@
           <h3 data-i18n="f.img.t">Картинки й скриншоти</h3>
           <p data-i18n="f.img.d">Вставляйте з буфера або просто перетягніть файл на дошку.</p>
         </div>
-        <div class="tile rv d2">
+        <div class="tile wide rv d2">
           <div class="art"><svg viewBox="0 0 160 120" aria-hidden="true">
             <path class="ants" d="M28 70c-6-34 30-52 62-46s48 30 38 52-48 30-72 22-24-10-28-28z"/>
             <path class="draw" pathLength="1" d="M58 66l16 14 28-34" stroke="var(--text)" stroke-width="4"/>
@@ -649,13 +681,16 @@
     'hero.pill.b': 'GPL-3.0',
     'hero.pill': 'Free and open source',
     'hero.title': 'An infinite whiteboard for your <span class="scribble">pen tablet</span>',
-    'hero.lead': 'Write with a pen like on paper, draw with a protractor and compass, plot graphs and 3D solids. No account, no internet, and not a single line is lost, even when the power goes out.',
+    'hero.lead': 'Write with a pen like on paper, draw with a protractor and compass, type formulas and plot graphs from them. No account, no internet, and not a single line is lost, even when the power goes out.',
     'hero.download': 'Download',
     'hero.free': 'free, forever',
     'hero.for': 'For',
     'ex.kicker': 'Examples',
     'ex.title': 'What it looks like',
     'ex.sub': 'Real screenshots of Inkboard, not mockups.',
+    'ex.t0': 'Formulas', 'ex.new': 'new',
+    'ex.h0': 'Formulas, and graphs from them',
+    'ex.c0': 'Type fractions, roots and powers on the math keypad, and Inkboard works out the answer. Select formulas and they become graphs: functions, equations such as a circle, limited in x and in y.',
     'ex.t1': 'Geometry', 'ex.t2': 'Graphs', 'ex.t3': '3D solids', 'ex.t4': 'Text', 'ex.t5': 'All boards',
     'ex.h1': 'Protractor and compass',
     'ex.c1': 'The protractor labels the arc in degrees; the compass draws circles and arcs of any radius. Turn and drag both with the pen.',
@@ -674,6 +709,9 @@
     'f.ink.d': 'Press harder for a thicker line. Lines are vector and stay sharp at any zoom, and your palm on the screen doesn’t draw.',
     'f.wacom.t': 'Wacom and other tablets',
     'f.wacom.d': 'Eraser on the back of the pen, side buttons and ExpressKeys. Shortcuts work on any keyboard layout.',
+    'f.fx.ans': '1.25',
+    'f.fx.t': 'Math keypad',
+    'f.fx.d': 'Fractions, roots, powers, trigonometry and integrals. The answer shows when you ask for it. Formulas turn into graphs, limited in x and y, and the plane fits its axes to them.',
     'f.tpl.art': '<b>Given:</b> …<br><b>Find:</b> …<br><b>Solution:</b>',
     'f.tpl.t': 'Templates',
     'f.tpl.d': 'Save anything once and insert it into any board.',
@@ -867,48 +905,41 @@
   }), { threshold: 0.18 })
   document.querySelectorAll('.rv, .tile').forEach((el) => io.observe(el))
 
-  // Examples: the switcher scrolls the strip, swiping the strip moves the switcher,
-  // and it advances by itself (with a progress line) until the visitor takes over.
+  // Examples: on wide screens the page scroll walks through them. The section is tall, its
+  // stage sticks to the top, and how far the visitor has scrolled picks the example; clicking
+  // a tab scrolls the page to that example. Narrow screens just list them one after another.
   const exTabs = document.getElementById('ex-tabs')
   const tabs = [...exTabs.querySelectorAll('button')]
-  const track = document.getElementById('track')
-  const figs = [...track.children]
+  const exScroll = document.getElementById('ex-scroll')
+  const figs = [...document.getElementById('track').children]
   const bar = exTabs.querySelector('.knob i')
-  let cur = 0, auto = !reduced, inView = false
-  const restartBar = () => {
-    bar.classList.remove('run'); void bar.offsetWidth
-    if (auto && inView) bar.classList.add('run')
-  }
+  const stacked = matchMedia('(max-width: 960px), (max-height: 600px)')
+  exScroll.style.setProperty('--n', figs.length)
+  let cur = -1
   const mark = (i) => {
+    if (i === cur) return
     cur = i
     tabs.forEach((t, k) => t.setAttribute('aria-selected', String(k === i)))
     figs.forEach((f, k) => f.classList.toggle('cur', k === i))
     placeKnob(exTabs)
-    restartBar()
   }
-  const go = (i) => {
-    mark(i)
-    track.scrollTo({ left: figs[i].offsetLeft - track.offsetLeft, behavior: reduced ? 'auto' : 'smooth' })
-    const t = tabs[i]
-    exTabs.scrollTo({ left: t.offsetLeft - (exTabs.clientWidth - t.offsetWidth) / 2, behavior: reduced ? 'auto' : 'smooth' })
+  const span = () => exScroll.offsetHeight - (innerHeight - 64)
+  const onExScroll = () => {
+    if (stacked.matches) return
+    const p = Math.min(0.9999, Math.max(0, -exScroll.getBoundingClientRect().top / span()))
+    const at = p * figs.length
+    mark(Math.floor(at))
+    bar.style.setProperty('--p', (at - Math.floor(at)).toFixed(3))
   }
-  const stopAuto = () => { auto = false; bar.classList.remove('run') }
-  tabs.forEach((t, i) => t.addEventListener('click', () => { stopAuto(); go(i) }))
-  bar.addEventListener('animationend', () => { if (auto) go((cur + 1) % figs.length) })
-  track.addEventListener('pointerdown', stopAuto, { passive: true })
-  track.addEventListener('touchstart', stopAuto, { passive: true })
-  track.addEventListener('wheel', (e) => { if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) stopAuto() }, { passive: true })
-  let raf = 0
-  track.addEventListener('scroll', () => {
-    cancelAnimationFrame(raf)
-    raf = requestAnimationFrame(() => {
-      const w = figs[0].getBoundingClientRect().width || 1
-      const gap = parseFloat(getComputedStyle(track).columnGap) || 0
-      const i = Math.min(figs.length - 1, Math.round(track.scrollLeft / (w + gap)))
-      if (i !== cur && !auto) mark(i)
-    })
-  }, { passive: true })
-  new IntersectionObserver(([e]) => { inView = e.isIntersecting; if (inView) restartBar(); else bar.classList.remove('run') }, { threshold: 0.4 }).observe(track)
+  let exRaf = 0
+  addEventListener('scroll', () => { cancelAnimationFrame(exRaf); exRaf = requestAnimationFrame(onExScroll) }, { passive: true })
+  addEventListener('resize', onExScroll)
+  stacked.addEventListener('change', () => { figs.forEach((f) => f.classList.add('cur')); cur = -1; onExScroll() })
+  tabs.forEach((t, i) => t.addEventListener('click', () => {
+    const top = exScroll.getBoundingClientRect().top + scrollY - 64 + ((i + 0.35) / figs.length) * span()
+    scrollTo({ top, behavior: reduced ? 'auto' : 'smooth' })
+  }))
+  mark(0); onExScroll()
 
   // Download: one switcher for the three systems, preselected to the visitor's.
   const osTabs = document.getElementById('os-tabs')
