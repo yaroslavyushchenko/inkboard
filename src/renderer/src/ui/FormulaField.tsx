@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  backspace, moveEnd, moveHome, moveLeft, moveRight, typeChar, type Cursor, type FormulaState
+  backspace, insertFraction, moveEnd, moveHome, moveLeft, moveRight, typeChar, type Cursor, type FormulaState
 } from '../engine/formula'
 import { caretAt, caretOf, caretVertical, typesetRows } from '../engine/formulatype'
 import { useUI, type MathTarget } from '../store'
+import { divSign } from './mathKeys'
 import { MathSvg } from './MathSvg'
 
 /** Latin letter of a physical key, so formulas can be typed while a Cyrillic layout is on. */
@@ -179,7 +180,10 @@ export function FormulaField({
             if (onTab?.()) e.preventDefault()
             return
         }
+        // `/` is plain division, as on a calculator; Alt+/ makes a fraction of what stands before it.
+        if (e.code === 'Slash' && e.altKey) return go(insertFraction(st))
         if (e.key.length !== 1 || e.altKey) return
+        if (e.key === '/') return go(typeChar(st, divSign(useUI.getState().lang)))
         // A Cyrillic layout types Cyrillic letters: take the Latin letter of the same key instead.
         const ch = /\p{Script=Cyrillic}/u.test(e.key) ? latinOf(e.code) : e.key
         if (ch) go(typeChar(st, ch))

@@ -1,6 +1,6 @@
 import { PAPER_COLOR } from './background'
 import { isBlank, type FormulaState, type Row } from './formula'
-import { parsePlot, parseRows, prefixLength, readPlotRows, rowsToText } from './formulaexpr'
+import { fnHead, isFnLetter, labelRows, parsePlot, parseRows, readPlotRows, rowsToText } from './formulaexpr'
 import { typesetRows } from './formulatype'
 import { MAX_EXPR_LENGTH, type MathFn } from './mathexpr'
 import { MATH_FONT, typesetFormula } from './mathtype'
@@ -108,8 +108,28 @@ function sanitizeFns(v: unknown): { fns?: PlotFn[] } {
     const expr = f.expr.trim()
     if (!expr || expr.length > MAX_EXPR_LENGTH) continue
     const color = typeof f.color === 'string' && /^#[0-9a-f]{3,8}$/i.test(f.color) ? f.color : FN_COLORS[fns.length % FN_COLORS.length]
-    const rows = f.rows === undefined ? null : readPlotRows(f.rows, expr)
-    fns.push({ expr, color, ...(rows ? { rows } : {}) })
+    const arg = isFnLetter(f.arg) && f.arg !== 'x' ? f.arg : undefined
+    const name = isFnLetter(f.name) && f.name !== 'y' && f.name !== 'x' && f.name !== arg ? f.name : undefined
+    const rows = f.rows === undefined ? null : readPlotRows(f.rows, expr, arg)
+    const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 1e6 ? v : undefined)
+    let from = num(f.from)
+    let to = num(f.to)
+    if (from !== undefined && to !== undefined && from > to) [from, to] = [to, from]
+    let yFrom = num(f.yFrom)
+    let yTo = num(f.yTo)
+    if (yFrom !== undefined && yTo !== undefined && yFrom > yTo) [yFrom, yTo] = [yTo, yFrom]
+    fns.push({
+      expr,
+      color,
+      ...(rows ? { rows } : {}),
+      // The variable only means something with the keypad formula written in it.
+      ...(rows && arg ? { arg } : {}),
+      ...(name ? { name } : {}),
+      ...(from !== undefined ? { from } : {}),
+      ...(to !== undefined ? { to } : {}),
+      ...(yFrom !== undefined ? { yFrom } : {}),
+      ...(yTo !== undefined ? { yTo } : {})
+    })
     if (fns.length === MAX_FNS) break
   }
   return fns.length ? { fns } : {}
@@ -123,17 +143,39 @@ export interface FnRow {
   st: FormulaState
   /** Last state of this row that could be plotted; drawn while the formula is half-built (`x^□`, `sin`). */
   shown: Row | null
+  /** Name and variable picked in the panel (a head typed in the formula wins). */
+  name?: string
+  arg?: string
+  /** Range of the variable the curve is drawn on. */
+  from?: number
+  to?: number
+  /** Range of the function's value (the vertical axis). */
+  yFrom?: number
+  yTo?: number
 }
 
 /** Refresh `shown` for every row and list the functions to draw (rows with nothing valid yet are skipped). */
 export function liveFns(rows: FnRow[]): { rows: FnRow[]; fns: PlotFn[] } {
   const next = rows.map((r) => {
     if (isBlank(r.st.rows)) return r.shown ? { ...r, shown: null } : r
-    const ok = parseRows(r.st.rows).ok
+    const ok = parseRows(r.st.rows, r.arg).ok
     return ok && r.shown !== r.st.rows ? { ...r, shown: r.st.rows } : r
   })
   const fns: PlotFn[] = []
-  for (const r of next) if (r.shown) fns.push({ expr: rowsToText(r.shown), color: r.color, rows: r.shown })
+  for (const r of next) {
+    if (!r.shown) continue
+    fns.push({
+      expr: rowsToText(r.shown, r.arg),
+      color: r.color,
+      rows: r.shown,
+      ...(r.name && r.name !== 'y' ? { name: r.name } : {}),
+      ...(r.arg && r.arg !== 'x' ? { arg: r.arg } : {}),
+      ...(r.from !== undefined ? { from: r.from } : {}),
+      ...(r.to !== undefined ? { to: r.to } : {}),
+      ...(r.yFrom !== undefined ? { yFrom: r.yFrom } : {}),
+      ...(r.yTo !== undefined ? { yTo: r.yTo } : {})
+    })
+  }
   return { rows: next, fns }
 }
 
@@ -241,6 +283,121 @@ export function plotCurve(f: MathFn, x0: number, x1: number, y0: number, y1: num
   return out
 }
 
+/**
+ * The curve where f(x, y) = 0 inside [x0, x1] × [y0, y1] (axis units), by marching squares on a grid
+ * of about `step`: each cell whose corners change sign holds a piece of it, found exactly on the
+ * cell's edges by bisection. A sign change where |f| grows towards it is a pole (x·y = 1 near 0 is
+ * fine, y = tan x written as an equation is not), and is left out. Returns separate polylines.
+ */
+export function plotImplicit(f: MathFn, x0: number, x1: number, y0: number, y1: number, step: number): [number, number][][] {
+  const nx = Math.min(400, Math.max(8, Math.ceil((x1 - x0) / step)))
+  const ny = Math.min(400, Math.max(8, Math.ceil((y1 - y0) / step)))
+  const xs = (i: number): number => x0 + ((x1 - x0) * i) / nx
+  const ys = (j: number): number => y0 + ((y1 - y0) * j) / ny
+  const val = (x: number, y: number): number => {
+    const v = f(x, y)
+    return Number.isFinite(v) ? v : NaN
+  }
+  // Corner values, row by row (j), nudged off an exact 0 so every corner has a side.
+  const grid = new Float64Array((nx + 1) * (ny + 1))
+  for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) grid[j * (nx + 1) + i] = val(xs(i), ys(j))
+  const at = (i: number, j: number): number => grid[j * (nx + 1) + i]
+  const pos = (v: number): boolean => v > 0
+
+  // A crossing on an edge, by its key: horizontal edge (i, j)-(i+1, j) = 2·id, vertical (i, j)-(i, j+1) = 2·id + 1.
+  const points = new Map<number, [number, number] | null>()
+  const cross = (key: number): [number, number] | null => {
+    let p = points.get(key)
+    if (p !== undefined) return p
+    const id = key >> 1
+    const i = id % (nx + 1)
+    const j = (id - i) / (nx + 1)
+    const vert = key & 1
+    let ax = xs(i), ay = ys(j)
+    let bx = vert ? ax : xs(i + 1), by = vert ? ys(j + 1) : ay
+    let fa = at(i, j)
+    const fb = vert ? at(i, j + 1) : at(i + 1, j)
+    const big = Math.max(Math.abs(fa), Math.abs(fb))
+    for (let k = 0; k < 30; k++) {
+      const mx = (ax + bx) / 2, my = (ay + by) / 2
+      const fm = val(mx, my)
+      if (Number.isNaN(fm)) break
+      if (pos(fm) === pos(fa)) {
+        ax = mx
+        ay = my
+        fa = fm
+      } else {
+        bx = mx
+        by = my
+      }
+    }
+    const mx = (ax + bx) / 2, my = (ay + by) / 2
+    const fm = val(mx, my)
+    p = Number.isNaN(fm) || Math.abs(fm) > big ? null : [mx, my]
+    points.set(key, p)
+    return p
+  }
+  const H = (i: number, j: number): number => 2 * (j * (nx + 1) + i)
+  const V = (i: number, j: number): number => 2 * (j * (nx + 1) + i) + 1
+
+  // Segments between edge keys; every key joins at most two of them.
+  const links = new Map<number, number[]>()
+  const link = (a: number, b: number): void => {
+    if (!cross(a) || !cross(b)) return
+    for (const [k, o] of [[a, b], [b, a]]) {
+      const l = links.get(k)
+      if (l) l.push(o)
+      else links.set(k, [o])
+    }
+  }
+  for (let j = 0; j < ny; j++) {
+    for (let i = 0; i < nx; i++) {
+      const a = at(i, j), b = at(i + 1, j), c = at(i + 1, j + 1), d = at(i, j + 1)
+      if (Number.isNaN(a) || Number.isNaN(b) || Number.isNaN(c) || Number.isNaN(d)) continue
+      // Edges: bottom (a-b), right (b-c), top (d-c), left (a-d).
+      const e: number[] = []
+      if (pos(a) !== pos(b)) e.push(H(i, j))
+      if (pos(b) !== pos(c)) e.push(V(i + 1, j))
+      if (pos(d) !== pos(c)) e.push(H(i, j + 1))
+      if (pos(a) !== pos(d)) e.push(V(i, j))
+      if (e.length === 2) link(e[0], e[1])
+      else if (e.length === 4) {
+        // A saddle: the centre's sign says which corners the curve keeps together.
+        const m = val((xs(i) + xs(i + 1)) / 2, (ys(j) + ys(j + 1)) / 2)
+        if (pos(m) === pos(a)) {
+          link(e[0], e[1])
+          link(e[2], e[3])
+        } else {
+          link(e[0], e[3])
+          link(e[1], e[2])
+        }
+      }
+    }
+  }
+
+  // Walk the chains: open ones from an end first, then the closed loops left over.
+  const out: [number, number][][] = []
+  const used = new Set<number>()
+  const walk = (start: number): void => {
+    const line: [number, number][] = []
+    let prev = -1
+    let k: number | undefined = start
+    while (k !== undefined && !used.has(k)) {
+      used.add(k)
+      line.push(cross(k)!)
+      const next: number | undefined = (links.get(k) ?? []).find((o) => o !== prev && !used.has(o))
+      prev = k
+      k = next
+    }
+    // Close a loop back onto its first point.
+    if (line.length > 2 && (links.get(prev) ?? []).includes(start)) line.push(line[0])
+    if (line.length >= 2) out.push(line)
+  }
+  for (const [k, l] of links) if (l.length === 1 && !used.has(k)) walk(k)
+  for (const k of links.keys()) if (!used.has(k)) walk(k)
+  return out
+}
+
 function clipSegment(p: [number, number], q: [number, number], x0: number, x1: number, y0: number, y1: number): [[number, number], [number, number]] | null {
   const dx = q[0] - p[0]
   const dy = q[1] - p[1]
@@ -283,7 +440,14 @@ function addFnPrims(g: GraphItem, out: GraphPrims): void {
     const r = parsePlot(f)
     if (!r.ok) continue
     // Sample about every 2 board units (in axis units: 2 / unit).
-    const pieces = plotCurve(r.fn, g.xMin, g.xMax, g.yMin, g.yMax, 2 / u).filter((p) => p.length >= 2)
+    const x0 = Math.max(g.xMin, f.from ?? -Infinity)
+    const x1 = Math.min(g.xMax, f.to ?? Infinity)
+    const y0 = Math.max(g.yMin, f.yFrom ?? -Infinity)
+    const y1 = Math.min(g.yMax, f.yTo ?? Infinity)
+    if (!(x0 < x1) || !(y0 < y1)) continue
+    const pieces = (r.eq ? plotImplicit(r.fn, x0, x1, y0, y1, 4 / u) : plotCurve(r.fn, x0, x1, y0, y1, 2 / u)).filter(
+      (p) => p.length >= 2
+    )
     for (const piece of pieces) out.paths.push({ color: f.color, w, pts: piece.map(([x, y]) => [X(x), Y(y)]) })
     if (g.hideFormulas || !pieces.length) continue
     // Anchor the formula at the right end of the curve, where it leaves the plane or the x range ends.
@@ -291,7 +455,7 @@ function addFnPrims(g: GraphItem, out: GraphPrims): void {
     for (const p of pieces) if (p[p.length - 1][0] > end[0]) end = p[p.length - 1]
     // A keypad formula is written exactly as it was built; a typed one is typeset from its meaning.
     const box = f.rows
-      ? typesetRows([{ t: 'c', s: 'y' }, { t: 'c', s: '=' }, ...f.rows.slice(prefixLength(f.rows))], u * 0.62).box
+      ? typesetRows(labelRows({ ...f, rows: f.rows }), u * 0.62).box
       : typesetFormula(r.node, u * 0.62, r.comma)
     labels.push({ color: f.color, box, ax: X(end[0]), ay: Y(end[1]), x: 0, y: 0 })
   }
@@ -302,6 +466,61 @@ function addFnPrims(g: GraphItem, out: GraphPrims): void {
       out.texts.push({ x: t.x + l.x, y: t.y + l.y, s: t.s, size: t.size, italic: t.italic, align: 'left', baseline: 'alphabetic', color: l.color, math: true })
     }
   }
+}
+
+/** Where fitting looks for a curve with no range of its own: the usual school window. */
+const FIT_WINDOW = 10
+/** Where it looks for a curve drawn on a range, and for an equation (a circle may be large). */
+const FIT_FAR = 50
+
+/**
+ * Axis ranges that just hold the plane's curves, with a little room and always the origin (the axes
+ * cross there). The curves are looked for in fixed windows, not in the plane as it is now, so the
+ * plane grows as well as shrinks and fitting again changes nothing: a function with no range in
+ * x, y from −10 to 10 (a parabola is cut where it leaves them), a function on a range along all of
+ * it, an equation within ±50; a range of values is searched along all of itself as well. Only when nothing is found there is the plane itself searched.
+ * Null when nothing is drawn at all.
+ */
+export function fitRanges(g: GraphParams): Pick<GraphParams, 'xMin' | 'xMax' | 'yMin' | 'yMax'> | null {
+  if (g.kind !== 'plane' || !g.fns?.length) return null
+  const fns = g.fns.map((f) => ({ f, r: parsePlot(f) }))
+  const extent = (box: (f: PlotFn, eq: boolean) => [number, number, number, number]): [number, number, number, number] | null => {
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity
+    for (const { f, r } of fns) {
+      if (!r.ok) continue
+      const [xa, xb, ya, yb] = box(f, !!r.eq)
+      const a = Math.max(xa, f.from ?? -Infinity)
+      const b = Math.min(xb, f.to ?? Infinity)
+      const c = Math.max(ya, f.yFrom ?? -Infinity)
+      const d = Math.min(yb, f.yTo ?? Infinity)
+      if (!(a < b) || !(c < d)) continue
+      // Fine enough for a curve a few cells across, at most a few hundred steps per side.
+      const step = Math.max((b - a) / 400, (d - c) / 400, 1 / 48)
+      const pieces = r.eq ? plotImplicit(r.fn, a, b, c, d, step) : plotCurve(r.fn, a, b, c, d, step)
+      for (const piece of pieces) {
+        for (const [x, y] of piece) {
+          x0 = Math.min(x0, x)
+          x1 = Math.max(x1, x)
+          y0 = Math.min(y0, y)
+          y1 = Math.max(y1, y)
+        }
+      }
+    }
+    return x0 <= x1 && y0 <= y1 ? [x0, x1, y0, y1] : null
+  }
+  const found =
+    extent((f, eq) => {
+      const ranged = f.from !== undefined || f.to !== undefined
+      const yRanged = f.yFrom !== undefined || f.yTo !== undefined
+      const x = eq ? FIT_FAR : ranged ? FIT_FAR * 20 : FIT_WINDOW
+      const y = yRanged ? FIT_FAR * 20 : eq || ranged ? FIT_FAR : FIT_WINDOW
+      return [-x, x, -y, y]
+    }) ?? extent(() => [g.xMin, g.xMax, g.yMin, g.yMax])
+  if (!found) return null
+  const [x0, x1, y0, y1] = found
+  const lo = (v: number): number => Math.min(-1, Math.floor(v - 0.5))
+  const hi = (v: number): number => Math.max(1, Math.ceil(v + 0.5))
+  return { xMin: lo(x0), xMax: hi(x1), yMin: lo(y0), yMax: hi(y1) }
 }
 
 export interface Label {
@@ -419,9 +638,22 @@ function buildPrims(g: GraphItem): GraphPrims {
   if (ax === 0 && ay === 0) {
     out.texts.push({ x: X(0) - u * 0.2, y: Y(0) + u * 0.12, s: '0', size: font, align: 'right', baseline: 'top', color: LABEL_COLOR })
   }
-  out.texts.push({ x: X(g.xMax) + ext, y: Y(ay) + tick + u * 0.12, s: 'x', size: font * 1.15, align: 'center', baseline: 'top', italic: true, color: LABEL_COLOR })
-  out.texts.push({ x: X(ax) - tick - u * 0.25, y: Y(g.yMax) - ext, s: 'y', size: font * 1.15, align: 'right', baseline: 'middle', italic: true, color: LABEL_COLOR })
+  const names = axisNames(g)
+  out.texts.push({ x: X(g.xMax) + ext, y: Y(ay) + tick + u * 0.12, s: names.h, size: font * 1.15, align: 'center', baseline: 'top', italic: true, color: LABEL_COLOR })
+  out.texts.push({ x: X(ax) - tick - u * 0.25, y: Y(g.yMax) - ext, s: names.v, size: font * 1.15, align: 'right', baseline: 'middle', italic: true, color: LABEL_COLOR })
   return out
+}
+
+/**
+ * Names of the plane's axes, from its functions: the variable they share (t for s(t) = …) on the
+ * horizontal axis, and the name they share on the vertical one (s, v; f, g and h are values of y).
+ */
+export function axisNames(g: Pick<GraphParams, 'fns'>): { h: string; v: string } {
+  const heads = (g.fns ?? []).map(fnHead)
+  const same = (pick: (h: { name: string; arg: string }) => string): string | null =>
+    heads.length && heads.every((h) => pick(h) === pick(heads[0])) ? pick(heads[0]) : null
+  const v = same((h) => h.name)
+  return { h: same((h) => h.arg) ?? 'x', v: v && !'fgh'.includes(v) ? v : 'y' }
 }
 
 /** Screen-plane position of the 3D point (x, y, z): y right, z up, x towards the viewer (down-left). */

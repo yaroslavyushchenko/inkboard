@@ -181,6 +181,14 @@ export const FunctionIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
+/** Fit a plane to its graphs: corner marks around a curve. */
+export const FitIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4" />
+    <path d="M7.5 15.5c2-5 7-5 9-1" strokeWidth="1.5" />
+  </svg>
+)
+
 /** Formula: a radical sign over x. */
 export const FormulaIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>

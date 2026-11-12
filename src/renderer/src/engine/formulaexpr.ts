@@ -4,37 +4,151 @@
  * (old boards, older versions of the app).
  */
 import type { Atom, Row } from './formula'
-import { validateRows } from './formula'
+import { slots, validateRows, withSlots } from './formula'
 import { parseRow, type LexInfo } from './formulalex'
-import { evaluate, parseExpr, parseWith, type MathNode, type ParseResult } from './mathexpr'
+import { evaluate, parseExpr, parseWith, usesX, usesY, type MathNode, type ParseResult } from './mathexpr'
 import type { PlotFn } from './types'
 
 const c = (s: string): Atom => ({ t: 'c', s })
 const isC = (a: Atom | undefined, s: string): boolean => !!a && a.t === 'c' && a.s === s
 
-/** Length of a leading `y =` or `f(x) =`, which is not part of the formula itself. */
-export function prefixLength(rows: Row): number {
-  if (isC(rows[0], 'y') && isC(rows[1], '=')) return 2
-  const f = rows[0]
-  const arg = rows[1]
-  if (f?.t === 'c' && /^[a-z]$/.test(f.s) && arg?.t === 'fence' && arg.k === 'paren' && arg.x.length === 1 && isC(arg.x[0], 'x') && isC(rows[2], '=')) return 3
-  return 0
+/** Variables a plotted function can be written in. */
+export const FN_VARS = ['x', 't', 'a', 'n', 'k', 'φ'] as const
+/** Names a plotted function can carry (y = …, f(x) = …, s(t) = …). */
+export const FN_NAMES = ['y', 'f', 'g', 'h', 's', 'v'] as const
+
+/** A letter that can name a function or be its variable (not e, which is a number). */
+export const isFnLetter = (s: unknown): s is string => typeof s === 'string' && /^\p{Ll}$/u.test(s) && s !== 'e' && s !== 'π'
+
+/** What a leading `y =`, `f(x) =` or `s(t) =` says; it is not part of the formula itself. */
+export interface PlotHead {
+  /** Atoms the head takes (0 = none). */
+  len: number
+  name?: string
+  arg?: string
 }
 
-const parsed = new WeakMap<Row, ParseResult>()
+export function plotHead(rows: Row): PlotHead {
+  const f = rows[0]
+  if (f?.t !== 'c' || !isFnLetter(f.s) || f.s === 'x') return { len: 0 }
+  if (isC(rows[1], '=')) return { len: 2, name: f.s }
+  const arg = rows[1]
+  if (arg?.t === 'fence' && arg.k === 'paren' && arg.x.length === 1 && arg.x[0].t === 'c' && isFnLetter(arg.x[0].s) && arg.x[0].s !== f.s && isC(rows[2], '=')) {
+    return { len: 3, name: f.s, arg: arg.x[0].s }
+  }
+  return { len: 0 }
+}
 
-/** Parse a keypad formula of x. Cached while the rows stay the same object (formulas are immutable). */
-export function parseRows(rows: Row): ParseResult {
-  let res = parsed.get(rows)
+/** Length of a leading `y =` or `f(x) =`, which is not part of the formula itself. */
+export const prefixLength = (rows: Row): number => plotHead(rows).len
+
+/**
+ * Where the `=` of an equation in x and y stands (x² + y² = 4, x = 3, y² = x), or -1. A leading
+ * `y =` or `f(x) =` makes a function instead, and a formula ending in `=` asks for its value.
+ */
+export function equalsAt(rows: Row): number {
+  if (plotHead(rows).len) return -1
+  const i = rows.findIndex((a) => isC(a, '='))
+  return i > 0 && i < rows.length - 1 ? i : -1
+}
+
+/** Is the formula an equation in x and y, drawn as a curve where both sides are equal? */
+export const isEquation = (rows: Row): boolean => equalsAt(rows) >= 0
+
+const parsed = new WeakMap<Row, Map<string, ParseResult>>()
+
+/**
+ * Parse a keypad formula as a function of `arg` (x unless set; a head like `s(t) =` names its own),
+ * or as an equation in `arg` and y. Cached while the rows stay the same object (formulas are immutable).
+ */
+export function parseRows(rows: Row, arg = 'x'): ParseResult {
+  const head = plotHead(rows)
+  const v = head.arg ?? arg
+  let byArg = parsed.get(rows)
+  if (!byArg) parsed.set(rows, (byArg = new Map()))
+  let res = byArg.get(v)
   if (!res) {
+    const eq = equalsAt(rows)
+    let sides: [MathNode, MathNode] | undefined
     res = parseWith(() => {
-      const info: LexInfo = { comma: false }
-      const node = parseRow(rows, [], info, prefixLength(rows))
+      const info: LexInfo = { comma: false, arg: v }
+      let node: MathNode
+      if (eq < 0) node = parseRow(rows, [], info, head.len)
+      else {
+        info.y = true
+        sides = [parseRow(rows, [], info, 0, eq), parseRow(rows, [], info, eq + 1)]
+        node = { k: 'bin', op: '-', a: sides[0], b: sides[1] }
+      }
       return { toks: [{ t: 'node', node, pos: 0 }, { t: 'end', pos: 0 }], comma: info.comma }
     })
-    parsed.set(rows, res)
+    if (res.ok && sides) res = { ...res, eq: sides }
+    byArg.set(v, res)
   }
   return res
+}
+
+/** The name and variable a plotted function is shown with: its own head first, then its settings. */
+export function fnHead(f: Pick<PlotFn, 'rows' | 'name' | 'arg'>): { name: string; arg: string } {
+  const head = f.rows ? plotHead(f.rows) : { len: 0 }
+  // An equation names no function: its curve lives in the plane of x (or its variable) and y.
+  if (f.rows && isEquation(f.rows)) return { name: 'y', arg: f.arg ?? 'x' }
+  return { name: head.name ?? f.name ?? 'y', arg: head.arg ?? f.arg ?? 'x' }
+}
+
+/** The left side written before a plotted formula: `y =`, `f(x) =`, `s(t) =`. */
+export function headRows(name: string, arg: string): Row {
+  if (name === 'y') return [c('y'), c('=')]
+  return [c(name), { t: 'fence', k: 'paren', x: [c(arg)] }, c('=')]
+}
+
+/** The formula written next to a plotted curve, with its left side. */
+export function labelRows(f: PlotFn & { rows: Row }): Row {
+  if (plotHead(f.rows).len || isEquation(f.rows)) return f.rows
+  const { name, arg } = fnHead(f)
+  return [...headRows(name, arg), ...f.rows]
+}
+
+/**
+ * The formula with its variable renamed (x² + x → t² + t), so picking another variable keeps it valid.
+ * Only letters standing alone are renamed: the x inside a typed name like `exp` is left as it is.
+ */
+export function renameVar(rows: Row, from: string, to: string): Row {
+  const letter = (a: Atom | undefined): boolean => !!a && a.t === 'c' && /^[a-z]$/i.test(a.s)
+  let changed = false
+  const out = rows.map((a, i) => {
+    if (a.t === 'c') {
+      if (a.s !== from || letter(rows[i - 1]) || letter(rows[i + 1])) return a
+      changed = true
+      return c(to)
+    }
+    const kids = slots(a)
+    if (!kids.length) return a
+    const next = kids.map((r) => renameVar(r, from, to))
+    if (next.every((r, k) => r === kids[k])) return a
+    changed = true
+    return withSlots(a, next)
+  })
+  return changed ? out : rows
+}
+
+/**
+ * A formula from the board read as a function to plot: its variable comes from its head
+ * (`s(t) =`), else it is x, else the one letter it uses (`3t + 1`). Null when it is no function.
+ */
+export function plotFormula(rows: Row): { arg: string; name?: string } | null {
+  const head = plotHead(rows)
+  const named = head.name ? { name: head.name } : {}
+  // Something to draw: a curve in the variable, or an equation that also uses y (y² = 4).
+  const draws = (r: ParseResult): boolean => r.ok && (usesX(r.node) || (!!r.eq && usesY(r.node)))
+  if (head.arg) return parseRows(rows, head.arg).ok ? { arg: head.arg, ...named } : null
+  const r = parseRows(rows, 'x')
+  if (r.ok) return draws(r) || head.len ? { arg: 'x', ...named } : null
+  const v = r.detail
+  if (r.code === 'unknownName' && isFnLetter(v) && v !== head.name && v !== 'y') {
+    const again = parseRows(rows, v)
+    if (again.ok && usesX(again.node)) return { arg: v, ...named }
+  }
+  return null
 }
 
 // ------------------------------------------------------------------ the number a formula stands for
@@ -97,6 +211,8 @@ export function nodeToRows(n: MathNode, comma = false): Row {
       return [...(comma ? n.text.replace('.', ',') : n.text)].map(c)
     case 'x':
       return [c('x')]
+    case 'y':
+      return [c('y')]
     case 'const':
       return [c(n.name === 'pi' ? 'π' : 'e')]
     case 'neg':
@@ -147,6 +263,8 @@ export function nodeToText(n: MathNode): string {
       return n.text
     case 'x':
       return 'x'
+    case 'y':
+      return 'y'
     case 'const':
       return n.name
     case 'neg':
@@ -176,21 +294,22 @@ export function nodeToText(n: MathNode): string {
 }
 
 /** The text stored beside a keypad formula on a plot (see `nodeToText`); '' when it can't be plotted. */
-export function rowsToText(rows: Row): string {
-  const r = parseRows(rows)
-  return r.ok ? nodeToText(r.node) : ''
+export function rowsToText(rows: Row, arg = 'x'): string {
+  const r = parseRows(rows, arg)
+  if (!r.ok) return ''
+  return r.eq ? `${nodeToText(r.eq[0])}=${nodeToText(r.eq[1])}` : nodeToText(r.node)
 }
 
 /** Parse one plotted function: its keypad formula when it has one, else its text. */
 export function parsePlot(f: PlotFn): ParseResult {
-  return f.rows ? parseRows(f.rows) : parseExpr(f.expr)
+  return f.rows ? parseRows(f.rows, f.arg) : parseExpr(f.expr)
 }
 
 /**
  * Keypad rows read from a file, kept only if they still say the same as the text next to them
  * (an older version may have edited the text and left the rows behind).
  */
-export function readPlotRows(v: unknown, expr: string): Row | null {
+export function readPlotRows(v: unknown, expr: string, arg = 'x'): Row | null {
   const rows = validateRows(v)
-  return rows && rows.length && rowsToText(rows) === expr ? rows : null
+  return rows && rows.length && rowsToText(rows, arg) === expr ? rows : null
 }

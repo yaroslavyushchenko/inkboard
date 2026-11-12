@@ -113,6 +113,16 @@ export interface PlotFn {
    * versions without the keypad.
    */
   rows?: Row
+  /** Name of the function as written next to it: f for f(x) = …; absent = y = …. */
+  name?: string
+  /** Its variable (t, a, φ…); absent = x. `expr` is always written in x. */
+  arg?: string
+  /** Drawn only for values of the variable from `from` to `to` (each optional). */
+  from?: number
+  to?: number
+  /** Drawn only where its value (the vertical axis) is from `yFrom` to `yTo` (each optional). */
+  yFrom?: number
+  yTo?: number
 }
 
 export interface GraphItem extends ItemBase, GraphParams {

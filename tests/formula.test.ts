@@ -201,7 +201,8 @@ test('errors point into the formula; what is only written is not calculated', ()
   }
   bad(rows('a+1'), 'unknownName')
   bad(rows('2+'), 'missingArg')
-  bad(rows('x=2'), 'unexpected')
+  // One `=` makes an equation in x and y (x = 2 is a vertical line); a second one is too many.
+  bad(rows('x=2=3'), 'unexpected')
   bad([{ t: 'frac', n: [{ t: 'c', s: '1' }], d: [] }], 'empty')
   bad([{ t: 'int', x: [{ t: 'c', s: 'x' }], v: [{ t: 'c', s: 'x' }] }], 'unsupported')
   bad(rows('a_n'), 'unknownName')

@@ -8,7 +8,7 @@
  *   unary   := ('-' | '+') unary | power
  *   power   := postfix ('^' unary)?        right-associative: 2^3^2 = 2^9, -x^2 = -(x^2)
  *   postfix := primary ('!' | '%' | '°' | <raised exponent>)*
- *   primary := number | x | pi | e | func primary-or-unary | '(' expr ')' | '|' expr '|' | <finished part>
+ *   primary := number | x | y | pi | e | func primary-or-unary | '(' expr ')' | '|' expr '|' | <finished part>
  */
 import { FUNCS, ParseError, type Tok } from './mathlex'
 
@@ -19,6 +19,8 @@ import { FUNCS, ParseError, type Tok } from './mathlex'
 export type MathNode =
   | { k: 'num'; v: number; text: string }
   | { k: 'x' }
+  /** The second variable of an equation in x and y (x² + y² = 4). */
+  | { k: 'y' }
   | { k: 'const'; name: 'pi' | 'e' }
   | { k: 'neg'; a: MathNode }
   | { k: 'bin'; op: '+' | '-' | '*' | '/'; a: MathNode; b: MathNode; implicit?: boolean }
@@ -147,6 +149,7 @@ export class Parser {
     if (t.t === 'node') return t.node
     if (t.t === 'name') {
       if (t.v === 'x') return { k: 'x' }
+      if (t.v === 'y') return { k: 'y' }
       if (t.v === 'pi' || t.v === 'e') return { k: 'const', name: t.v }
       const nt = this.peek()
       if (nt.t === 'end' || nt.t === 'rel' || nt.t === 'sup' || (nt.t === 'op' && nt.v !== '(' && nt.v !== '|' && nt.v !== '-')) {

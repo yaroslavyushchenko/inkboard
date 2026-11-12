@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { backspace, insert, insertFraction, moveLeft, moveRight, typeChar, type FormulaState, type Row } from '../engine/formula'
 import { typesetRows } from '../engine/formulatype'
 import { useT, type MessageKey } from '../i18n'
@@ -201,14 +202,28 @@ export function MathKeypad() {
       </div>
       <div className="keypad-grid" style={{ gridTemplateColumns: `repeat(${layout.cols}, 1fr)` }}>
         {layout.keys.map((key, i) => (
-          <button key={`${letters ? 'abc' : tab}${i}`} className={`keypad-key ${key.tone === 'num' ? 'num' : ''}`} {...keyProps(key)}>
+          <button
+            key={`${letters ? 'abc' : tab}${i}`}
+            className={`keypad-key ${key.tone === 'num' ? 'num' : ''}`}
+            title={key.more ? t('keypad.more') : undefined}
+            {...keyProps(key)}
+          >
             <Face rows={key.face} w={layout.cols > 6 ? 34 : 50} />
             {key.more && <i className="keypad-dot" />}
           </button>
         ))}
       </div>
-      {more && (
-        <div className="panel keypad-more" style={{ left: more.left, top: more.top }}>
+      {/* On the page itself: the keypad is shifted with a transform, which would carry a fixed box along. */}
+      {more && createPortal(
+        <div
+          className="panel keypad-more"
+          style={{ left: more.left, top: more.top }}
+          onPointerDown={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
           {more.keys.map((key, i) => (
             <button
               key={i}
@@ -224,7 +239,8 @@ export function MathKeypad() {
               <Face rows={key.face} w={40} />
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

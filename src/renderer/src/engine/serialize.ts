@@ -1,4 +1,5 @@
 import { validateRows, type Row } from './formula'
+import { isEquation } from './formulaexpr'
 import { formulaBBox } from './formulatype'
 import { graphBBox, sanitizeGraph } from './graph'
 import { isShapeKind, MAX_BASE, MIN_BASE } from './shapes'
@@ -17,7 +18,8 @@ export const FORMAT = 'inkboard'
  * 4 = editable shapes (`shape` spec on shape strokes), locked items (`locked`), text items.
  * 5 = formatted text (`runs` on text items), any number of sides for a solid's base.
  * 6 = functions plotted on coordinate planes (`fns` on graphs).
- * 7 = formula items (built on the math keypad).
+ * 7 = formula items (built on the math keypad); functions drawn on a range only (`from` / `to`, `yFrom` / `yTo`),
+ *     named functions and other variables (`name`, `arg`; older versions show them as y and x).
  * Readers accept ≤ this; older apps refuse newer files instead of silently dropping data.
  * A file is stamped with the lowest version that can show it, so a board without a version-7
  * feature still opens in an app that only knows version 6.
@@ -26,7 +28,12 @@ export const FORMAT_VERSION = 7
 
 /** Lowest format version that can represent these items without losing anything. */
 export function requiredVersion(items: readonly Item[]): number {
-  return items.some((i) => i.type === 'formula') ? 7 : 6
+  // Version 7: formulas, functions drawn on a range only (older versions would draw them whole), and
+  // equations in x and y (older versions can't read them).
+  const v7 = (i: Item): boolean =>
+    i.type === 'formula' ||
+    (i.type === 'graph' && !!i.fns?.some((f) => f.from !== undefined || f.to !== undefined || f.yFrom !== undefined || f.yTo !== undefined || (!!f.rows && isEquation(f.rows))))
+  return items.some(v7) ? 7 : 6
 }
 
 interface SerializedStroke {

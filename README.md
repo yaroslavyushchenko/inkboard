@@ -51,7 +51,7 @@ lesson needs. It works fully offline, needs no account, and your boards stay on 
 - **Compass:** set the radius (shown in paper cells) and draw arcs or full circles
 - Shapes: lines, polygons, circles, and pyramids / prisms with **any number of sides** for the base, still editable after drawing
 - Number lines, coordinate planes and 3D axes; plot functions on a plane
-- **Formulas** from an on-screen math keypad: fractions, roots, powers, integrals, matrices; plain arithmetic gets its result
+- **Formulas** from an on-screen math keypad: fractions, roots, powers, integrals, matrices; plain arithmetic gets its result on a "Show answer" click, and functions and equations such as `x² + y² = 4` are plotted on a coordinate plane in one click (any name and variable, on a chosen range of x and y, with the axes fitted to the graphs)
 - Shift for straight lines; drag a line's end to change its length and angle (whole degrees on the protractor)
 - Arrows and dots on line ends, including freehand lines
 

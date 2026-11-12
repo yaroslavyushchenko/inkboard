@@ -1,7 +1,8 @@
 import type { BoardEntry, TemplateEntry } from '../../shared/library'
 import { clampZoom, screenToWorld, zoomAt } from './engine/camera'
 import { renderPng, renderSvg, renderThumbnail } from './engine/export'
-import { graphBBox, sanitizeGraph } from './engine/graph'
+import { BUILTIN_GRAPHS, FN_COLORS, fitRanges, graphBBox, MAX_FNS, sanitizeGraph } from './engine/graph'
+import { plotFormula, plotHead, rowsToText } from './engine/formulaexpr'
 import { bboxOfPoints, newId } from './engine/geometry'
 import { loadImage, readFileAsDataURL } from './engine/images'
 import { Scene } from './engine/scene'
@@ -598,6 +599,57 @@ class Editor {
     return g.id
   }
 
+  /** The functions the selected formulas stand for (formulas that are no function are left out). */
+  selectedPlots(): PlotFn[] {
+    const formulas = this.selectedItems()
+      .filter((i): i is FormulaItem => i.type === 'formula')
+      .sort((a, b) => a.bbox.minY - b.bbox.minY || a.bbox.minX - b.bbox.minX)
+    const fns: PlotFn[] = []
+    for (const f of formulas) {
+      const p = plotFormula(f.rows)
+      if (!p || fns.length === MAX_FNS) continue
+      // The left side (y =, s(t) =) becomes the function's name and variable.
+      const rows = f.rows.slice(plotHead(f.rows).len)
+      fns.push({
+        expr: rowsToText(rows, p.arg),
+        color: FN_COLORS[fns.length % FN_COLORS.length],
+        rows,
+        ...(p.name && p.name !== 'y' ? { name: p.name } : {}),
+        ...(p.arg !== 'x' ? { arg: p.arg } : {})
+      })
+    }
+    return fns
+  }
+
+  /**
+   * A coordinate plane next to the selection with the graphs of the selected formulas, its function
+   * panel open (to set the range, the name, the variable). Undoable as one step.
+   */
+  plotSelected(): void {
+    const fns = this.selectedPlots()
+    const box = this.selectionBBox()
+    if (!fns.length || !box) return
+    const p = sanitizeGraph({ ...BUILTIN_GRAPHS[3].params, fns })
+    const b0 = graphBBox({ ...p, ox: 0, oy: 0 })
+    const snap = (v: number): number => Math.round(v / 24) * 24
+    const g: GraphItem = {
+      ...p,
+      type: 'graph',
+      id: newId(),
+      z: this.scene.allocZ(),
+      // Right of the formulas, centred on them vertically.
+      ox: snap(box.maxX + 48 - b0.minX),
+      oy: snap((box.minY + box.maxY) / 2 - (b0.minY + b0.maxY) / 2),
+      color: '#1e1e1e',
+      bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 }
+    }
+    g.bbox = graphBBox(g)
+    this.scene.add([g])
+    useUI.setState({ tool: 'select' })
+    this.setSelection([g])
+    useUI.setState({ fnPanel: { id: g.id, session: Date.now() } })
+  }
+
   /**
    * Live function edit from the function panel: the board shows it at once; all edits made during one
    * opening of the panel (`session`) are a single undo step.
@@ -612,6 +664,17 @@ class Editor {
     if (JSON.stringify(next.fns ?? []) === JSON.stringify(old.fns ?? []) && !!next.hideFormulas === !!old.hideFormulas) return
     next.bbox = graphBBox(next)
     this.scene.replaceMerged([old], [next], `fns:${id}:${session}`)
+  }
+
+  /** Fit a plane's axes to the curves drawn on it (undoable); false when there is nothing to fit to. */
+  fitGraph(id: string): boolean {
+    const old = this.scene.getById([id])[0]
+    if (!old || old.type !== 'graph') return false
+    const r = fitRanges(old)
+    if (!r) return false
+    if (r.xMin === old.xMin && r.xMax === old.xMax && r.yMin === old.yMin && r.yMax === old.yMax) return true
+    this.updateGraph(id, { ...old, ...r })
+    return true
   }
 
   /** Re-configure an inserted graph (undoable). */

@@ -1728,25 +1728,6 @@ button:disabled {
   flex: none;
 }
 
-.fn-row input {
-  flex: 1;
-  min-width: 0;
-  font-family: ui-monospace, 'Cascadia Mono', 'Ubuntu Mono', monospace;
-  font-size: 15px;
-  padding: 6px 8px;
-  border: 1px solid #d9dbe1;
-  border-radius: 6px;
-  outline: none;
-}
-
-.fn-row input:focus {
-  border-color: var(--accent);
-}
-
-.fn-row input.invalid {
-  border-color: #e03131;
-}
-
 .fn-error {
   margin: 4px 0 0 60px;
   font-size: 12px;
@@ -1758,10 +1739,6 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-}
-
-.fn-panel .fn-row input {
-  font-size: 18px;
 }
 
 .labeled-btn.active {
@@ -1868,6 +1845,11 @@ button:disabled {
   outline: 1.5px solid var(--accent);
 }
 
+.formula-reveal {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
 /* ---------- formulas: the math keypad (bottom centre while a formula has the focus) ---------- */
 .math-keypad {
   position: absolute;
@@ -1966,10 +1948,10 @@ button:disabled {
 /* More keys behind this one (long press) */
 .keypad-dot {
   position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 4px;
-  height: 4px;
+  right: 3px;
+  bottom: 3px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: #c2255c;
 }
@@ -2037,4 +2019,81 @@ button:disabled {
 
 .fn-row .fn-field.invalid {
   border-color: #e03131;
+}
+
+/* Function panel: the left side (name and variable) and the range a curve is drawn on */
+.fn-head {
+  padding: 4px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.fn-head:hover {
+  background: #f1f2f5;
+}
+
+.fn-head-popover {
+  min-width: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fn-head-title {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.fn-head-chips {
+  display: flex;
+  gap: 4px;
+}
+
+.fn-chip {
+  min-width: 32px;
+  justify-content: center;
+  padding: 4px 8px;
+  font-family: 'Times New Roman', Georgia, serif;
+  font-style: italic;
+  font-size: 16px;
+}
+
+.fn-chip:disabled {
+  opacity: 0.35;
+}
+
+.fn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fn-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0 60px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.fn-range-var {
+  font-family: 'Times New Roman', Georgia, serif;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--text, #1e1e1e);
+}
+
+.fn-limit {
+  width: 56px;
+  padding: 3px 6px;
+  font-size: 13px;
+  border: 1px solid #d9dbe1;
+  border-radius: 6px;
+  outline: none;
+}
+
+.fn-limit:focus {
+  border-color: var(--accent);
 }

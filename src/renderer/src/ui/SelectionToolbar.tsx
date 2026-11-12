@@ -8,7 +8,7 @@ import type { FormulaItem, StrokeItem, TextItem } from '../engine/types'
 import { useT, type MessageKey } from '../i18n'
 import { useUI } from '../store'
 import { PEN_COLORS, PEN_SIZES } from '../store'
-import { BookmarkIcon, DuplicateIcon, FormulaIcon, FunctionIcon, GearIcon, GroupIcon, LockIcon, ShapesIcon, StyleIcon, TextIcon, TrashIcon, UngroupIcon, UnlockIcon } from './icons'
+import { BookmarkIcon, DuplicateIcon, FitIcon, FormulaIcon, FunctionIcon, GearIcon, GroupIcon, LockIcon, ShapesIcon, StyleIcon, TextIcon, TrashIcon, UngroupIcon, UnlockIcon } from './icons'
 import { BaseRow, ShapePreview, TemplateThumb } from './InsertMenus'
 import type { TemplateEntry } from '../../../shared/library'
 import { LineStyleControls, SizeSlider } from './LineStyle'
@@ -48,6 +48,8 @@ export function SelectionToolbar() {
   const items = editor.selectedItems()
   const anyLocked = items.some((i) => i.locked)
   const allLocked = items.every((i) => i.locked)
+  // Formulas that are functions (y = x², f(t) = …) can be plotted on a new plane next to them.
+  const plots = items.some((i) => i.type === 'formula') ? editor.selectedPlots().length : 0
   const graph = !anyLocked && items.length === 1 && items[0].type === 'graph' ? items[0] : null
   const shape = anyLocked ? null : editableShape(items)
   // Shapes can be switched within their family: lines, flat shapes, solids.
@@ -112,6 +114,11 @@ export function SelectionToolbar() {
               <FunctionIcon />
             </button>
           )}
+          {graph.kind === 'plane' && !!graph.fns?.length && (
+            <button className="labeled-btn" title={t('graph.fit')} onClick={() => editor.fitGraph(graph.id)}>
+              <FitIcon />
+            </button>
+          )}
           <div className="sep" />
         </>
       )}
@@ -153,6 +160,11 @@ export function SelectionToolbar() {
       {firstFormula && items.length === 1 && (
         <button className="labeled-btn" title={t('formula.edit')} onClick={() => editor.editFormula(firstFormula)}>
           <FormulaIcon />
+        </button>
+      )}
+      {plots > 0 && (
+        <button className="labeled-btn" title={t(plots > 1 ? 'formula.plotMany' : 'formula.plot', { n: plots })} onClick={() => editor.plotSelected()}>
+          <FunctionIcon />
         </button>
       )}
       {styled && (
