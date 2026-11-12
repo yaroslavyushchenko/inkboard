@@ -218,9 +218,14 @@ function BoardCard({ entry, tags }: { entry: BoardEntry; tags: Tag[] }) {
                   {t('card.tags')}…
                 </button>
                 {!entry.missing && (
-                  <button className="menu-item" onClick={act(() => lib.duplicate(entry.id))}>
-                    {t('card.duplicate')}
-                  </button>
+                  <>
+                    <button className="menu-item" onClick={act(() => lib.duplicate(entry.id))}>
+                      {t('card.duplicate')}
+                    </button>
+                    <button className="menu-item" onClick={act(() => editor.saveAsFile(entry.id))}>
+                      {t('card.saveAsFile')}
+                    </button>
+                  </>
                 )}
                 {entry.kind === 'file' && platform.capabilities.showInFolder && !entry.missing && (
                   <button className="menu-item" onClick={act(() => lib.showInFolder(entry.id))}>

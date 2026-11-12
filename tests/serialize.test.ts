@@ -1,7 +1,8 @@
 // .inkboard file format round-trips (engine/serialize.ts). Run: npm test
 import assert from 'node:assert/strict'
+import { gzipSync } from 'node:zlib'
 import { test } from 'node:test'
-import { deserializeBoard, FORMAT_VERSION, serializeBoard, type BoardFile } from '../src/renderer/src/engine/serialize.ts'
+import { decodeBoard, deserializeBoard, encodeBoard, FORMAT_VERSION, serializeBoard, type BoardFile } from '../src/renderer/src/engine/serialize.ts'
 import type { GraphItem } from '../src/renderer/src/engine/types.ts'
 
 const plane = {
@@ -48,4 +49,22 @@ test('malformed functions are dropped without losing the plane', () => {
 
 test('files from a newer version are refused', () => {
   assert.throws(() => deserializeBoard({ format: 'inkboard', version: 7, background: 'dots', camera: { x: 0, y: 0, zoom: 1 }, assets: {}, items: [] }))
+})
+
+test('encodeBoard writes plain UTF-8 JSON and decodeBoard accepts both plain JSON and legacy gzip', async () => {
+  const g: GraphItem = { ...plane, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
+  const bytes = await encodeBoard({ items: [g], background: 'grid', camera: { x: 10, y: 20, zoom: 1.5 } })
+  // Not gzipped (starts with '{', not 0x1f 0x8b).
+  assert.equal(bytes[0], '{'.charCodeAt(0))
+  const fromPlain = await decodeBoard(bytes)
+  assert.equal(fromPlain.background, 'grid')
+  assert.equal(fromPlain.items.length, 1)
+
+  // Legacy gzipped .inkboard files still decode cleanly.
+  const gzipped = new Uint8Array(gzipSync(Buffer.from(bytes)))
+  assert.equal(gzipped[0], 0x1f)
+  assert.equal(gzipped[1], 0x8b)
+  const fromGzip = await decodeBoard(gzipped)
+  assert.equal(fromGzip.background, 'grid')
+  assert.equal(fromGzip.items.length, 1)
 })

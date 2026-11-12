@@ -5,9 +5,8 @@ import type { TextRun } from './types'
 import type { BackgroundKind, Camera, GraphItem, GraphParams, Item, LineCap, LineDash, Point, ShapeSpec, TextItem } from './types'
 
 /**
- * `.inkboard` file format: gzip-compressed JSON.
- * Ink stays vector (flattened point lists). Images are stored once in `assets` as data URLs,
- * byte-for-byte as they were inserted, and referenced by key.
+ * `.inkboard` board document format: plain UTF-8 JSON (legacy gzip-compressed files are still accepted on read).
+ * Ink stays vector (flattened point lists). Images are referenced by key in `assets`.
  */
 export const FORMAT = 'inkboard'
 /**
@@ -201,20 +200,20 @@ export function deserializeBoard(file: BoardFile): BoardData {
   }
 }
 
-async function pipe(bytes: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
-  const out = new Blob([bytes as BlobPart]).stream().pipeThrough(stream)
+async function decompressGzip(bytes: Uint8Array): Promise<Uint8Array> {
+  const out = new Blob([bytes as BlobPart]).stream().pipeThrough(new DecompressionStream('gzip'))
   return new Uint8Array(await new Response(out).arrayBuffer())
 }
 
 export async function encodeBoard(data: BoardData): Promise<Uint8Array> {
   const json = JSON.stringify(serializeBoard(data))
-  return pipe(new TextEncoder().encode(json), new CompressionStream('gzip'))
+  return new TextEncoder().encode(json)
 }
 
 export async function decodeBoard(bytes: Uint8Array): Promise<BoardData> {
-  // Accept both gzip and plain JSON (handy for debugging / hand-edited files).
+  // Accept both plain JSON and legacy gzip-compressed .inkboard files.
   const isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b
-  const raw = isGzip ? await pipe(bytes, new DecompressionStream('gzip')) : bytes
+  const raw = isGzip ? await decompressGzip(bytes) : bytes
   return deserializeBoard(JSON.parse(new TextDecoder().decode(raw)) as BoardFile)
 }
 

@@ -905,21 +905,28 @@ class Editor {
     await this.refreshLibrary()
   }
 
-  /** Ctrl+S: drafts get a "Save as file" dialog; file-backed boards are written immediately. */
+  /** Ctrl+S: save immediately to the library database. */
   async save(): Promise<void> {
-    const b = useUI.getState().board
-    if (!b) return
-    if (b.kind === 'draft') await this.saveAsFile()
-    else await this.flush(true)
+    if (!useUI.getState().board) return
+    await this.flush(true)
   }
 
-  async saveAsFile(): Promise<void> {
-    const b = useUI.getState().board
-    if (!b) return
-    await this.flush(true)
-    const entry = await platform.library.saveAsFile(b.id, await encodeBoard(this.boardData()), b.title)
-    if (!entry) return
-    useUI.setState({ board: { id: entry.id, title: entry.title, kind: entry.kind, filePath: entry.filePath } })
+  /** Export the open board (or a board by id from the home screen) to a standalone .inkboard file. */
+  async saveAsFile(boardId?: string): Promise<void> {
+    const open = useUI.getState().board
+    const targetId = boardId ?? open?.id
+    if (!targetId) return
+    if (open && targetId === open.id) {
+      await this.flush(true)
+      const entry = await platform.library.saveAsFile(open.id, await encodeBoard(this.boardData()), open.title)
+      if (!entry) return
+      useUI.setState({ board: { id: entry.id, title: entry.title, kind: entry.kind, filePath: entry.filePath } })
+    } else {
+      const target = useUI.getState().library.boards.find((b) => b.id === targetId)
+      if (!target) return
+      const bytes = await platform.library.load(targetId)
+      await platform.library.saveAsFile(targetId, bytes, target.title)
+    }
     await this.refreshLibrary()
   }
 

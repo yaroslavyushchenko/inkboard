@@ -7,7 +7,9 @@ registerHooks({
     try {
       return nextResolve(specifier, context)
     } catch (err) {
-      if (specifier.startsWith('.') && !/\.[cm]?[jt]s$/.test(specifier)) return nextResolve(`${specifier}.ts`, context)
+      if (specifier.startsWith('.') && !specifier.endsWith('/') && !/\.[cm]?[jt]s$/.test(specifier)) {
+        return nextResolve(`${specifier}.ts`, context)
+      }
       throw err
     }
   }
