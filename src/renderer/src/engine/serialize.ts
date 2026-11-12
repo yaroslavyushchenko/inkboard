@@ -1,8 +1,10 @@
+import { validateRows, type Row } from './formula'
+import { formulaBBox } from './formulatype'
 import { graphBBox, sanitizeGraph } from './graph'
 import { isShapeKind, MAX_BASE, MIN_BASE } from './shapes'
 import { textBBox } from './text'
 import type { TextRun } from './types'
-import type { BackgroundKind, Camera, GraphItem, GraphParams, Item, LineCap, LineDash, Point, ShapeSpec, TextItem } from './types'
+import type { BackgroundKind, Camera, FormulaItem, GraphItem, GraphParams, Item, LineCap, LineDash, Point, ShapeSpec, TextItem } from './types'
 
 /**
  * `.inkboard` board document format: plain UTF-8 JSON (legacy gzip-compressed files are still accepted on read).
@@ -15,9 +17,17 @@ export const FORMAT = 'inkboard'
  * 4 = editable shapes (`shape` spec on shape strokes), locked items (`locked`), text items.
  * 5 = formatted text (`runs` on text items), any number of sides for a solid's base.
  * 6 = functions plotted on coordinate planes (`fns` on graphs).
+ * 7 = formula items (built on the math keypad).
  * Readers accept ≤ this; older apps refuse newer files instead of silently dropping data.
+ * A file is stamped with the lowest version that can show it, so a board without a version-7
+ * feature still opens in an app that only knows version 6.
  */
-export const FORMAT_VERSION = 6
+export const FORMAT_VERSION = 7
+
+/** Lowest format version that can represent these items without losing anything. */
+export function requiredVersion(items: readonly Item[]): number {
+  return items.some((i) => i.type === 'formula') ? 7 : 6
+}
 
 interface SerializedStroke {
   type: 'stroke'
@@ -76,13 +86,28 @@ interface SerializedText {
   locked?: boolean
 }
 
+interface SerializedFormula {
+  type: 'formula'
+  id: string
+  z: number
+  x: number
+  y: number
+  size: number
+  color: string
+  rows: Row
+  groupId?: string
+  locked?: boolean
+}
+
+type SerializedItem = SerializedStroke | SerializedImage | SerializedGraph | SerializedText | SerializedFormula
+
 export interface BoardFile {
   format: typeof FORMAT
   version: number
   background: BackgroundKind
   camera: Camera
   assets: Record<string, string>
-  items: (SerializedStroke | SerializedImage | SerializedGraph | SerializedText)[]
+  items: SerializedItem[]
 }
 
 export interface BoardData {
@@ -97,7 +122,7 @@ const r3 = (v: number): number => Math.round(v * 1000) / 1000
 export function serializeBoard(data: BoardData): BoardFile {
   const assetKeys = new Map<string, string>()
   const assets: Record<string, string> = {}
-  const items = data.items.map((it): SerializedStroke | SerializedImage | SerializedGraph | SerializedText => {
+  const items = data.items.map((it): SerializedItem => {
     if (it.type === 'stroke') {
       const pts: number[] = new Array(it.points.length * 3)
       it.points.forEach(([x, y, p], i) => {
@@ -117,7 +142,7 @@ export function serializeBoard(data: BoardData): BoardFile {
         ...(locked ? { locked } : {})
       }
     }
-    if (it.type === 'graph' || it.type === 'text') {
+    if (it.type === 'graph' || it.type === 'text' || it.type === 'formula') {
       const { bbox: _bbox, ...rest } = it
       return rest
     }
@@ -133,7 +158,7 @@ export function serializeBoard(data: BoardData): BoardFile {
       ...(it.locked ? { locked: true } : {})
     }
   })
-  return { format: FORMAT, version: FORMAT_VERSION, background: data.background, camera: data.camera, assets, items }
+  return { format: FORMAT, version: requiredVersion(data.items), background: data.background, camera: data.camera, assets, items }
 }
 
 export function deserializeBoard(file: BoardFile): BoardData {
@@ -182,6 +207,17 @@ export function deserializeBoard(file: BoardFile): BoardData {
       }
       t.bbox = textBBox(t)
       items.push(t)
+    } else if (s.type === 'formula') {
+      const rows = validateRows(s.rows)
+      if (!rows || !rows.length || !(s.size > 0) || typeof s.color !== 'string') continue
+      const f: FormulaItem = {
+        type: 'formula', id: s.id, z: s.z, x: s.x, y: s.y, size: s.size, color: s.color, rows,
+        ...(s.groupId ? { groupId: s.groupId } : {}),
+        ...(s.locked ? { locked: true } : {}),
+        bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 }
+      }
+      f.bbox = formulaBBox(f)
+      items.push(f)
     } else if (s.type === 'image') {
       const src = file.assets[s.asset]
       if (!src) continue

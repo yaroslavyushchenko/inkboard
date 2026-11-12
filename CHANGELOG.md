@@ -3,6 +3,31 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
+## Unreleased
+
+### Added
+- **Formulas.** A new board object built on an on-screen math keypad: fractions, roots of any degree,
+  powers and indices, logarithms, trigonometry, limits, derivatives, integrals, sums, matrices,
+  determinants, combinations, Greek letters. Empty slots show as dotted squares; keys with a red dot have
+  more variants on a long press (or right click). A formula stays vector, can be moved, scaled, recoloured
+  and edited again (double-click). Typing works too: `/` makes a fraction, `^` a power, `_` an index,
+  `sqrt`, `sin`, `pi` turn into their signs. Recent formulas are kept in the keypad's history.
+- When a formula is plain arithmetic its value is offered next to it (`= 14`, `≈ 0.3333`); a click or
+  `Tab` adds it to the formula. Trigonometry is in radians; there is a `°` key for degrees.
+- The same keypad and field in the **Functions** panel of a coordinate plane. The label next to a curve
+  is written exactly as the formula was built. New in formulas of x: factorial, per cent, degrees,
+  hyperbolic functions, `sec`, `csc`, `arcctg`.
+
+### Changed
+- The bar above a selection is icon-only and smaller (names and shortcuts are in the tooltips); its
+  popovers (Style, Shape, Save as template) and the text format bar are more compact.
+- File format version 7 (formula objects). A board without formulas is still saved as version 6, so
+  0.7.2 keeps opening it; boards with formulas need this version or newer.
+
+### Fixed
+- The selection bar, its popovers and the text format bar could end up partly or fully off screen (near
+  a window edge, or with a selection larger than the window). They now always stay inside the window.
+
 ## [0.7.2] (2026-11-12)
 
 0.7.0 and 0.7.1 were tagged but never published; 0.7.2 is the first release with these changes.

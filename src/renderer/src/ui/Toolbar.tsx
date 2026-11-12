@@ -3,7 +3,7 @@ import { editor } from '../editor'
 import { useT } from '../i18n'
 import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useUI, type InkSlot } from '../store'
 import { TEXT_SIZES } from '../engine/text'
-import { BrushSelectIcon, EraserIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, RedoIcon, TextIcon, UndoIcon } from './icons'
+import { BrushSelectIcon, EraserIcon, FormulaIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, RedoIcon, TextIcon, UndoIcon } from './icons'
 import { GraphMenu, InstrumentsMenu, ShapesMenu, TemplatesMenu } from './InsertMenus'
 import { LineStyleControls, SizeSlider } from './LineStyle'
 import { Popover } from './Popover'
@@ -138,7 +138,8 @@ function InkOptions({
 }
 
 export function Toolbar() {
-  const { tool, activePen, pens, highlighter, canUndo, canRedo } = useUI()
+  const { tool, activePen, pens, highlighter, canUndo, canRedo, formulaEdit } = useUI()
+  const formulaEditing = !!formulaEdit
   const { selectPen, setTool, updatePen, updateHighlighter } = useUI.getState()
   const [open, setOpen] = useState<Open>(null)
   const close = useCallback(() => setOpen(null), [])
@@ -250,6 +251,9 @@ export function Toolbar() {
           }}
         >
           <TextIcon />
+        </button>
+        <button className={`icon-btn ${formulaEditing ? 'active' : ''}`} title={t('tool.formula')} onClick={() => editor.startFormula()}>
+          <FormulaIcon />
         </button>
         <ShapesMenu />
         <GraphMenu />

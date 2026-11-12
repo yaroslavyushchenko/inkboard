@@ -18,10 +18,12 @@ import { applyXform, unionBBox, type Xform } from './engine/transform'
 import { COMPASS_CELL } from './engine/compass'
 import { CM } from './engine/straightedge'
 import { formatAll, formatRange, fullRuns, textBBox, textFields, trimRunsEnd } from './engine/text'
-import type { BBox, Camera, GraphItem, GraphParams, PlotFn, ImageItem, Item, LineCap, LineDash, ShapeSpec, StrokeItem, TextFormat, TextItem } from './engine/types'
+import { isBlank } from './engine/formula'
+import { formulaBBox, formulaBox } from './engine/formulatype'
+import type { BBox, Camera, FormulaItem, GraphItem, GraphParams, PlotFn, ImageItem, Item, LineCap, LineDash, ShapeSpec, StrokeItem, TextFormat, TextItem } from './engine/types'
 import { translate, type MessageKey } from './i18n'
 import { platform } from './platform'
-import { useUI } from './store'
+import { FORMULA_HISTORY, useUI } from './store'
 
 const CLIPBOARD_MIME = 'application/x-inkboard'
 
@@ -32,6 +34,9 @@ export const canHaveEnds = (s: StrokeItem): boolean => !s.shape || s.shape.kind 
  * or power cut loses at most 5 s of work. Leaving the board, closing the app, sleep and Ctrl+S save
  * right away.
  */
+/** Height the math keypad needs at the bottom of the window (px), with a little air above it. */
+const KEYPAD_ROOM = 330
+
 const SAVE_DELAY_MS = 5000
 /** Thumbnails are re-rendered at most this often while editing (always on leaving a board). */
 const THUMB_INTERVAL_MS = 10_000
@@ -90,6 +95,8 @@ class Editor {
         // Picking a drawing tool means "done with the selection": drop it (lasso ↔ move keep it).
         if (s.tool !== 'select' && s.tool !== 'brushSelect' && s.tool !== 'move' && s.selectedIds.length) useUI.setState({ selectedIds: [] })
         if (s.tool !== 'text' && s.textEdit) this.commitText()
+        // (Starting a formula switches the tool itself: that one is not a reason to finish it.)
+        if (s.formulaEdit && s.formulaEdit === prev.formulaEdit) this.commitFormula(false)
       }
     })
   }
@@ -289,6 +296,87 @@ class Editor {
         const { runs: _runs, ...rest } = t
         const n: TextItem = { ...rest, ...formatAll(t, patch) }
         return { ...n, bbox: textBBox(n) }
+      })
+    )
+  }
+
+  // ---------------------------------------------------------------- formulas
+
+  /** Start a new formula in the upper middle of the view (the keypad takes the bottom). */
+  startFormula(): void {
+    this.commitText()
+    this.commitFormula(false)
+    const { color, size } = useUI.getState().formulaStyle
+    const c = screenToWorld(this.camera, this.view().width / 2, this.view().height * 0.36)
+    useUI.setState({
+      tool: 'select',
+      selectedIds: [],
+      formulaEdit: { x: c.x - size * 2, baseline: c.y, size, color, rows: [], cur: { path: [], i: 0 } }
+    })
+  }
+
+  /** Edit an existing formula in place (it's hidden on the board meanwhile). */
+  editFormula(item: FormulaItem): void {
+    if (item.locked) return
+    this.commitText()
+    this.commitFormula(false)
+    useUI.setState({
+      selectedIds: [],
+      formulaEdit: { id: item.id, x: item.x, baseline: item.y + formulaBox(item).asc, size: item.size, color: item.color, rows: item.rows, cur: { path: [], i: item.rows.length } }
+    })
+    // The keypad takes the bottom of the window: bring a formula that sits there up into view.
+    const cam = this.camera
+    const bottom = (item.bbox.maxY - cam.y) * cam.zoom
+    const limit = this.view().height - KEYPAD_ROOM
+    if (bottom > limit) this.setCamera({ ...cam, y: cam.y + (bottom - limit) / cam.zoom })
+    this.invalidate(true)
+  }
+
+  /** Finish a formula: add / update its item (an empty one is removed). Undoable. */
+  commitFormula(select = true): void {
+    const fe = useUI.getState().formulaEdit
+    if (!fe) return
+    useUI.setState({ formulaEdit: null, mathTarget: null })
+    const old = fe.id ? (this.scene.getById([fe.id])[0] as FormulaItem | undefined) : undefined
+    if (isBlank(fe.rows)) {
+      if (old) this.scene.remove([old])
+      else this.invalidate(true)
+      return
+    }
+    if (old && old.rows === fe.rows && old.color === fe.color && old.size === fe.size) {
+      if (select) this.setSelection([old])
+      return this.invalidate(true)
+    }
+    const item: FormulaItem = {
+      type: 'formula',
+      id: old?.id ?? newId(),
+      z: old?.z ?? this.scene.allocZ(),
+      x: fe.x,
+      y: fe.baseline - formulaBox(fe).asc,
+      size: fe.size,
+      color: fe.color,
+      rows: fe.rows,
+      ...(old?.groupId ? { groupId: old.groupId } : {}),
+      bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 }
+    }
+    item.bbox = formulaBBox(item)
+    if (old) this.scene.replace([old], [item])
+    else this.scene.add([item])
+    const key = JSON.stringify(fe.rows)
+    useUI.setState((s) => ({ formulaHistory: [fe.rows, ...s.formulaHistory.filter((r) => JSON.stringify(r) !== key)].slice(0, FORMULA_HISTORY) }))
+    if (select) this.setSelection([item])
+  }
+
+  /** Change colour / size of the selected formulas (undoable); new formulas follow. */
+  restyleFormula(patch: { color?: string; size?: number }): void {
+    const list = this.selectedItems().filter((i): i is FormulaItem => i.type === 'formula' && !i.locked)
+    if (!list.length) return
+    useUI.setState((s) => ({ formulaStyle: { ...s.formulaStyle, ...patch } }))
+    this.scene.replace(
+      list,
+      list.map((f) => {
+        const n = { ...f, ...patch }
+        return { ...n, bbox: formulaBBox(n) }
       })
     )
   }
@@ -721,8 +809,11 @@ class Editor {
    * also refresh the thumbnail and remember the view position.
    */
   async flush(final = false): Promise<void> {
-    // Text still being typed is part of the board.
-    if (final) this.commitText()
+    // Text and formulas still being typed are part of the board.
+    if (final) {
+      this.commitText()
+      this.commitFormula(false)
+    }
     if (this.saveTimer) clearTimeout(this.saveTimer)
     this.saveTimer = null
     while (this.saving) await this.saving

@@ -2,7 +2,9 @@ import { useEffect } from 'react'
 import { editor } from './editor'
 import { useUI } from './store'
 import { BackgroundPicker } from './ui/BackgroundPicker'
+import { FormulaEditor } from './ui/FormulaEditor'
 import { FunctionPanel } from './ui/FunctionPanel'
+import { MathKeypad } from './ui/MathKeypad'
 import { InstrumentPanel } from './ui/InstrumentPanel'
 import { GraphDialog } from './ui/GraphDialog'
 import { Board } from './ui/Board'
@@ -36,6 +38,7 @@ export function App() {
       {/* The board stays mounted under the home screen so switching back is instant. */}
       <Board />
       <TextEditor />
+      <FormulaEditor />
       <SelectionToolbar />
       <MainMenu />
       <Toolbar />
@@ -44,6 +47,7 @@ export function App() {
       <GraphDialog />
       <FunctionPanel />
       <InstrumentPanel />
+      <MathKeypad />
       <UpdateBanner />
       <InstrumentTip />
       <ShortcutsDialog />

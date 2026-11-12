@@ -2,6 +2,7 @@ import { drawBackground } from './background'
 import { viewportBBox } from './camera'
 import { bboxIntersects } from './geometry'
 import { getImage } from './images'
+import { drawFormula } from './formulatype'
 import { drawGraph } from './graph'
 import { drawText } from './text'
 import { drawCompass, type Compass, type CompassState } from './compass'
@@ -315,6 +316,8 @@ export function drawItems(
       drawGraph(c, item)
     } else if (item.type === 'text') {
       drawText(c, item)
+    } else if (item.type === 'formula') {
+      drawFormula(c, item)
     } else {
       const img = getImage(item.src)
       if (img.complete && img.naturalWidth > 0) c.drawImage(img, item.x, item.y, item.w, item.h)

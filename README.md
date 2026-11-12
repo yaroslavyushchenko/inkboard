@@ -50,7 +50,8 @@ lesson needs. It works fully offline, needs no account, and your boards stay on 
 - **Protractor:** draw an angle from its centre or an arc along its edge; the degrees are written next to the arc
 - **Compass:** set the radius (shown in paper cells) and draw arcs or full circles
 - Shapes: lines, polygons, circles, and pyramids / prisms with **any number of sides** for the base, still editable after drawing
-- Number lines, coordinate planes and 3D axes
+- Number lines, coordinate planes and 3D axes; plot functions on a plane
+- **Formulas** from an on-screen math keypad: fractions, roots, powers, integrals, matrices; plain arithmetic gets its result
 - Shift for straight lines; drag a line's end to change its length and angle (whole degrees on the protractor)
 - Arrows and dots on line ends, including freehand lines
 

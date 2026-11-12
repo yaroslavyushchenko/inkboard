@@ -61,6 +61,14 @@ export function lexRow(row: Row, path: number[], info: LexInfo, from = 0, to = r
         k = j
         continue
       }
+      // School notation for counting: C with n below and k above, A likewise (arrangements).
+      const scr = row[k + 1]
+      if ((a.s === 'C' || a.s === 'A') && scr?.t === 'script' && scr.sup && scr.sub && k + 1 < to) {
+        const node: MathNode = { k: 'comb', kind: a.s === 'C' ? 'C' : 'P', n: part(scr.sub, k + 1, 1), r: part(scr.sup, k + 1, 0) }
+        out.push({ t: 'node', node, pos: 0, at: here })
+        k += 2
+        continue
+      }
       if (a.s === 'π') out.push({ t: 'name', v: 'pi', pos: 0, at: here })
       else if (OPS[a.s]) out.push({ t: 'op', v: OPS[a.s], pos: 0, at: here })
       else if (RELATIONS.includes(a.s)) out.push({ t: 'rel', v: a.s, pos: 0, at: here })

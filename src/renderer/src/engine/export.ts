@@ -1,5 +1,6 @@
 import { BACKGROUND_STYLE, drawBackground, PAPER_COLOR } from './background'
 import { loadImage } from './images'
+import { formulaSvg } from './formulatype'
 import { graphSvg } from './graph'
 import { capsSvg, dashPattern, HIGHLIGHTER_ALPHA, inkOutlineSvg, lineSvgPath, usesLineRender } from './ink'
 import { drawItems } from './renderer'
@@ -109,6 +110,8 @@ export function renderSvg(items: readonly Item[], bg: BackgroundKind): { svg: st
       parts.push(graphSvg(it))
     } else if (it.type === 'text') {
       parts.push(textSvg(it))
+    } else if (it.type === 'formula') {
+      parts.push(formulaSvg(it))
     } else if (it.type === 'image') {
       parts.push(`<image href="${esc(it.src)}" x="${r2(it.x)}" y="${r2(it.y)}" width="${r2(it.w)}" height="${r2(it.h)}" preserveAspectRatio="none"/>`)
     } else if (usesLineRender(it)) {

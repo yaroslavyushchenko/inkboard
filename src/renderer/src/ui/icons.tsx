@@ -181,6 +181,14 @@ export const FunctionIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
+/** Formula: a radical sign over x. */
+export const FormulaIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M3 13.5l2-1 3.2 6.5L12 5h9" />
+    <path d="M14 10.5l5 6.5M19 10.5l-5 6.5" strokeWidth="1.5" />
+  </svg>
+)
+
 export const StampIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <rect x="4" y="3.5" width="16" height="17" rx="2" />

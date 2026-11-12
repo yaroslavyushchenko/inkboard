@@ -89,12 +89,16 @@ test('labels at the same spot are pushed apart', () => {
 
 test('live rows keep drawing the last valid formula while one is half-typed', async () => {
   const { liveFns } = await import('../src/renderer/src/engine/graph.ts')
-  let r = liveFns([{ key: 1, expr: 'x^2', color: '#e03131', shown: '' }])
-  assert.deepEqual(r.fns, [{ expr: 'x^2', color: '#e03131' }])
-  r = liveFns([{ ...r.rows[0], expr: 'x^2 + ' }])
-  assert.deepEqual(r.fns, [{ expr: 'x^2', color: '#e03131' }])
-  r = liveFns([{ ...r.rows[0], expr: 'x^2 + 1' }])
-  assert.equal(r.fns[0].expr, 'x^2 + 1')
-  r = liveFns([{ ...r.rows[0], expr: '  ' }, { key: 2, expr: 'sin(', color: '#1971c2', shown: '' }])
+  const { EMPTY_FORMULA, typeChar } = await import('../src/renderer/src/engine/formula.ts')
+  const typed = (s: string) => [...s].reduce(typeChar, EMPTY_FORMULA)
+  const sq = typed('x^2 ')
+  let r = liveFns([{ key: 1, st: sq, color: '#e03131', shown: null }])
+  assert.deepEqual(r.fns, [{ expr: 'x^2', color: '#e03131', rows: sq.rows }])
+  // Half-built (`x² +`): the curve of the last complete formula stays.
+  r = liveFns([{ ...r.rows[0], st: typed('x^2 +') }])
+  assert.deepEqual(r.fns, [{ expr: 'x^2', color: '#e03131', rows: sq.rows }])
+  r = liveFns([{ ...r.rows[0], st: typed('x^2 +1') }])
+  assert.equal(r.fns[0].expr, 'x^2+1')
+  r = liveFns([{ ...r.rows[0], st: EMPTY_FORMULA }, { key: 2, st: typed('sin'), color: '#1971c2', shown: null }])
   assert.deepEqual(r.fns, [])
 })

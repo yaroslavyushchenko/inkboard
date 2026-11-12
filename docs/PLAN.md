@@ -122,6 +122,14 @@ in progress and the pen cursor (so drawing never forces a full board redraw).
 - [x] Protractor arcs get their angle written next to them; how-to tips for both instruments
 - [x] Toolbar: hand (pan) next to the selection tools; four-way arrows for the Move tool
 
+### Stage 3.8: formulas (v0.8)
+- [x] Formula object built on an on-screen math keypad (four tabs + letters, long-press variants, history):
+      fractions, roots, powers, logarithms, trigonometry, limits, derivatives, integrals, sums, matrices
+- [x] One grammar for typed and keypad formulas: lexers (`mathlex.ts`, `formulalex.ts`) → parser
+      (`mathparse.ts`) → evaluator (`mathexpr.ts`); numeric result offered for plain arithmetic
+- [x] The keypad in the Functions panel of a coordinate plane
+- [x] Selection bar and its popovers always stay inside the window; compact, icon-only bar
+
 ### Stage 4: content
 - [ ] **Hold-to-snap shapes** (like Procreate's QuickShape): draw and keep the pen down ~0.7 s
       (configurable) → the stroke becomes a clean line / circle / ellipse / rectangle / triangle / arrow.

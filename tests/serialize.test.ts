@@ -3,17 +3,54 @@ import assert from 'node:assert/strict'
 import { gzipSync } from 'node:zlib'
 import { test } from 'node:test'
 import { decodeBoard, deserializeBoard, encodeBoard, FORMAT_VERSION, serializeBoard, type BoardFile } from '../src/renderer/src/engine/serialize.ts'
-import type { GraphItem } from '../src/renderer/src/engine/types.ts'
+import { EMPTY_FORMULA, typeChar } from '../src/renderer/src/engine/formula.ts'
+import { rowsToText } from '../src/renderer/src/engine/formulaexpr.ts'
+import type { FormulaItem, GraphItem } from '../src/renderer/src/engine/types.ts'
 
 const plane = {
   type: 'graph' as const, id: 'g1', z: 1, ox: 240, oy: 240, color: '#1e1e1e',
   kind: 'plane' as const, xMin: -10, xMax: 10, yMin: -10, yMax: 10, unit: 24, labelStep: 1, grid: false
 }
 
-test('the format version is 6 and is written to files', () => {
-  assert.equal(FORMAT_VERSION, 6)
-  const f = serializeBoard({ items: [], background: 'dots', camera: { x: 0, y: 0, zoom: 1 } })
+test('the format version is 7; a board is stamped with the lowest version that can show it', () => {
+  assert.equal(FORMAT_VERSION, 7)
+  // Nothing from version 7 on the board: apps that only know version 6 can still open it.
+  const f = serializeBoard({ items: [{ ...plane, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }], background: 'dots', camera: { x: 0, y: 0, zoom: 1 } })
   assert.equal(f.version, 6)
+})
+
+test('a formula survives save and load and makes the file version 7', () => {
+  const rows = [...'x^2/3'].reduce(typeChar, EMPTY_FORMULA).rows
+  const item: FormulaItem = { type: 'formula', id: 'f1', z: 2, x: 10, y: 20, size: 32, color: '#e03131', rows, locked: true, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
+  const file = JSON.parse(JSON.stringify(serializeBoard({ items: [item], background: 'dots', camera: { x: 0, y: 0, zoom: 1 } }))) as BoardFile
+  assert.equal(file.version, 7)
+  const back = deserializeBoard(file).items[0] as FormulaItem
+  assert.equal(back.type, 'formula')
+  assert.deepEqual(back.rows, rows)
+  assert.equal(back.color, '#e03131')
+  assert.equal(back.locked, true)
+  assert.ok(back.bbox.minX === 10 && back.bbox.minY === 20 && back.bbox.maxX > 10 && back.bbox.maxY > 20)
+})
+
+test('a broken formula is dropped, the rest of the board loads', () => {
+  const bad = { type: 'formula', id: 'f1', z: 2, x: 0, y: 0, size: 32, color: '#000', rows: [{ t: 'frac', n: 'oops' }] }
+  const file = { format: 'inkboard', version: 7, background: 'dots', camera: { x: 0, y: 0, zoom: 1 }, assets: {}, items: [bad, plane] } as unknown as BoardFile
+  const items = deserializeBoard(file).items
+  assert.equal(items.length, 1)
+  assert.equal(items[0].type, 'graph')
+})
+
+test('a plotted function keeps its keypad formula; stale rows are dropped', () => {
+  const rows = [...'x^2 +1'].reduce(typeChar, EMPTY_FORMULA).rows
+  const fn = { expr: rowsToText(rows), color: '#e03131', rows }
+  const g: GraphItem = { ...plane, fns: [fn], bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
+  const file = JSON.parse(JSON.stringify(serializeBoard({ items: [g], background: 'dots', camera: { x: 0, y: 0, zoom: 1 } }))) as BoardFile
+  // Plots alone don't need a newer reader: older versions use the text.
+  assert.equal(file.version, 6)
+  assert.deepEqual((deserializeBoard(file).items[0] as GraphItem).fns, [fn])
+  // An older version edited the text and left the rows behind: the text wins.
+  ;(file.items[0] as unknown as GraphItem).fns![0].expr = 'x^3'
+  assert.deepEqual((deserializeBoard(file).items[0] as GraphItem).fns, [{ expr: 'x^3', color: '#e03131' }])
 })
 
 test('a plane with functions survives save and load', () => {
@@ -48,7 +85,7 @@ test('malformed functions are dropped without losing the plane', () => {
 })
 
 test('files from a newer version are refused', () => {
-  assert.throws(() => deserializeBoard({ format: 'inkboard', version: 7, background: 'dots', camera: { x: 0, y: 0, zoom: 1 }, assets: {}, items: [] }))
+  assert.throws(() => deserializeBoard({ format: 'inkboard', version: 8, background: 'dots', camera: { x: 0, y: 0, zoom: 1 }, assets: {}, items: [] }))
 })
 
 test('encodeBoard writes plain UTF-8 JSON and decodeBoard accepts both plain JSON and legacy gzip', async () => {

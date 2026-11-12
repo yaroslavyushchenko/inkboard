@@ -1,5 +1,8 @@
 import { PAPER_COLOR } from './background'
-import { MAX_EXPR_LENGTH, parseExpr, type MathFn } from './mathexpr'
+import { isBlank, type FormulaState, type Row } from './formula'
+import { parsePlot, parseRows, prefixLength, readPlotRows, rowsToText } from './formulaexpr'
+import { typesetRows } from './formulatype'
+import { MAX_EXPR_LENGTH, type MathFn } from './mathexpr'
 import { MATH_FONT, typesetFormula } from './mathtype'
 import type { BBox, GraphItem, GraphParams, PlotFn } from './types'
 
@@ -105,7 +108,8 @@ function sanitizeFns(v: unknown): { fns?: PlotFn[] } {
     const expr = f.expr.trim()
     if (!expr || expr.length > MAX_EXPR_LENGTH) continue
     const color = typeof f.color === 'string' && /^#[0-9a-f]{3,8}$/i.test(f.color) ? f.color : FN_COLORS[fns.length % FN_COLORS.length]
-    fns.push({ expr, color })
+    const rows = f.rows === undefined ? null : readPlotRows(f.rows, expr)
+    fns.push({ expr, color, ...(rows ? { rows } : {}) })
     if (fns.length === MAX_FNS) break
   }
   return fns.length ? { fns } : {}
@@ -114,20 +118,23 @@ function sanitizeFns(v: unknown): { fns?: PlotFn[] } {
 /** A row of the function panel. */
 export interface FnRow {
   key: number
-  expr: string
   color: string
-  /** Last text of this row that parsed; drawn while `expr` is half-typed (`x^`, `sin(`). */
-  shown: string
+  /** The formula in the field, with its caret. */
+  st: FormulaState
+  /** Last state of this row that could be plotted; drawn while the formula is half-built (`x^□`, `sin`). */
+  shown: Row | null
 }
 
 /** Refresh `shown` for every row and list the functions to draw (rows with nothing valid yet are skipped). */
 export function liveFns(rows: FnRow[]): { rows: FnRow[]; fns: PlotFn[] } {
   const next = rows.map((r) => {
-    if (!r.expr.trim()) return r.shown ? { ...r, shown: '' } : r
-    const ok = parseExpr(r.expr).ok
-    return ok && r.shown !== r.expr ? { ...r, shown: r.expr } : r
+    if (isBlank(r.st.rows)) return r.shown ? { ...r, shown: null } : r
+    const ok = parseRows(r.st.rows).ok
+    return ok && r.shown !== r.st.rows ? { ...r, shown: r.st.rows } : r
   })
-  return { rows: next, fns: next.filter((r) => r.shown.trim()).map((r) => ({ expr: r.shown, color: r.color })) }
+  const fns: PlotFn[] = []
+  for (const r of next) if (r.shown) fns.push({ expr: rowsToText(r.shown), color: r.color, rows: r.shown })
+  return { rows: next, fns }
 }
 
 /**
@@ -273,7 +280,7 @@ function addFnPrims(g: GraphItem, out: GraphPrims): void {
   const Y = (y: number): number => g.oy - y * u
   const labels: Label[] = []
   for (const f of g.fns) {
-    const r = parseExpr(f.expr)
+    const r = parsePlot(f)
     if (!r.ok) continue
     // Sample about every 2 board units (in axis units: 2 / unit).
     const pieces = plotCurve(r.fn, g.xMin, g.xMax, g.yMin, g.yMax, 2 / u).filter((p) => p.length >= 2)
@@ -282,7 +289,11 @@ function addFnPrims(g: GraphItem, out: GraphPrims): void {
     // Anchor the formula at the right end of the curve, where it leaves the plane or the x range ends.
     let end = pieces[0][pieces[0].length - 1]
     for (const p of pieces) if (p[p.length - 1][0] > end[0]) end = p[p.length - 1]
-    labels.push({ color: f.color, box: typesetFormula(r.node, u * 0.62, r.comma), ax: X(end[0]), ay: Y(end[1]), x: 0, y: 0 })
+    // A keypad formula is written exactly as it was built; a typed one is typeset from its meaning.
+    const box = f.rows
+      ? typesetRows([{ t: 'c', s: 'y' }, { t: 'c', s: '=' }, ...f.rows.slice(prefixLength(f.rows))], u * 0.62).box
+      : typesetFormula(r.node, u * 0.62, r.comma)
+    labels.push({ color: f.color, box, ax: X(end[0]), ay: Y(end[1]), x: 0, y: 0 })
   }
   placeLabels(labels, { minX: X(g.xMin), maxX: X(g.xMax), minY: Y(g.yMax), maxY: Y(g.yMin) }, u)
   for (const l of labels) {

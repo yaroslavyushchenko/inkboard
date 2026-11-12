@@ -4,11 +4,11 @@ import { SELECTION_PAD } from '../engine/renderer'
 import { editableShape } from '../engine/shapeItems'
 import { isLinear, SHAPE_BASES, SHAPES_2D, SHAPES_3D, type ShapeKind } from '../engine/shapes'
 import { fullRuns, TEXT_SIZES } from '../engine/text'
-import type { StrokeItem, TextItem } from '../engine/types'
+import type { FormulaItem, StrokeItem, TextItem } from '../engine/types'
 import { useT, type MessageKey } from '../i18n'
 import { useUI } from '../store'
 import { PEN_COLORS, PEN_SIZES } from '../store'
-import { BookmarkIcon, DuplicateIcon, FunctionIcon, GearIcon, GroupIcon, LockIcon, ShapesIcon, StyleIcon, TextIcon, TrashIcon, UngroupIcon, UnlockIcon } from './icons'
+import { BookmarkIcon, DuplicateIcon, FormulaIcon, FunctionIcon, GearIcon, GroupIcon, LockIcon, ShapesIcon, StyleIcon, TextIcon, TrashIcon, UngroupIcon, UnlockIcon } from './icons'
 import { BaseRow, ShapePreview, TemplateThumb } from './InsertMenus'
 import type { TemplateEntry } from '../../../shared/library'
 import { LineStyleControls, SizeSlider } from './LineStyle'
@@ -70,6 +70,13 @@ export function SelectionToolbar() {
   const first = strokes[0]
   const hasStraight = strokes.some(canHaveEnds)
   const firstText = items.find((i): i is TextItem => i.type === 'text' && !i.locked)
+  const firstFormula = items.find((i): i is FormulaItem => i.type === 'formula' && !i.locked)
+  /** What the style panel shows the colour and size of. */
+  const styled = first ?? firstText ?? firstFormula
+  const resize = (size: number): void => {
+    if (firstText) editor.restyleText({ size })
+    if (firstFormula) editor.restyleFormula({ size })
+  }
   const cam = editor.camera
   // Above the selection when there is room, else below it; always fully inside the window.
   const place = fitBox(
@@ -143,7 +150,12 @@ export function SelectionToolbar() {
           <TextIcon />
         </button>
       )}
-      {(first || firstText) && (
+      {firstFormula && items.length === 1 && (
+        <button className="labeled-btn" title={t('formula.edit')} onClick={() => editor.editFormula(firstFormula)}>
+          <FormulaIcon />
+        </button>
+      )}
+      {styled && (
         <div className="menu-anchor">
           <button data-popover-anchor className="labeled-btn" title={t('sel.style')} onClick={() => setStyling((v) => !v)}>
             <StyleIcon />
@@ -154,12 +166,13 @@ export function SelectionToolbar() {
                 {PEN_COLORS.map((c) => (
                   <button
                     key={c}
-                    className={`swatch ${(first ?? firstText)!.color === c ? 'active' : ''}`}
+                    className={`swatch ${styled.color === c ? 'active' : ''}`}
                     style={{ background: c }}
                     title={c}
                     onClick={() => {
                       if (first) editor.restyleSelection({ color: c })
                       if (firstText) editor.restyleText({ color: c })
+                      if (firstFormula) editor.restyleFormula({ color: c })
                     }}
                   />
                 ))}
@@ -180,13 +193,13 @@ export function SelectionToolbar() {
                 <>
                   <div className="sizes">
                     {TEXT_SIZES.map((sz) => (
-                      <button key={sz} className={`size text-size ${firstText!.size === sz ? 'active' : ''}`} onClick={() => editor.restyleText({ size: sz })}>
+                      <button key={sz} className={`size text-size ${styled.size === sz ? 'active' : ''}`} onClick={() => resize(sz)}>
                         <span style={{ fontSize: 9 + sz / 4 }}>A</span>
                       </button>
                     ))}
                   </div>
-                  <SizeSlider value={firstText!.size} max={160} onChange={(size) => editor.restyleText({ size })} />
-                  <TextFormatButtons text={firstText!} />
+                  <SizeSlider value={styled.size} max={160} onChange={resize} />
+                  {firstText && <TextFormatButtons text={firstText} />}
                 </>
               )}
             </Popover>

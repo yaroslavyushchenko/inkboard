@@ -135,7 +135,7 @@ export function setRow(rows: Row, path: readonly number[], next: Row): Row {
 // ------------------------------------------------------------------ characters
 
 /** Signs that stand between things; they end a "factor" and can't carry an exponent. */
-const SEPARATORS = '+−-·×÷:=<>≤≥≠≈→,;()|'
+const SEPARATORS = '+−-±·×÷:=<>≤≥≠≈→,;()|'
 
 export const isSeparator = (a: Atom | undefined): boolean => !a || (a.t === 'c' && SEPARATORS.includes(a.s))
 

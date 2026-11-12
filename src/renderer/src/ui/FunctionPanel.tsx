@@ -1,26 +1,43 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { editor } from '../editor'
+import { isBlank, type FormulaState, type Row } from '../engine/formula'
+import { nodeToRows, parseRows } from '../engine/formulaexpr'
 import { FN_COLORS, liveFns, MAX_FNS, type FnRow } from '../engine/graph'
 import { parseExpr } from '../engine/mathexpr'
-import type { GraphItem } from '../engine/types'
+import type { GraphItem, PlotFn } from '../engine/types'
 import { useT, type MessageKey } from '../i18n'
 import { useUI } from '../store'
 import { dockBeside } from './dock'
+import { FormulaField } from './FormulaField'
 
 const PANEL_W = 320
 
 let nextKey = 1
+const at = (rows: Row): FormulaState => ({ rows, cur: { path: [], i: rows.length } })
+/** The formula of a stored function: its keypad form, or its text turned into one (older boards). */
+function rowsOfFn(f: PlotFn): Row {
+  if (f.rows) return f.rows
+  const r = parseExpr(f.expr)
+  return r.ok ? nodeToRows(r.node, r.comma) : [...f.expr].filter((ch) => ch.trim()).map((s) => ({ t: 'c', s }) as const)
+}
 const rowsOf = (g: GraphItem): FnRow[] =>
-  (g.fns ?? []).map((f) => ({ key: nextKey++, expr: f.expr, color: f.color, shown: f.expr }))
+  (g.fns ?? []).map((f) => {
+    const rows = rowsOfFn(f)
+    return { key: nextKey++, color: f.color, st: at(rows), shown: rows }
+  })
+const blankRow = (color: string): FnRow => ({ key: nextKey++, color, st: at([]), shown: null })
 const stampOf = (g: GraphItem | undefined): string => (g ? JSON.stringify([g.fns ?? [], !!g.hideFormulas]) : '')
 const freeColor = (rows: FnRow[]): string => {
   const used = new Set(rows.map((r) => r.color))
   return FN_COLORS.find((c) => !used.has(c)) ?? FN_COLORS[rows.length % FN_COLORS.length]
 }
+const focusRow = (key: number): void => document.querySelector<HTMLElement>(`[data-fn-key="${key}"] .formula-field`)?.focus()
 
 /**
  * Formulas of one coordinate plane, docked beside it (never on top of it when there is room).
  * Not modal: every key updates the curve on the board right away, so the class watches it change.
+ * Each formula is a keypad field (the math keypad opens while one has the focus); typing on the
+ * keyboard works as before (`x^2`, `1/x`, `sqrt`).
  */
 export function FunctionPanel() {
   const t = useT()
@@ -51,7 +68,7 @@ export function FunctionPanel() {
     if (opening === opened.current && stamp === written.current) return
     opened.current = opening
     const r = rowsOf(g)
-    const start = r.length ? r : [{ key: nextKey++, expr: '', color: FN_COLORS[0], shown: '' }]
+    const start = r.length ? r : [blankRow(FN_COLORS[0])]
     setRows(start)
     setHide(!!g.hideFormulas)
     written.current = stamp
@@ -69,13 +86,13 @@ export function FunctionPanel() {
     setRows(live.rows)
     setHide(nextHide)
     editor.setGraphFns(g.id, live.fns, nextHide, panel.session)
-    // Remember the stored form (trimmed, validated) so our own edit is not mistaken for an undo.
+    // Remember the stored form (validated) so our own edit is not mistaken for an undo.
     const now = editor.scene.getById([g.id])[0]
     written.current = stampOf(now?.type === 'graph' ? now : undefined)
   }
   const setRow = (key: number, patch: Partial<FnRow>): void => write(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)), hide)
   const addRow = (): void => {
-    const r: FnRow = { key: nextKey++, expr: '', color: freeColor(rows), shown: '' }
+    const r = blankRow(freeColor(rows))
     setFocusKey(r.key)
     write([...rows, r], hide)
   }
@@ -102,11 +119,12 @@ export function FunctionPanel() {
         </button>
       </div>
       {rows.map((r, i) => {
-        const res = r.expr.trim() ? parseExpr(r.expr) : null
-        const err = res && !res.ok ? t(`graph.fnError.${res.code}` as MessageKey, { s: res.detail ?? '' }) : null
+        const res = isBlank(r.st.rows) ? null : parseRows(r.st.rows)
+        const bad = res && !res.ok ? res : null
+        const err = bad ? t(`graph.fnError.${bad.code}` as MessageKey, { s: bad.detail ?? '' }) : null
         return (
           <div key={r.key} className="fn-item">
-            <div className="fn-row">
+            <div className="fn-row" data-fn-key={r.key}>
               <button
                 className="fn-color"
                 style={{ background: r.color }}
@@ -114,21 +132,22 @@ export function FunctionPanel() {
                 onClick={() => setRow(r.key, { color: FN_COLORS[(FN_COLORS.indexOf(r.color) + 1) % FN_COLORS.length] })}
               />
               <span className="fn-label">y =</span>
-              <input
-                className={err ? 'invalid' : ''}
-                value={r.expr}
-                placeholder="x^2"
-                spellCheck={false}
+              <FormulaField
+                className={`fn-field ${bad ? 'invalid' : ''}`}
+                value={r.st}
+                onChange={(st) => setRow(r.key, { st })}
+                size={20}
+                pad={7}
+                plot
                 autoFocus={r.key === focusKey}
-                onChange={(e) => setRow(r.key, { expr: e.target.value })}
-                onKeyDown={(e) => {
-                  if (e.code !== 'Enter' || e.nativeEvent.isComposing) return
+                errorAt={bad?.at}
+                onCancel={close}
+                onDone={() => {
                   // Enter: next row, or a new one after the last filled row.
                   const nextRow = rows[i + 1]
-                  if (nextRow) document.querySelector<HTMLInputElement>(`[data-fn-key="${nextRow.key}"]`)?.focus()
-                  else if (r.expr.trim() && rows.length < MAX_FNS) addRow()
+                  if (nextRow) focusRow(nextRow.key)
+                  else if (!isBlank(r.st.rows) && rows.length < MAX_FNS) addRow()
                 }}
-                data-fn-key={r.key}
               />
               <button className="text-btn danger" title={t('graph.removeFunction')} onClick={() => write(rows.filter((x) => x.key !== r.key), hide)}>
                 ×

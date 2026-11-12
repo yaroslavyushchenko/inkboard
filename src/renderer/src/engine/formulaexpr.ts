@@ -13,7 +13,7 @@ const c = (s: string): Atom => ({ t: 'c', s })
 const isC = (a: Atom | undefined, s: string): boolean => !!a && a.t === 'c' && a.s === s
 
 /** Length of a leading `y =` or `f(x) =`, which is not part of the formula itself. */
-function prefixLength(rows: Row): number {
+export function prefixLength(rows: Row): number {
   if (isC(rows[0], 'y') && isC(rows[1], '=')) return 2
   const f = rows[0]
   const arg = rows[1]
