@@ -16,6 +16,7 @@ import {
 import { editableShape, regenerateShape } from './engine/shapeItems'
 import { applyXform, unionBBox, type Xform } from './engine/transform'
 import { COMPASS_CELL } from './engine/compass'
+import { CM } from './engine/straightedge'
 import { formatAll, formatRange, fullRuns, textBBox, textFields, trimRunsEnd } from './engine/text'
 import type { BBox, Camera, GraphItem, GraphParams, PlotFn, ImageItem, Item, LineCap, LineDash, ShapeSpec, StrokeItem, TextFormat, TextItem } from './engine/types'
 import { translate, type MessageKey } from './i18n'
@@ -26,9 +27,11 @@ const CLIPBOARD_MIME = 'application/x-inkboard'
 
 /** Line ends fit any open line: freehand ink, straight lines, the Line shape (not closed shapes or arrows). */
 export const canHaveEnds = (s: StrokeItem): boolean => !s.shape || s.shape.kind === 'line'
-/** Autosave: wait for a 1 s pause in editing, but never longer than 5 s after the first unsaved change. */
-const SAVE_DEBOUNCE_MS = 1000
-const SAVE_MAX_WAIT_MS = 5000
+/**
+ * Autosave: wait for a 5 s pause in editing before writing to disk. Leaving the board, closing the
+ * app, sleep and Ctrl+S still save right away.
+ */
+const SAVE_DEBOUNCE_MS = 5000
 /** Thumbnails are re-rendered at most this often while editing (always on leaving a board). */
 const THUMB_INTERVAL_MS = 10_000
 const DEFAULT_CAMERA: Camera = { x: -80, y: -80, zoom: 1 }
@@ -52,7 +55,6 @@ class Editor {
   private saved = { version: -1, meta: -1, camera: DEFAULT_CAMERA }
   private thumbVersion = -1
   private lastThumbAt = 0
-  private firstPendingAt: number | null = null
   private saveTimer: ReturnType<typeof setTimeout> | null = null
   private saving: Promise<void> | null = null
 
@@ -533,9 +535,39 @@ class Editor {
     this.scene.replace([old], [next])
   }
 
-  // ---------------------------------------------------------------- protractor
+  // ---------------------------------------------------------------- instruments
 
-  /** Show the protractor in the middle of the view, or hide it. */
+  /** Show the ruler in the middle of the view, or hide it. */
+  toggleRuler(): void {
+    if (useUI.getState().ruler) {
+      useUI.setState({ ruler: null })
+      return
+    }
+    const { width, height } = this.view()
+    const c = screenToWorld(this.camera, width / 2, height / 2)
+    const maxCm = Math.max(4, Math.floor((width * 0.55) / this.camera.zoom / CM))
+    const size = Math.min(12, maxCm) * CM
+    useUI.setState({ ruler: { kind: 'ruler', x: c.x, y: c.y, rot: 0, size } })
+  }
+
+  /** Show a 45° or 30°/60° set square in the middle of the view, switch between them, or hide it. */
+  toggleSetSquare(kind: 'square45' | 'square60'): void {
+    const cur = useUI.getState().setSquare
+    if (cur?.kind === kind) {
+      useUI.setState({ setSquare: null })
+      return
+    }
+    if (cur) {
+      useUI.setState({ setSquare: { ...cur, kind } })
+      return
+    }
+    const { width, height } = this.view()
+    const c = screenToWorld(this.camera, width / 2, height / 2)
+    const maxCm = Math.max(4, Math.floor((Math.min(width, height) * 0.42) / this.camera.zoom / CM))
+    const size = Math.min(10, maxCm) * CM
+    useUI.setState({ setSquare: { kind, x: c.x, y: c.y + size * 0.1, rot: 0, size } })
+  }
+
   /** Show the compass in the middle of the view (legs open 4 cells), or hide it. */
   toggleCompass(): void {
     if (useUI.getState().compass) {
@@ -678,11 +710,8 @@ class Editor {
   }
 
   private scheduleSave(): void {
-    const now = Date.now()
-    if (this.firstPendingAt === null) this.firstPendingAt = now
     if (this.saveTimer) clearTimeout(this.saveTimer)
-    const wait = Math.max(0, Math.min(SAVE_DEBOUNCE_MS, this.firstPendingAt + SAVE_MAX_WAIT_MS - now))
-    this.saveTimer = setTimeout(() => void this.flush(), wait)
+    this.saveTimer = setTimeout(() => void this.flush(), SAVE_DEBOUNCE_MS)
   }
 
   /**
@@ -694,7 +723,6 @@ class Editor {
     if (final) this.commitText()
     if (this.saveTimer) clearTimeout(this.saveTimer)
     this.saveTimer = null
-    this.firstPendingAt = null
     while (this.saving) await this.saving
     const board = useUI.getState().board
     if (!board || !this.ready) return
@@ -813,8 +841,7 @@ class Editor {
     useUI.setState({
       board: { id: entry.id, title: entry.title, kind: entry.kind, filePath: entry.filePath },
       view: 'board',
-      saveStatus: 'saved',
-      historyOpen: false
+      saveStatus: 'saved'
     })
     this.ready = true
     await platform.library.setLastOpened(id)
@@ -841,7 +868,7 @@ class Editor {
     // created counts as an unsaved change of the new board (nothing gets lost).
     const empty: BoardData = { items: [], background: useUI.getState().background, camera: { ...DEFAULT_CAMERA } }
     this.ready = false
-    useUI.setState({ board: null, view: 'board', historyOpen: false })
+    useUI.setState({ board: null, view: 'board' })
     this.loadData(empty)
     const loadedVersion = this.scene.version
     const loadedMeta = this.metaVersion
@@ -860,7 +887,7 @@ class Editor {
     this.clearSelection()
     await this.flush(true)
     await this.refreshLibrary()
-    useUI.setState({ view: 'home', historyOpen: false })
+    useUI.setState({ view: 'home' })
   }
 
   async renameBoard(id: string, title: string): Promise<void> {
@@ -901,19 +928,6 @@ class Editor {
     if (!entry) return
     await this.refreshLibrary()
     await this.openBoard(entry.id)
-  }
-
-  /** Restore a version-history snapshot. The current state is snapshotted first and Ctrl+Z undoes it. */
-  async restoreVersion(ts: number): Promise<void> {
-    const b = useUI.getState().board
-    if (!b) return
-    await this.flush(true)
-    await platform.library.snapshot(b.id, await encodeBoard(this.boardData()))
-    const data = await decodeBoard(await platform.library.loadVersion(b.id, ts))
-    this.clearSelection()
-    this.scene.replace([...this.scene.getItems()], data.items)
-    useUI.setState({ background: data.background })
-    this.fitToContent()
   }
 
   // ---------------------------------------------------------------- export & backup

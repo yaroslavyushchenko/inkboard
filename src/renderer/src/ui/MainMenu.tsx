@@ -116,9 +116,6 @@ export function MainMenu() {
               <span>{t('menu.showInFolder')}</span>
             </button>
           )}
-          <button className="menu-item" onClick={run(() => useUI.setState({ historyOpen: true }))}>
-            <span>{t('menu.history')}</span>
-          </button>
           <div className="menu-sep" />
           <button className="menu-item" onClick={run(() => editor.exportBoard('png'))}>
             <span>{t(hasSelection ? 'menu.exportSelPng' : 'menu.exportPng')}</span>

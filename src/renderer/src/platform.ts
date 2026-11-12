@@ -1,12 +1,9 @@
 import {
-  SNAPSHOTS_KEPT,
-  SNAPSHOT_INTERVAL_MS,
   type BoardEntry,
   type ExportKind,
   type LibraryState,
   type Tag,
-  type TemplateEntry,
-  type VersionInfo
+  type TemplateEntry
 } from '../../shared/library'
 
 /**
@@ -31,9 +28,6 @@ export interface LibraryApi {
   remove(id: string): Promise<void>
   restore(id: string): Promise<void>
   purge(id: string): Promise<void>
-  listVersions(id: string): Promise<VersionInfo[]>
-  loadVersion(id: string, ts: number): Promise<Uint8Array>
-  snapshot(id: string, bytes: Uint8Array): Promise<void>
   /** Ask for a path and turn the board into a .inkboard file there. null = cancelled. */
   saveAsFile(id: string, bytes: Uint8Array, suggestedName: string): Promise<BoardEntry | null>
   /** Pick an existing .inkboard file and add it to the library. null = cancelled. */
@@ -147,16 +141,6 @@ function browserLibrary(): LibraryApi {
     if (!b) throw new Error(`Unknown board ${id}`)
     return b
   }
-  const versions = (id: string): number[] => JSON.parse(store.get(`versions:${id}`) ?? '[]') as number[]
-  // Allows testing version history quickly: localStorage['inkboard-snapshot-ms'] = '5000'
-  const snapshotMs = (): number => Number(localStorage.getItem('inkboard-snapshot-ms')) || SNAPSHOT_INTERVAL_MS
-  const snapshot = async (id: string, bytes: Uint8Array): Promise<void> => {
-    const ts = Date.now()
-    store.set(`version:${id}:${ts}`, toB64(bytes))
-    const list = [ts, ...versions(id)]
-    for (const old of list.slice(SNAPSHOTS_KEPT)) store.del(`version:${id}:${old}`)
-    store.set(`versions:${id}`, JSON.stringify(list.slice(0, SNAPSHOTS_KEPT)))
-  }
   const api: LibraryApi = {
     async list() {
       idx = readIndex()
@@ -187,8 +171,6 @@ function browserLibrary(): LibraryApi {
       if (thumb) store.set(`thumb:${id}`, toB64(thumb))
       b.updatedAt = Date.now()
       save()
-      const v = versions(id)
-      if (!v.length || Date.now() - v[0] >= snapshotMs()) await snapshot(id, bytes)
       return { ok: true, updatedAt: b.updatedAt }
     },
     async setLastOpened(id) {
@@ -247,20 +229,9 @@ function browserLibrary(): LibraryApi {
     async purge(id) {
       store.del(`board:${id}`)
       store.del(`thumb:${id}`)
-      for (const v of versions(id)) store.del(`version:${id}:${v}`)
-      store.del(`versions:${id}`)
       idx.boards = idx.boards.filter((b) => b.id !== id)
       save()
     },
-    async listVersions(id) {
-      return versions(id).map((ts) => ({ ts, size: (store.get(`version:${id}:${ts}`)?.length ?? 0) * 0.75 }))
-    },
-    async loadVersion(id, ts) {
-      const b = store.get(`version:${id}:${ts}`)
-      if (!b) throw new Error('Version not found')
-      return fromB64(b)
-    },
-    snapshot,
     async saveAsFile(id, bytes, suggestedName) {
       // Browser mode: download the file; the board stays in the (browser) library.
       download(bytes, `${suggestedName}.inkboard`)

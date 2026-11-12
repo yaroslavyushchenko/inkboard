@@ -5,6 +5,7 @@ import type { GraphPreset } from './engine/graph'
 import type { ShapeKind } from './engine/shapes'
 import type { Protractor } from './engine/protractor'
 import type { Compass } from './engine/compass'
+import type { Straightedge } from './engine/straightedge'
 import { cleanInstrumentPrefs, DEFAULT_INSTRUMENTS, type InstrumentPrefs } from './engine/instruments'
 import type { FullRun } from './engine/text'
 import type { BackgroundKind, Camera, GraphParams, LineCap, LineDash } from './engine/types'
@@ -108,11 +109,14 @@ interface UIState {
   board: { id: string; title: string; kind: 'draft' | 'file'; filePath?: string } | null
   saveStatus: 'saved' | 'pending' | 'saving' | 'error'
   library: LibraryState
-  historyOpen: boolean
   shortcutsOpen: boolean
   /** Set for one launch after the app was updated (shows "Updated to X"). */
   justUpdatedTo: string | null
   appVersion: string
+  /** On-board ruler, or null when hidden. */
+  ruler: Straightedge | null
+  /** On-board set square (45° or 30°/60°), or null when hidden. */
+  setSquare: Straightedge | null
   /** On-board protractor, or null when hidden. */
   protractor: Protractor | null
   /** On-board compass, or null when hidden. */
@@ -165,8 +169,9 @@ export const useUI = create<UIState>()(
       board: null,
       saveStatus: 'saved',
       library: { boards: [], tags: [], templates: [], lastOpenedId: null, backupDir: null },
-      historyOpen: false,
       shortcutsOpen: false,
+      ruler: null,
+      setSquare: null,
       protractor: null,
       compass: null,
       instruments: DEFAULT_INSTRUMENTS,

@@ -42,16 +42,7 @@ export interface LibraryState {
   backupDir: string | null
 }
 
-export interface VersionInfo {
-  ts: number
-  size: number
-}
-
 export type ExportKind = 'png' | 'pdf'
 
 /** Days a deleted board stays in "Recently deleted". */
 export const TRASH_DAYS = 30
-/** Minimum time between version-history snapshots of one board. */
-export const SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000
-/** 36 snapshots, 5 minutes apart: about three hours of editing. */
-export const SNAPSHOTS_KEPT = 36

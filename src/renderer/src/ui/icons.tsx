@@ -15,7 +15,7 @@ const base = (p: SVGProps<SVGSVGElement>): SVGProps<SVGSVGElement> => ({
 /** Vertical pen like the ones in Whiteboard's ink toolbar; the tip and band take the ink colour. */
 export function PenIcon({ color, highlighter }: { color: string; highlighter?: boolean }) {
   return (
-    <svg width="26" height="44" viewBox="0 0 26 44" aria-hidden>
+    <svg width="24" height="38" viewBox="0 0 26 44" aria-hidden>
       {highlighter ? (
         <>
           <path d="M8 4 h10 v24 l-2 6 h-6 l-2 -6 z" fill="#f4f4f6" stroke="#8a8d96" strokeWidth="1.2" />
@@ -34,9 +34,26 @@ export function PenIcon({ color, highlighter }: { color: string; highlighter?: b
 }
 
 export const EraserIcon = () => (
-  <svg width="26" height="44" viewBox="0 0 26 44" aria-hidden>
+  <svg width="24" height="38" viewBox="0 0 26 44" aria-hidden>
     <path d="M7 6 h12 v22 h-12 z" fill="#f4f4f6" stroke="#8a8d96" strokeWidth="1.2" />
     <path d="M7 28 h12 v10 a2 2 0 0 1 -2 2 h-8 a2 2 0 0 1 -2 -2 z" fill="#ff8fa3" stroke="#8a8d96" strokeWidth="1.2" />
+  </svg>
+)
+
+export const ChevronDownIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg
+    width={11}
+    height={11}
+    viewBox="0 0 12 12"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+    {...p}
+  >
+    <path d="M3 4.5 6 7.5 9 4.5" />
   </svg>
 )
 
@@ -222,6 +239,35 @@ export const CompassIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M11 6.2 5.5 20.5M13 6.2l5.2 13.3" />
     <path d="M12 2.7V1.5" />
     <path d="M7.6 15.2c2.8 1.3 6 1.3 8.8 0" strokeDasharray="1.6 1.8" strokeWidth="1.4" />
+  </svg>
+)
+
+export const RulerIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="2.5" y="7.5" width="19" height="9" rx="1.5" />
+    <path d="M6.5 7.5v3.5M10 7.5v2.2M13.5 7.5v3.5M17 7.5v2.2" strokeWidth="1.5" />
+  </svg>
+)
+
+export const SetSquare45Icon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M4 4v16h16z" />
+    <path d="M7.5 11.5v5h5z" strokeWidth="1.4" />
+  </svg>
+)
+
+export const SetSquare60Icon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M3 7v13h18z" />
+    <path d="M6.2 12.8v4h6.2z" strokeWidth="1.4" />
+  </svg>
+)
+
+export const InstrumentsIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M3.5 4.5v16h16z" />
+    <path d="M7.2 12.2v4.8h4.8z" strokeWidth="1.4" />
+    <path d="M3.5 16.5h2M3.5 12.5h2M3.5 8.5h2" strokeWidth="1.4" />
   </svg>
 )
 

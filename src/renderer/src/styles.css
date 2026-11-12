@@ -79,42 +79,46 @@ button:disabled {
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 0 8px;
+  gap: 3px;
+  padding: 6px 10px;
   height: 56px;
 }
 
 .pens {
   display: flex;
-  align-items: flex-start;
-  height: 100%;
+  align-items: center;
+  height: 44px;
   gap: 2px;
-  overflow: hidden;
+  padding: 0 2px;
 }
 
 .pen {
   width: 36px;
-  height: 100%;
+  height: 44px;
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding-top: 14px;
+  padding-top: 5px;
   border-radius: 8px;
-  transition: padding-top 0.15s ease;
+  transition: padding-top 0.15s ease, padding-bottom 0.15s ease, background-color 0.15s ease;
 }
 
 .pen:hover {
-  padding-top: 10px;
+  padding-top: 2px;
+  background: #f1f2f5;
 }
 
 .pen.active {
-  padding-top: 4px;
+  padding-top: 0;
+  padding-bottom: 4px;
+  background: var(--accent-soft);
 }
 
 .sep {
   width: 1px;
   height: 28px;
   background: #e3e4e8;
-  margin: 0 6px;
+  margin: 0 5px;
 }
 
 .icon-btn {
@@ -124,6 +128,32 @@ button:disabled {
   place-items: center;
   border-radius: 8px;
   color: #3b3d43;
+}
+
+.icon-btn.menu-btn {
+  width: auto;
+  padding: 0 6px 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.menu-caret {
+  width: 11px;
+  height: 11px;
+  opacity: 0.65;
+  flex: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.icon-btn.menu-btn:hover .menu-caret,
+.icon-btn.menu-btn.active .menu-caret,
+.icon-btn.menu-btn.open .menu-caret {
+  opacity: 1;
+}
+
+.icon-btn.menu-btn.open .menu-caret {
+  transform: rotate(180deg);
 }
 
 .icon-btn:not(:disabled):hover {
@@ -838,69 +868,11 @@ button:disabled {
   transform: rotate(90deg);
 }
 
-/* ---------- version history ---------- */
-.history-panel {
-  position: absolute;
-  top: 72px;
-  right: 12px;
-  bottom: 70px;
-  width: 300px;
-  z-index: 20;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-}
-
-.history-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.history-head h3 {
-  margin: 0;
-  font-size: 15px;
-}
-
-.history-panel > .muted {
-  margin: 6px 0 10px;
-  line-height: 1.4;
-}
-
-.history-note {
-  font-size: 13px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  padding: 8px 10px;
-  border-radius: 8px;
-  margin: 0 0 10px;
-}
-
-.history-list {
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.history-item {
-  display: grid;
-  grid-template-columns: 96px 1fr auto;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-}
-
-.history-item .card-thumb {
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 0 0 1px #e3e5ea;
-  border: none;
-}
-
 /* ---------- insert menus (shapes, coordinates, templates) ---------- */
 .menu-anchor {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .insert-popover {

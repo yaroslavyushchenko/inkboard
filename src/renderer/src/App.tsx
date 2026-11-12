@@ -14,7 +14,6 @@ import { TextEditor } from './ui/TextEditor'
 import { Toolbar } from './ui/Toolbar'
 import { UpdateBanner } from './ui/UpdateBanner'
 import { InstrumentTip } from './ui/InstrumentTip'
-import { VersionHistory } from './ui/VersionHistory'
 import { ZoomControls } from './ui/ZoomControls'
 
 export function App() {
@@ -42,7 +41,6 @@ export function App() {
       <Toolbar />
       <BackgroundPicker />
       <ZoomControls />
-      <VersionHistory />
       <GraphDialog />
       <FunctionPanel />
       <InstrumentPanel />

@@ -6,6 +6,7 @@ import { drawGraph } from './graph'
 import { drawText } from './text'
 import { drawCompass, type Compass, type CompassState } from './compass'
 import { drawAngleLabel, drawProtractor, type Protractor, type ProtractorState } from './protractor'
+import { drawStraightedge, type Straightedge, type StraightState } from './straightedge'
 import { buildInkPath, drawCaps, drawStroke, fillInk, linePath, strokeLine, type InkStyle } from './ink'
 import { xformBBox, type Xform } from './transform'
 import type { BackgroundKind, BBox, Camera, Item, LineCap, LineDash, Point } from './types'
@@ -120,6 +121,8 @@ export class BoardRenderer {
     cam: Camera,
     sel: SelectionOverlay,
     extras: {
+      ruler?: { s: Straightedge; state: StraightState } | null
+      setSquare?: { s: Straightedge; state: StraightState } | null
       protractor?: { p: Protractor; state: ProtractorState } | null
       compass?: { c: Compass; color: string; label: string; state: CompassState } | null
       /** Short hint next to the pointer (what dragging the part under it does). */
@@ -130,6 +133,8 @@ export class BoardRenderer {
     const ctx = this.overlay
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height)
+    if (extras.ruler) drawStraightedge(ctx, cam, this.dpr, extras.ruler.s, extras.ruler.state)
+    if (extras.setSquare) drawStraightedge(ctx, cam, this.dpr, extras.setSquare.s, extras.setSquare.state)
     if (extras.protractor) drawProtractor(ctx, cam, this.dpr, extras.protractor.p, extras.protractor.state)
     if (extras.compass) drawCompass(ctx, cam, this.dpr, extras.compass.c, extras.compass.color, extras.compass.label, extras.compass.state)
 

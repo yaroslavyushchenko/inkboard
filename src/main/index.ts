@@ -106,9 +106,6 @@ function registerIpc(): void {
   h('library:remove', (_e, id: string) => library.remove(id))
   h('library:restore', (_e, id: string) => library.restore(id))
   h('library:purge', (_e, id: string) => library.purge(id))
-  h('library:list-versions', (_e, id: string) => library.listVersions(id))
-  h('library:load-version', (_e, id: string, ts: number) => library.loadVersion(id, ts))
-  h('library:snapshot', (_e, id: string, bytes: Uint8Array) => library.snapshotNow(id, bytes))
   h('template:save', (_e, name: string, bytes: Uint8Array, thumb: Uint8Array | null) => library.saveTemplate(name, bytes, thumb))
   h('template:replace', (_e, id: string, bytes: Uint8Array, thumb: Uint8Array | null) => library.replaceTemplate(id, bytes, thumb))
   h('template:load', (_e, id: string) => library.loadTemplate(id))
@@ -243,8 +240,7 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null)
   const userData = app.getPath('userData')
-  const snapshotMs = Number(process.env['INKBOARD_SNAPSHOT_MS']) || undefined
-  library = new Library(join(userData, 'Library'), snapshotMs)
+  library = new Library(join(userData, 'Library'))
   await library.init({ bytes: join(userData, 'recovery.inkboard'), meta: join(userData, 'recovery.json') })
 
   const argPath = boardArg(process.argv)

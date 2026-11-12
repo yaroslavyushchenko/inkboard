@@ -3,8 +3,8 @@ import { editor } from '../editor'
 import { useT } from '../i18n'
 import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useUI, type InkSlot } from '../store'
 import { TEXT_SIZES } from '../engine/text'
-import { BrushSelectIcon, CompassIcon, EraserIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, ProtractorIcon, RedoIcon, TextIcon, UndoIcon } from './icons'
-import { GraphMenu, ShapesMenu, TemplatesMenu } from './InsertMenus'
+import { BrushSelectIcon, EraserIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, RedoIcon, TextIcon, UndoIcon } from './icons'
+import { GraphMenu, InstrumentsMenu, ShapesMenu, TemplatesMenu } from './InsertMenus'
 import { LineStyleControls, SizeSlider } from './LineStyle'
 import { Popover } from './Popover'
 
@@ -139,8 +139,6 @@ function InkOptions({
 
 export function Toolbar() {
   const { tool, activePen, pens, highlighter, canUndo, canRedo } = useUI()
-  const protractor = useUI((s) => s.protractor !== null)
-  const compass = useUI((s) => s.compass !== null)
   const { selectPen, setTool, updatePen, updateHighlighter } = useUI.getState()
   const [open, setOpen] = useState<Open>(null)
   const close = useCallback(() => setOpen(null), [])
@@ -260,12 +258,7 @@ export function Toolbar() {
           <ImageIcon />
         </button>
         <div className="sep" />
-        <button className={`icon-btn ${protractor ? 'active' : ''}`} title={t('tool.protractor')} onClick={() => editor.toggleProtractor()}>
-          <ProtractorIcon />
-        </button>
-        <button className={`icon-btn ${compass ? 'active' : ''}`} title={t('tool.compass')} onClick={() => editor.toggleCompass()}>
-          <CompassIcon />
-        </button>
+        <InstrumentsMenu />
         <div className="sep" />
         <button className="icon-btn" title={t('action.undo')} disabled={!canUndo} onClick={() => editor.undo()}>
           <UndoIcon />

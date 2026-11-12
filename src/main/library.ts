@@ -1,15 +1,12 @@
 import { randomUUID } from 'node:crypto'
-import { access, copyFile, mkdir, readdir, readFile, rename, rm, stat } from 'node:fs/promises'
+import { access, copyFile, mkdir, readFile, rename, rm, stat } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import {
-  SNAPSHOT_INTERVAL_MS,
-  SNAPSHOTS_KEPT,
   TRASH_DAYS,
   type BoardEntry,
   type LibraryState,
   type Tag,
-  type TemplateEntry,
-  type VersionInfo
+  type TemplateEntry
 } from '../shared/library'
 import { isValidBoard, readDurable, removeWithBackup, safeFileName, writeDurable } from './fsutil'
 
@@ -22,30 +19,23 @@ const DAY = 24 * 60 * 60 * 1000
 
 /**
  * The board library: an index of every board (drafts kept in the app folder + tracked .inkboard files),
- * thumbnails, version-history snapshots, "Recently deleted", tags and the optional backup mirror.
+ * thumbnails, "Recently deleted", tags and the optional backup mirror.
  *
  * Layout under `root`:
- *   index.json, boards/<id>.inkboard, thumbs/<id>.webp, history/<id>/<ts>.inkboard
+ *   index.json, boards/<id>.inkboard, thumbs/<id>.webp, templates/<id>.inkboard
  */
 export class Library {
   private index: IndexFile = { version: 1, boards: [], tags: [], templates: [], lastOpenedId: null, backupDir: null }
   private lastBackup = new Map<string, number>()
   /** Serialises index writes so concurrent IPC calls can't interleave. */
   private writeChain: Promise<void> = Promise.resolve()
-  private snapshotMs: number
 
-  constructor(
-    private root: string,
-    snapshotMs = SNAPSHOT_INTERVAL_MS
-  ) {
-    this.snapshotMs = snapshotMs
-  }
+  constructor(private root: string) {}
 
   private p = {
     index: (): string => join(this.root, 'index.json'),
     board: (id: string): string => join(this.root, 'boards', `${id}.inkboard`),
     thumb: (id: string): string => join(this.root, 'thumbs', `${id}.webp`),
-    history: (id: string): string => join(this.root, 'history', id),
     template: (id: string): string => join(this.root, 'templates', `${id}.inkboard`),
     templateThumb: (id: string): string => join(this.root, 'templates', `${id}.webp`)
   }
@@ -55,7 +45,8 @@ export class Library {
   async init(legacyRecovery?: { bytes: string; meta: string }): Promise<void> {
     await mkdir(join(this.root, 'boards'), { recursive: true })
     await mkdir(join(this.root, 'thumbs'), { recursive: true })
-    await mkdir(join(this.root, 'history'), { recursive: true })
+    // Version history was removed in 0.7: drop the snapshots older versions kept.
+    await rm(join(this.root, 'history'), { recursive: true, force: true }).catch(() => {})
     await mkdir(join(this.root, 'templates'), { recursive: true })
     try {
       const buf = await readDurable(this.p.index(), (b) => {
@@ -198,7 +189,6 @@ export class Library {
     if (thumb) await writeDurable(this.p.thumb(id), thumb)
     b.updatedAt = Date.now()
     await this.writeIndex()
-    await this.maybeSnapshot(id, bytes)
     void this.mirrorToBackup(b, bytes)
     return { ok, updatedAt: b.updatedAt }
   }
@@ -290,11 +280,10 @@ export class Library {
     await this.writeIndex()
   }
 
-  /** Delete forever: library copies, thumbnail and history. A tracked file stays on disk. */
+  /** Delete forever: library copies and thumbnail. A tracked file stays on disk. */
   async purge(id: string): Promise<void> {
     await removeWithBackup(this.p.board(id))
     await rm(this.p.thumb(id), { force: true })
-    await rm(this.p.history(id), { recursive: true, force: true })
     this.index.boards = this.index.boards.filter((b) => b.id !== id)
     if (this.index.lastOpenedId === id) this.index.lastOpenedId = null
     await this.writeIndex()
@@ -352,51 +341,6 @@ export class Library {
 
   filePath(id: string): string | undefined {
     return this.get(id).filePath
-  }
-
-  // ------------------------------------------------------------------ version history
-
-  private async snapshots(id: string): Promise<number[]> {
-    try {
-      const names = await readdir(this.p.history(id))
-      return names
-        .filter((n) => n.endsWith('.inkboard'))
-        .map((n) => Number(n.replace('.inkboard', '')))
-        .filter((n) => Number.isFinite(n))
-        .sort((a, b) => b - a)
-    } catch {
-      return []
-    }
-  }
-
-  private async maybeSnapshot(id: string, bytes: Uint8Array): Promise<void> {
-    const list = await this.snapshots(id)
-    if (list.length && Date.now() - list[0] < this.snapshotMs) return
-    await this.snapshotNow(id, bytes)
-  }
-
-  async snapshotNow(id: string, bytes: Uint8Array): Promise<void> {
-    await mkdir(this.p.history(id), { recursive: true })
-    await writeDurable(join(this.p.history(id), `${Date.now()}.inkboard`), bytes)
-    const list = await this.snapshots(id)
-    for (const ts of list.slice(SNAPSHOTS_KEPT)) await removeWithBackup(join(this.p.history(id), `${ts}.inkboard`))
-  }
-
-  async listVersions(id: string): Promise<VersionInfo[]> {
-    const out: VersionInfo[] = []
-    for (const ts of await this.snapshots(id)) {
-      try {
-        const st = await stat(join(this.p.history(id), `${ts}.inkboard`))
-        out.push({ ts, size: st.size })
-      } catch {
-        // vanished
-      }
-    }
-    return out
-  }
-
-  async loadVersion(id: string, ts: number): Promise<Uint8Array> {
-    return new Uint8Array(await readDurable(join(this.p.history(id), `${ts}.inkboard`), isValidBoard))
   }
 
   // ------------------------------------------------------------------ templates

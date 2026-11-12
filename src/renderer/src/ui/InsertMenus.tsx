@@ -6,7 +6,7 @@ import { MAX_BASE, MIN_BASE, SHAPE_BASES, SHAPES_2D, SHAPES_3D, shapeParts, type
 import type { GraphItem, GraphParams } from '../engine/types'
 import { useT, type MessageKey } from '../i18n'
 import { useUI } from '../store'
-import { AxesIcon, PolygonIcon, ShapesIcon, StampIcon } from './icons'
+import { AxesIcon, ChevronDownIcon, CompassIcon, InstrumentsIcon, PolygonIcon, ProtractorIcon, RulerIcon, SetSquare45Icon, SetSquare60Icon, ShapesIcon, StampIcon } from './icons'
 import { Popover } from './Popover'
 
 /** Toolbar button that opens a popover below the toolbar. */
@@ -28,8 +28,14 @@ function MenuButton({
   const close = useCallback(() => setOpen(false), [setOpen])
   return (
     <div className="menu-anchor">
-      <button data-popover-anchor className={`icon-btn ${active ? 'active' : ''}`} title={title} onClick={() => setOpen(!open)}>
+      <button
+        data-popover-anchor
+        className={`icon-btn menu-btn ${active ? 'active' : ''} ${open ? 'open' : ''}`}
+        title={title}
+        onClick={() => setOpen(!open)}
+      >
         {icon}
+        <ChevronDownIcon className="menu-caret" />
       </button>
       {open && (
         <Popover onClose={close} className="insert-popover">
@@ -319,6 +325,51 @@ export function TemplatesMenu() {
         </div>
       )}
       {templates.length > 0 && <p className="settings-hint">{t('tpl.hint')}</p>}
+    </MenuButton>
+  )
+}
+
+export function InstrumentsMenu() {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const ruler = useUI((s) => s.ruler !== null)
+  const setSquare = useUI((s) => s.setSquare?.kind ?? null)
+  const protractor = useUI((s) => s.protractor !== null)
+  const compass = useUI((s) => s.compass !== null)
+  const anyActive = ruler || setSquare !== null || protractor || compass
+  const pick = (fn: () => void): void => {
+    fn()
+    setOpen(false)
+  }
+  return (
+    <MenuButton icon={<InstrumentsIcon />} title={t('instruments.title')} active={anyActive} open={open} setOpen={setOpen}>
+      <div className="popover-title">{t('instruments.title')}</div>
+      <div className="shape-grid">
+        <button className={`shape-btn ${ruler ? 'active' : ''}`} title={t('tool.ruler')} onClick={() => pick(() => editor.toggleRuler())}>
+          <RulerIcon />
+        </button>
+        <button
+          className={`shape-btn ${setSquare === 'square45' ? 'active' : ''}`}
+          title={t('tool.square45')}
+          onClick={() => pick(() => editor.toggleSetSquare('square45'))}
+        >
+          <SetSquare45Icon />
+        </button>
+        <button
+          className={`shape-btn ${setSquare === 'square60' ? 'active' : ''}`}
+          title={t('tool.square60')}
+          onClick={() => pick(() => editor.toggleSetSquare('square60'))}
+        >
+          <SetSquare60Icon />
+        </button>
+        <button className={`shape-btn ${protractor ? 'active' : ''}`} title={t('tool.protractor')} onClick={() => pick(() => editor.toggleProtractor())}>
+          <ProtractorIcon />
+        </button>
+        <button className={`shape-btn ${compass ? 'active' : ''}`} title={t('tool.compass')} onClick={() => pick(() => editor.toggleCompass())}>
+          <CompassIcon />
+        </button>
+      </div>
+      <p className="settings-hint">{t('instruments.hint')}</p>
     </MenuButton>
   )
 }

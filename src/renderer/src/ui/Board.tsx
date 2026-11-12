@@ -21,8 +21,22 @@ import { editor } from '../editor'
 import { matchShortcut, type ShortcutId } from '../shortcuts'
 import { useUI, type InkSlot, type PenAction, type Tool } from '../store'
 import { translate, type Lang, type MessageKey } from '../i18n'
-import { compassArc, hitCompass, radiusCells, radiusFromHandle, snapSweep, type CompassHit, type CompassState } from '../engine/compass'
+import { BACKGROUND_STYLE } from '../engine/background'
+import { COMPASS_CELL, compassArc, hitCompass, radiusCells, radiusFromHandle, snapSweep, type CompassHit, type CompassState } from '../engine/compass'
+import {
+  cmText,
+  edgeOf,
+  edgePos,
+  edgeStroke,
+  hitStraightedge,
+  rotateFromHandle,
+  snapStraightedgeToGrid,
+  type StraightHit,
+  type StraightState
+} from '../engine/straightedge'
 import { textBBox } from '../engine/text'
+
+type StraightSlot = 'ruler' | 'setSquare'
 
 /** "r = 4 cells" / "r = 4,5 клітинки" for the compass. */
 function radiusLabel(lang: Lang, r: number): string {
@@ -46,10 +60,13 @@ type Gesture =
         | { mode: 'center' }
         | { mode: 'base'; u0: number }
         | { mode: 'compass'; a0: number; last: number; sweep: number }
+        | { mode: 'straight'; slot: StraightSlot; edge: number; d0: number }
     }
-  | { kind: 'protMove'; pointerId: number; lastX: number; lastY: number }
+  | { kind: 'protMove'; pointerId: number; ox: number; oy: number }
   | { kind: 'protRotate'; pointerId: number }
-  | { kind: 'compMove'; pointerId: number; lastX: number; lastY: number }
+  | { kind: 'straightMove'; slot: StraightSlot; pointerId: number; ox: number; oy: number }
+  | { kind: 'straightRotate'; slot: StraightSlot; pointerId: number }
+  | { kind: 'compMove'; pointerId: number; ox: number; oy: number }
   | { kind: 'compRadius'; pointerId: number }
   | {
       kind: 'shape'
@@ -152,6 +169,11 @@ export function Board() {
         const cs = comp ? compassState() : null
         const prot = ui.protractor
         const ps = prot ? protractorState() : null
+        const sq = ui.setSquare
+        const ss = sq ? straightState('setSquare') : null
+        const rul = ui.ruler
+        const rs = rul ? straightState('ruler') : null
+        const hintText = cs?.hint || ps?.hint || ss?.hint || rs?.hint
         renderer.renderOverlay(live, cursorState(), editor.camera, {
           box: info?.box ?? null,
           lasso: gesture?.kind === 'lasso' ? gesture.points : null,
@@ -161,9 +183,11 @@ export function Board() {
           sides: !!info?.shape,
           ends: info?.line ? lineEnds(info.line) : hl ? lineEnds(hl) : null
         }, {
+          ruler: rul ? { s: rul, state: rs!.state } : null,
+          setSquare: sq ? { s: sq, state: ss!.state } : null,
           protractor: prot ? { p: prot, state: ps!.state } : null,
           compass: comp ? { c: comp, color: inkSlot().color, label: radiusLabel(ui.lang, comp.r), state: cs!.state } : null,
-          hint: hover && (cs?.hint || ps?.hint) ? { sx: hover.sx, sy: hover.sy, text: (cs?.hint || ps?.hint)! } : null,
+          hint: hover && hintText ? { sx: hover.sx, sy: hover.sy, text: hintText } : null,
           angleLabel
         })
       }
@@ -318,6 +342,16 @@ export function Board() {
     let hoverBox: BBox | null = null
     let angleLabel: { sx: number; sy: number; text: string } | null = null
 
+    /** Grid spacing for Ctrl-snapping instruments to the paper grid. */
+    const gridSteps = (): [number, number] => {
+      const bg = useUI.getState().background
+      return [COMPASS_CELL, bg === 'lines' ? BACKGROUND_STYLE.lines.step : COMPASS_CELL]
+    }
+    const snapPt = (x: number, y: number): { x: number; y: number } => {
+      const [sx, sy] = gridSteps()
+      return { x: Math.round(x / sx) * sx, y: Math.round(y / sy) * sy }
+    }
+
     /** What a press at screen point (sx, sy) hits on the compass, if it's shown. */
     const compassHitAt = (sx: number, sy: number): CompassHit | null => {
       const c = useUI.getState().compass
@@ -360,7 +394,7 @@ export function Board() {
       let hot: ProtractorHit | null = null
       if (g?.kind === 'protMove') hot = 'body'
       else if (g?.kind === 'protRotate') hot = 'rotate'
-      else if (g?.kind === 'ink' && g.snap && g.snap.mode !== 'compass') hot = g.snap.mode
+      else if (g?.kind === 'ink' && g.snap && g.snap.mode !== 'compass' && g.snap.mode !== 'straight') hot = g.snap.mode
       else if (!g && hover && hover.pointerType !== 'touch' && !spaceDown && ui.tool !== 'pan') {
         // The compass lies on top: it wins, as on a press.
         if (!(ui.tool !== 'eraser' && compassHitAt(hover.sx, hover.sy))) hot = protractorHitAt(hover.sx, hover.sy)
@@ -392,6 +426,47 @@ export function Board() {
       if (!prot) return null
       const w = screenToWorld(editor.camera, sx, sy)
       return hitProtractor(prot, w.x, w.y, editor.camera.zoom)
+    }
+
+    /** What a press at screen point (sx, sy) hits on the ruler or set square, if shown. */
+    const straightHitAt = (slot: StraightSlot, sx: number, sy: number): StraightHit | null => {
+      const s = useUI.getState()[slot]
+      if (!s) return null
+      const w = screenToWorld(editor.camera, sx, sy)
+      return hitStraightedge(s, w.x, w.y, editor.camera.zoom)
+    }
+
+    /** Which part of the ruler / set square is lit, the scale mark under the pointer, and the hint to show. */
+    const straightState = (slot: StraightSlot): { state: StraightState; hint: string | null } => {
+      const ui = useUI.getState()
+      const s = ui[slot]!
+      const g = gesture
+      let hot: StraightHit | null = null
+      if (g?.kind === 'straightMove' && g.slot === slot) hot = 'body'
+      else if (g?.kind === 'straightRotate' && g.slot === slot) hot = 'rotate'
+      else if (g?.kind === 'ink' && g.snap?.mode === 'straight' && g.snap.slot === slot) hot = `edge${g.snap.edge}`
+      else if (!g && hover && hover.pointerType !== 'touch' && !spaceDown && ui.tool !== 'pan') {
+        const covered =
+          (ui.tool !== 'eraser' && compassHitAt(hover.sx, hover.sy)) ||
+          protractorHitAt(hover.sx, hover.sy) ||
+          (slot === 'ruler' && straightHitAt('setSquare', hover.sx, hover.sy))
+        if (!covered) hot = straightHitAt(slot, hover.sx, hover.sy)
+      }
+      const drawing = toolEffect(ui.tool) === 'ink'
+      const edge = edgeOf(hot)
+      let mark: number | null = null
+      if (edge !== null && hover && (drawing || g)) {
+        const w = screenToWorld(editor.camera, hover.sx, hover.sy)
+        mark = edgePos(s, edge, w.x, w.y)
+      }
+      let hint: string | null = null
+      if (!g && hot) {
+        if (hot === 'close') hint = translate(ui.lang, 'straight.hint.close')
+        else if (hot === 'rotate') hint = translate(ui.lang, 'protractor.hint.rotate')
+        else if (edge !== null && drawing) hint = translate(ui.lang, 'protractor.hint.base')
+        else hint = translate(ui.lang, 'protractor.hint.move')
+      }
+      return { state: { hot, mark }, hint }
     }
 
     function cursorState(): CursorState | null {
@@ -426,13 +501,21 @@ export function Board() {
     const updateCssCursor = (): void => {
       const tool = useUI.getState().tool
       let c = 'none'
-      // Protractor part under a hovering pointer, hit-tested once (null while a gesture runs).
+      // Protractor / straightedge part under a hovering pointer, hit-tested once (null while a gesture runs).
       const pHit = !gesture && hover ? protractorHitAt(hover.sx, hover.sy) : null
+      const sHit = !gesture && hover && !pHit ? straightHitAt('setSquare', hover.sx, hover.sy) ?? straightHitAt('ruler', hover.sx, hover.sy) : null
       if (gesture?.kind === 'pan' || gesture?.kind === 'pinch') c = 'grabbing'
       else if (spaceDown || tool === 'pan') c = 'grab'
       else if (tool === 'shape') c = 'crosshair'
       else if (tool === 'text') c = 'text'
-      else if (gesture?.kind === 'protMove' || gesture?.kind === 'compMove' || gesture?.kind === 'compRadius') c = 'grabbing'
+      else if (
+        gesture?.kind === 'protMove' ||
+        gesture?.kind === 'compMove' ||
+        gesture?.kind === 'compRadius' ||
+        gesture?.kind === 'straightMove' ||
+        gesture?.kind === 'straightRotate'
+      )
+        c = 'grabbing'
       else if (gesture?.kind === 'ink' && gesture.snap?.mode === 'compass') c = 'grabbing'
       else if (gesture?.kind === 'protRotate') c = 'grabbing'
       else if (gesture?.kind === 'endpoint') c = 'crosshair'
@@ -450,6 +533,9 @@ export function Board() {
       } else if (pHit === 'body') c = 'move'
       else if (pHit === 'rotate') c = 'grab'
       else if (pHit === 'close' || pHit === 'settings') c = 'pointer'
+      else if (sHit === 'body') c = 'move'
+      else if (sHit === 'rotate') c = 'grab'
+      else if (sHit === 'close') c = 'pointer'
       else if (gesture?.kind === 'move') c = 'move'
       else if (gesture?.kind === 'scale') c = gesture.cx > gesture.ax === gesture.cy > gesture.ay ? 'nwse-resize' : 'nesw-resize'
       else if (gesture?.kind === 'reshape') c = gesture.side % 2 === 0 ? 'ns-resize' : 'ew-resize'
@@ -682,14 +768,24 @@ export function Board() {
       capture(e.pointerId)
       const ch = touches.size === 1 ? compassHitAt(p.x, p.y) : null
       const ph = touches.size === 1 && !ch ? protractorHitAt(p.x, p.y) : null
+      const sqh = touches.size === 1 && !ch && !ph ? straightHitAt('setSquare', p.x, p.y) : null
+      const rh = touches.size === 1 && !ch && !ph && !sqh ? straightHitAt('ruler', p.x, p.y) : null
+      const shSlot: StraightSlot | null = sqh ? 'setSquare' : rh ? 'ruler' : null
+      const sh = sqh ?? rh
       if (ph === 'settings') {
         togglePanel()
       } else if (ch === 'needle' || ch === 'body') {
         const w = screenToWorld(editor.camera, p.x, p.y)
-        gesture = { kind: 'compMove', pointerId: e.pointerId, lastX: w.x, lastY: w.y }
+        const c = useUI.getState().compass!
+        gesture = { kind: 'compMove', pointerId: e.pointerId, ox: c.x - w.x, oy: c.y - w.y }
       } else if (ph && ph !== 'close' && ph !== 'rotate') {
         const w = screenToWorld(editor.camera, p.x, p.y)
-        gesture = { kind: 'protMove', pointerId: e.pointerId, lastX: w.x, lastY: w.y }
+        const prot = useUI.getState().protractor!
+        gesture = { kind: 'protMove', pointerId: e.pointerId, ox: prot.x - w.x, oy: prot.y - w.y }
+      } else if (shSlot && sh && sh !== 'close' && sh !== 'rotate') {
+        const w = screenToWorld(editor.camera, p.x, p.y)
+        const s = useUI.getState()[shSlot]!
+        gesture = { kind: 'straightMove', slot: shSlot, pointerId: e.pointerId, ox: s.x - w.x, oy: s.y - w.y }
       } else if (touches.size === 1) {
         gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
       } else if (touches.size === 2) {
@@ -711,15 +807,15 @@ export function Board() {
       } else if (gesture?.kind === 'compMove' && gesture.pointerId === e.pointerId) {
         const w = screenToWorld(editor.camera, local(e).x, local(e).y)
         const c = useUI.getState().compass
-        if (c) useUI.setState({ compass: { ...c, x: c.x + w.x - gesture.lastX, y: c.y + w.y - gesture.lastY } })
-        gesture.lastX = w.x
-        gesture.lastY = w.y
+        if (c) useUI.setState({ compass: { ...c, x: w.x + gesture.ox, y: w.y + gesture.oy } })
       } else if (gesture?.kind === 'protMove' && gesture.pointerId === e.pointerId) {
         const w = screenToWorld(editor.camera, local(e).x, local(e).y)
         const prot = useUI.getState().protractor
-        if (prot) useUI.setState({ protractor: { ...prot, x: prot.x + w.x - gesture.lastX, y: prot.y + w.y - gesture.lastY } })
-        gesture.lastX = w.x
-        gesture.lastY = w.y
+        if (prot) useUI.setState({ protractor: { ...prot, x: w.x + gesture.ox, y: w.y + gesture.oy } })
+      } else if (gesture?.kind === 'straightMove' && gesture.pointerId === e.pointerId) {
+        const w = screenToWorld(editor.camera, local(e).x, local(e).y)
+        const s = useUI.getState()[gesture.slot]
+        if (s) useUI.setState({ [gesture.slot]: { ...s, x: w.x + gesture.ox, y: w.y + gesture.oy } })
       } else if (gesture?.kind === 'pan' && gesture.pointerId === e.pointerId) {
         const p = local(e)
         editor.setCamera(panBy(editor.camera, p.x - gesture.lastX, p.y - gesture.lastY))
@@ -762,7 +858,12 @@ export function Board() {
       // The compass lies on top of the protractor; with the eraser its pencil would only get in the way.
       const cHit = eff === 'pan' || eff === 'eraser' || endGrab ? null : compassHitAt(p.x, p.y)
       const pHit = eff === 'pan' || endGrab || cHit ? null : protractorHitAt(p.x, p.y)
+      const sqHit = eff === 'pan' || endGrab || cHit || pHit ? null : straightHitAt('setSquare', p.x, p.y)
+      const rHit = eff === 'pan' || endGrab || cHit || pHit || sqHit ? null : straightHitAt('ruler', p.x, p.y)
+      const sSlot: StraightSlot | null = sqHit ? 'setSquare' : rHit ? 'ruler' : null
+      const sHit = sqHit ?? rHit
       const protGrab = pHit === 'body' || (pHit !== null && pHit !== 'close' && pHit !== 'rotate' && pHit !== 'settings' && eff !== 'ink')
+      const straightGrab = sHit === 'body' || (sHit !== null && sHit !== 'close' && sHit !== 'rotate' && eff !== 'ink')
       if (cHit) {
         const c = useUI.getState().compass!
         const w = screenToWorld(editor.camera, p.x, p.y)
@@ -800,7 +901,7 @@ export function Board() {
             snap: { mode: 'compass', a0: c.a, last: Math.atan2(w.y - c.y, w.x - c.x), sweep: 0 }
           }
         } else {
-          gesture = { kind: 'compMove', pointerId: e.pointerId, lastX: w.x, lastY: w.y }
+          gesture = { kind: 'compMove', pointerId: e.pointerId, ox: c.x - w.x, oy: c.y - w.y }
         }
       } else if (endGrab) {
         editor.setSelection([endGrab.item])
@@ -824,7 +925,21 @@ export function Board() {
         gesture = { kind: 'protRotate', pointerId: e.pointerId }
       } else if (protGrab) {
         const w = screenToWorld(editor.camera, p.x, p.y)
-        gesture = { kind: 'protMove', pointerId: e.pointerId, lastX: w.x, lastY: w.y }
+        const prot = useUI.getState().protractor!
+        gesture = { kind: 'protMove', pointerId: e.pointerId, ox: prot.x - w.x, oy: prot.y - w.y }
+      } else if (sSlot && sHit === 'close') {
+        useUI.setState({ [sSlot]: null })
+        try {
+          overlay.releasePointerCapture(e.pointerId)
+        } catch {
+          // not captured
+        }
+      } else if (sSlot && sHit === 'rotate') {
+        gesture = { kind: 'straightRotate', slot: sSlot, pointerId: e.pointerId }
+      } else if (sSlot && straightGrab) {
+        const w = screenToWorld(editor.camera, p.x, p.y)
+        const s = useUI.getState()[sSlot]!
+        gesture = { kind: 'straightMove', slot: sSlot, pointerId: e.pointerId, ox: s.x - w.x, oy: s.y - w.y }
       } else if (eff === 'pan') {
         gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
       } else if (eff === 'text') {
@@ -1007,6 +1122,15 @@ export function Board() {
           else if (pHit === 'center') g.snap = { mode: 'center' }
           else g.snap = { mode: 'base', u0: Math.max(-prot.r, Math.min(prot.r, toLocal(prot, w.x, w.y).u)) }
           g.live.points = []
+        } else if (sSlot && edgeOf(sHit) !== null) {
+          const s = useUI.getState()[sSlot]
+          const edge = edgeOf(sHit)!
+          if (s) {
+            const w = screenToWorld(editor.camera, p.x, p.y)
+            const g = gesture
+            g.live = { ...g.live, geom: 'line', pressure: false, points: [] }
+            g.snap = { mode: 'straight', slot: sSlot, edge, d0: edgePos(s, edge, w.x, w.y) }
+          }
         }
       }
       hover = { sx: p.x, sy: p.y, pointerType: e.pointerType, buttons: e.buttons }
@@ -1032,9 +1156,12 @@ export function Board() {
         } else if (g.kind === 'compMove') {
           const w = screenToWorld(editor.camera, p.x, p.y)
           const c = useUI.getState().compass
-          if (c) useUI.setState({ compass: { ...c, x: c.x + w.x - g.lastX, y: c.y + w.y - g.lastY } })
-          g.lastX = w.x
-          g.lastY = w.y
+          if (c) {
+            const rx = w.x + g.ox
+            const ry = w.y + g.oy
+            const pt = e.ctrlKey || e.metaKey ? snapPt(rx, ry) : { x: rx, y: ry }
+            useUI.setState({ compass: { ...c, ...pt } })
+          }
         } else if (g.kind === 'compRadius') {
           const w = screenToWorld(editor.camera, p.x, p.y)
           const c = useUI.getState().compass
@@ -1046,9 +1173,12 @@ export function Board() {
         } else if (g.kind === 'protMove') {
           const w = screenToWorld(editor.camera, p.x, p.y)
           const prot = useUI.getState().protractor
-          if (prot) useUI.setState({ protractor: { ...prot, x: prot.x + w.x - g.lastX, y: prot.y + w.y - g.lastY } })
-          g.lastX = w.x
-          g.lastY = w.y
+          if (prot) {
+            const rx = w.x + g.ox
+            const ry = w.y + g.oy
+            const pt = e.ctrlKey || e.metaKey ? snapPt(rx, ry) : { x: rx, y: ry }
+            useUI.setState({ protractor: { ...prot, ...pt } })
+          }
         } else if (g.kind === 'protRotate') {
           const prot = useUI.getState().protractor
           if (prot) {
@@ -1060,6 +1190,26 @@ export function Board() {
             if (e.shiftKey || Math.abs(rot - snapped) < (3 * Math.PI) / 180) rot = snapped
             const r = Math.max(60 / editor.camera.zoom, Math.hypot(w.x - prot.x, w.y - prot.y) - 26 / editor.camera.zoom)
             useUI.setState({ protractor: { ...prot, rot, r } })
+          }
+        } else if (g.kind === 'straightMove') {
+          const w = screenToWorld(editor.camera, p.x, p.y)
+          const s = useUI.getState()[g.slot]
+          if (s) {
+            const raw = { ...s, x: w.x + g.ox, y: w.y + g.oy }
+            const [sx, sy] = gridSteps()
+            const next = e.ctrlKey || e.metaKey ? snapStraightedgeToGrid(raw, sx, sy) : raw
+            useUI.setState({ [g.slot]: next })
+          }
+        } else if (g.kind === 'straightRotate') {
+          const s = useUI.getState()[g.slot]
+          if (s) {
+            const w = screenToWorld(editor.camera, p.x, p.y)
+            const next = rotateFromHandle(s, w.x, w.y, editor.camera.zoom, e.shiftKey)
+            useUI.setState({ [g.slot]: next })
+            let deg = Math.round((-next.rot * 180) / Math.PI) % 360
+            if (deg < 0) deg += 360
+            const lang = useUI.getState().lang
+            angleLabel = { sx: p.x, sy: p.y, text: `${deg}° · ${cmText(next.size, translate(lang, 'instruments.cm'), lang === 'uk')}` }
           }
         } else if (g.kind === 'lasso') {
           const w = screenToWorld(editor.camera, p.x, p.y)
@@ -1148,7 +1298,17 @@ export function Board() {
               g.live = { ...g.live, points: compassArc(comp, g.snap.a0, sweep) }
               angleLabel = { sx: p.x, sy: p.y, text: `${Math.round(Math.abs((sweep * 180) / Math.PI))}°` }
             }
-          } else if (g.kind === 'ink' && g.snap && g.snap.mode !== 'compass' && prot) {
+          } else if (g.kind === 'ink' && g.snap?.mode === 'straight') {
+            const s = useUI.getState()[g.snap.slot]
+            if (s) {
+              const w = screenToWorld(editor.camera, p.x, p.y)
+              const off = g.live.size / 2 + 1 / editor.camera.zoom
+              const d1 = edgePos(s, g.snap.edge, w.x, w.y)
+              g.live = { ...g.live, points: edgeStroke(s, g.snap.edge, g.snap.d0, d1, off) }
+              const lang = useUI.getState().lang
+              angleLabel = { sx: p.x, sy: p.y, text: cmText(Math.abs(d1 - g.snap.d0), translate(lang, 'instruments.cm'), lang === 'uk') }
+            }
+          } else if (g.kind === 'ink' && g.snap && g.snap.mode !== 'compass' && g.snap.mode !== 'straight' && prot) {
             const w = screenToWorld(editor.camera, p.x, p.y)
             const off = g.live.size / 2 + 1 / editor.camera.zoom
             const ins = useUI.getState().instruments
@@ -1367,7 +1527,14 @@ export function Board() {
     ro.observe(overlay.parentElement!)
 
     const unsubTool = useUI.subscribe((s, prev) => {
-      if (s.protractor !== prev.protractor || s.compass !== prev.compass || s.instruments !== prev.instruments) invalidate(false)
+      if (
+        s.protractor !== prev.protractor ||
+        s.compass !== prev.compass ||
+        s.ruler !== prev.ruler ||
+        s.setSquare !== prev.setSquare ||
+        s.instruments !== prev.instruments
+      )
+        invalidate(false)
       if (s.textEdit?.id !== prev.textEdit?.id) invalidate(true)
       if (s.tool !== prev.tool) {
         hoverBox = null
