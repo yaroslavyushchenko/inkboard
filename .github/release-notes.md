@@ -2,7 +2,20 @@
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
-## What's new in 0.8.0
+## What's new in 0.9.0
+
+- **Dark theme:** choose System, Light or Dark in Settings. Theme selection is available by default.
+  The interface follows your system appearance unless you choose a theme yourself.
+- **Refreshed interface:** updated toolbars, menus and board library with clearer spacing and colors.
+- **Experimental chalkboard:** enable Chalkboard in Settings → Experimental features, then choose a
+  green surface in Background. Dark ink is displayed in readable chalk colors without changing the
+  stored vector data. Thumbnails and exports preserve the board's appearance.
+- **Updated website:** new English and Ukrainian examples with screenshots that follow the site theme.
+
+Chalkboard files use format version 8 and need Inkboard 0.9.0 or newer. Older boards remain readable;
+boards without chalkboard surfaces continue to use the lowest compatible format version.
+
+## Also in 0.8.0
 
 - **Formulas on the board.** The new **√x** tool opens an on-screen math keypad: fractions, roots of any
   degree, powers and indices, logarithms, trigonometry, limits, derivatives, integrals, sums, matrices,

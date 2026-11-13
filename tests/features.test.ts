@@ -19,9 +19,9 @@ test('every flag has a boolean default and a description', () => {
   }
 })
 
-test('experimental features are off by default', () => {
+test('dark theme is available by default and chalkboard stays experimental', () => {
   const d = defaultFeatures()
-  assert.equal(d.darkTheme, false)
+  assert.equal(d.darkTheme, true)
   assert.equal(d.chalkboard, false)
 })
 
@@ -45,14 +45,14 @@ test('unknown keys and non-boolean values are ignored', () => {
   assert.deepEqual(o, {})
   const f = resolveFeatures({ chalkboard: true, darkTheme: null, somethingElse: false })
   assert.equal(f.chalkboard, true)
-  assert.equal(f.darkTheme, false)
+  assert.equal(f.darkTheme, true)
   assert.deepEqual(Object.keys(f).sort(), [...FEATURE_IDS].sort())
 })
 
 test('the file only stores choices that differ from the defaults and reads back the same', () => {
-  const flags = { ...defaultFeatures(), darkTheme: true }
+  const flags = { ...defaultFeatures(), darkTheme: false }
   const text = featuresFileText(flags)
-  assert.deepEqual(JSON.parse(text), { darkTheme: true })
+  assert.deepEqual(JSON.parse(text), { darkTheme: false })
   assert.deepEqual(parseFeaturesFile(text), flags)
   assert.deepEqual(JSON.parse(featuresFileText(defaultFeatures())), {})
 })

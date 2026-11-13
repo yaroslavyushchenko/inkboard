@@ -1,6 +1,6 @@
 /**
- * Feature flags: unfinished or experimental features ship in a release but stay switched off
- * until the user (or a tester) turns them on, without code changes.
+ * Feature flags: features ship with defaults that users can override in Settings
+ * without code changes.
  *
  * Where the values come from, in order:
  * 1. the defaults below,
@@ -16,7 +16,7 @@
  */
 export const FEATURES = {
   darkTheme: {
-    default: false,
+    default: true,
     description: 'Dark theme for the app interface (toolbars, menus, home screen). Board content keeps its colors.'
   },
   chalkboard: {
