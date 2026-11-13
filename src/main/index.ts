@@ -4,6 +4,7 @@ import { rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ExportKind } from '../shared/library'
+import { initFeatures } from './features'
 import { safeFileName, writeDurable } from './fsutil'
 import { Library } from './library'
 import { initUpdater } from './updater'
@@ -233,6 +234,7 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null)
   const userData = app.getPath('userData')
+  initFeatures(userData)
   library = new Library(join(userData, 'Library'))
   await library.init({ bytes: join(userData, 'recovery.inkboard'), meta: join(userData, 'recovery.json') })
 

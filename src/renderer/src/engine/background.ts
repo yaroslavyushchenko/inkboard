@@ -1,12 +1,21 @@
+import { drawSmudges } from './chalkTexture'
+import { bgPattern, isChalk, surfaceColor } from './surface'
 import type { BackgroundKind, Camera } from './types'
 
-export const PAPER_COLOR = '#ffffff'
+export { PAPER_COLOR } from './surface'
 
 export const BACKGROUND_STYLE = {
   dots: { step: 24, color: '#c4c6cc' },
   grid: { step: 24, color: '#e6e8ee' },
   lines: { step: 32, color: '#dde2ea' }
 } as const
+
+/** Pattern colours on the green chalkboard: faint, like lines painted on a lecture board. */
+export const CHALK_PATTERN_COLOR = { dots: '#6f8a7c', grid: '#46625a', lines: '#4c685c' } as const
+
+export function patternColor(bg: BackgroundKind, pattern: keyof typeof BACKGROUND_STYLE): string {
+  return isChalk(bg) ? CHALK_PATTERN_COLOR[pattern] : BACKGROUND_STYLE[pattern].color
+}
 
 /** Spacing in world units, doubled when zoomed out so the pattern never gets too dense. */
 function adaptiveStep(base: number, zoom: number, minPx: number): number {
@@ -21,14 +30,16 @@ function adaptiveStep(base: number, zoom: number, minPx: number): number {
  */
 export function drawBackground(
   ctx: CanvasRenderingContext2D,
-  kind: BackgroundKind,
+  bg: BackgroundKind,
   cam: Camera,
   width: number,
   height: number,
   dpr: number
 ): void {
-  ctx.fillStyle = PAPER_COLOR
+  ctx.fillStyle = surfaceColor(bg)
   ctx.fillRect(0, 0, width * dpr, height * dpr)
+  if (isChalk(bg)) drawSmudges(ctx, cam.zoom * dpr, cam.x, cam.y, width * dpr, height * dpr)
+  const kind = bgPattern(bg)
   if (kind === 'blank') return
 
   const style = BACKGROUND_STYLE[kind]
@@ -40,7 +51,7 @@ export function drawBackground(
   const W = width * dpr
   const H = height * dpr
 
-  ctx.fillStyle = style.color
+  ctx.fillStyle = patternColor(bg, kind)
   if (kind === 'dots') {
     // Barely visible dots, constant on-screen size regardless of zoom.
     const r = Math.max(1, Math.round(1.1 * dpr))

@@ -1,3 +1,4 @@
+import { cleanOverrides, parseFeaturesFile, type FeatureFlags, type FeatureId } from '../../shared/features'
 import {
   type BoardEntry,
   type ExportKind,
@@ -67,6 +68,10 @@ export interface PlatformApi {
   update: UpdateApi
   capabilities: { backup: boolean; showInFolder: boolean }
   library: LibraryApi
+  /** Feature flags as read at startup (defaults + features.json overrides). */
+  features: FeatureFlags
+  /** Turn a feature on or off and save the choice; resolves to the new flags. */
+  setFeature(id: FeatureId, on: boolean): Promise<FeatureFlags>
   /** Returns the chosen backup folder (or the current one if cancelled). */
   chooseBackupDir(): Promise<string | null>
   disableBackup(): Promise<void>
@@ -306,8 +311,16 @@ function download(data: Uint8Array | string, name: string): void {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
 
+const browserFeatures = parseFeaturesFile(store.get('features'))
+
 const browserApi: PlatformApi = {
   platform: 'browser',
+  features: browserFeatures,
+  async setFeature(id, on) {
+    Object.assign(browserFeatures, cleanOverrides({ [id]: on }))
+    store.set('features', JSON.stringify(browserFeatures))
+    return { ...browserFeatures }
+  },
   update: {
     async getState() {
       return { status: 'dev' }

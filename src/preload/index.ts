@@ -8,6 +8,9 @@ const invoke =
 // Mirrors `PlatformApi` in src/renderer/src/platform.ts.
 contextBridge.exposeInMainWorld('inkboard', {
   platform: process.platform,
+  // Read once, synchronously, so the first render already knows which features are on.
+  features: ipcRenderer.sendSync('features:get'),
+  setFeature: invoke('features:set'),
   capabilities: { backup: true, showInFolder: true },
   library: {
     list: invoke('library:list'),

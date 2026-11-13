@@ -147,10 +147,11 @@
 
   .stage { margin: 64px auto 0; perspective: 1600px; max-width: 1120px; }
   .window {
-    border-radius: 16px; overflow: hidden; background: #fff; border: 1px solid var(--frame);
+    border-radius: 16px; overflow: hidden; background: var(--card); border: 1px solid var(--frame);
     box-shadow: 0 40px 80px -30px rgba(20, 24, 40, .35), 0 0 0 6px color-mix(in srgb, var(--card) 70%, transparent);
     transform-origin: 50% 0; transform: rotateX(var(--tilt, 14deg)) scale(var(--sc, .94)); will-change: transform;
   }
+  .window picture { display: block; }
   .window img { display: block; width: 100%; height: auto; }
 
   /* examples: on wide screens the page scroll walks through them (sticky stage) */
@@ -395,8 +396,14 @@
       </div>
       <div class="stage">
         <div class="window" id="window">
-          <img data-only="uk" src="img/hero-uk.webp" width="2000" height="1250" alt="Inkboard: дошка «Геометрія» з транспортиром, шестикутною пірамідою і колом, накресленим циркулем на координатній площині">
-          <img data-only="en" src="img/hero-en.webp" width="2000" height="1250" loading="lazy" alt="Inkboard: the board “Geometry” with a protractor, a hexagonal pyramid and a circle drawn with the compass on a coordinate plane">
+          <picture data-only="uk">
+            <source media="(prefers-color-scheme: dark)" srcset="img/hero-dark-uk.webp">
+            <img src="img/hero-uk.webp" width="2000" height="1250" alt="Inkboard: дошка «Геометрія» з транспортиром, шестикутною пірамідою і колом, накресленим циркулем на координатній площині">
+          </picture>
+          <picture data-only="en">
+            <source media="(prefers-color-scheme: dark)" srcset="img/hero-dark-en.webp">
+            <img src="img/hero-en.webp" width="2000" height="1250" loading="lazy" alt="Inkboard: the board “Geometry” with a protractor, a hexagonal pyramid and a circle drawn with the compass on a coordinate plane">
+          </picture>
         </div>
       </div>
     </div>
@@ -426,36 +433,66 @@
       <div class="track rv d2" id="track">
         <figure class="cur">
           <div class="frame">
-            <img data-only="uk" src="img/ex-formulas-uk.webp" width="2000" height="1250" alt="Формули з клавіатури формул: парабола з обмеженням по x, функція g(x) = √(x + 4) і половина кола x² + y² = 9, обмежена по y, на одній площині; поруч 3/4 + 1/2 з відповіддю 1,25">
-            <img data-only="en" src="img/ex-formulas-en.webp" width="2000" height="1250" alt="Formulas from the math keypad: a parabola limited in x, the function g(x) = √(x + 4) and half of the circle x² + y² = 9, limited in y, on one plane; beside them 3/4 + 1/2 with the answer 1.25">
+            <picture data-only="uk">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-formulas-dark-uk.webp">
+              <img src="img/ex-formulas-uk.webp" width="2000" height="1250" alt="Формули з клавіатури формул: парабола з обмеженням по x, функція g(x) = √(x + 4) і половина кола x² + y² = 9, обмежена по y, на одній площині; поруч 3/4 + 1/2 з відповіддю 1,25">
+            </picture>
+            <picture data-only="en">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-formulas-dark-en.webp">
+              <img src="img/ex-formulas-en.webp" width="2000" height="1250" alt="Formulas from the math keypad: a parabola limited in x, the function g(x) = √(x + 4) and half of the circle x² + y² = 9, limited in y, on one plane; beside them 3/4 + 1/2 with the answer 1.25">
+            </picture>
           </div>
           <figcaption><h3 data-i18n="ex.h0">Формули й графіки за ними</h3><p data-i18n="ex.c0">Набирайте дроби, корені й степені на клавіатурі формул, і Inkboard порахує відповідь. Виділіть формули, і вони стануть графіками: функції, рівняння на зразок кола, з обмеженнями по x і по y.</p></figcaption>
         </figure>
         <figure>
           <div class="frame">
-            <img data-only="uk" src="img/ex-geometry-uk.webp" width="2000" height="1250" loading="lazy" alt="Побудова рівностороннього трикутника: дуги циркулем, кут 60° на транспортирі">
-            <img data-only="en" src="img/ex-geometry-en.webp" width="2000" height="1250" loading="lazy" alt="Constructing an equilateral triangle: compass arcs and a 60° angle on the protractor">
+            <picture data-only="uk">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-geometry-dark-uk.webp">
+              <img src="img/ex-geometry-uk.webp" width="2000" height="1250" loading="lazy" alt="Побудова рівностороннього трикутника: дуги циркулем, кут 60° на транспортирі">
+            </picture>
+            <picture data-only="en">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-geometry-dark-en.webp">
+              <img src="img/ex-geometry-en.webp" width="2000" height="1250" loading="lazy" alt="Constructing an equilateral triangle: compass arcs and a 60° angle on the protractor">
+            </picture>
           </div>
           <figcaption><h3 data-i18n="ex.h1">Транспортир і циркуль</h3><p data-i18n="ex.c1">Транспортир сам підписує градуси дуги, циркуль креслить кола й дуги потрібного радіуса. Обидва крутяться й перетягуються пером.</p></figcaption>
         </figure>
         <figure>
           <div class="frame">
-            <img data-only="uk" src="img/ex-graphs-uk.webp" width="2000" height="1250" loading="lazy" alt="Координатна площина з параболою y = x² − 2 і прямою y = x/2 + 1 та точками їх перетину">
-            <img data-only="en" src="img/ex-graphs-en.webp" width="2000" height="1250" loading="lazy" alt="A coordinate plane with the parabola y = x² − 2, the line y = x/2 + 1 and their intersection points">
+            <picture data-only="uk">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-graphs-dark-uk.webp">
+              <img src="img/ex-graphs-uk.webp" width="2000" height="1250" loading="lazy" alt="Координатна площина з параболою y = x² − 2 і прямою y = x/2 + 1 та точками їх перетину">
+            </picture>
+            <picture data-only="en">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-graphs-dark-en.webp">
+              <img src="img/ex-graphs-en.webp" width="2000" height="1250" loading="lazy" alt="A coordinate plane with the parabola y = x² − 2, the line y = x/2 + 1 and their intersection points">
+            </picture>
           </div>
           <figcaption><h3 data-i18n="ex.h2">Координати й графіки</h3><p data-i18n="ex.c2">Впишіть формулу, і графік з’явиться на площині разом із підписом. Є також числова пряма й осі x, y, z.</p></figcaption>
         </figure>
         <figure>
           <div class="frame">
-            <img data-only="uk" src="img/ex-solids-uk.webp" width="2000" height="1250" loading="lazy" alt="Куб, призма, піраміда, циліндр, конус, куля і шестикутна піраміда з пунктирними невидимими ребрами">
-            <img data-only="en" src="img/ex-solids-en.webp" width="2000" height="1250" loading="lazy" alt="Cube, prism, pyramid, cylinder, cone, sphere and a hexagonal pyramid with hidden edges dashed">
+            <picture data-only="uk">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-solids-dark-uk.webp">
+              <img src="img/ex-solids-uk.webp" width="2000" height="1250" loading="lazy" alt="Куб, призма, піраміда, циліндр, конус, куля і шестикутна піраміда з пунктирними невидимими ребрами">
+            </picture>
+            <picture data-only="en">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-solids-dark-en.webp">
+              <img src="img/ex-solids-en.webp" width="2000" height="1250" loading="lazy" alt="Cube, prism, pyramid, cylinder, cone, sphere and a hexagonal pyramid with hidden edges dashed">
+            </picture>
           </div>
           <figcaption><h3 data-i18n="ex.h3">Призми, піраміди, тіла обертання</h3><p data-i18n="ex.c3">Невидимі ребра малюються пунктиром. Кількість кутів основи можна змінити будь-коли.</p></figcaption>
         </figure>
         <figure>
           <div class="frame">
-            <img data-only="uk" src="img/ex-text-uk.webp" width="2000" height="1250" loading="lazy" alt="Задача на теорему косинусів: «Дано», «Знайти», «Розв’язання» різними кольорами, відповідь виділено маркером">
-            <img data-only="en" src="img/ex-text-en.webp" width="2000" height="1250" loading="lazy" alt="A law of cosines problem: Given, Find and Solution in different colours, the answer highlighted">
+            <picture data-only="uk">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-text-dark-uk.webp">
+              <img src="img/ex-text-uk.webp" width="2000" height="1250" loading="lazy" alt="Задача на теорему косинусів: «Дано», «Знайти», «Розв’язання» різними кольорами, відповідь виділено маркером">
+            </picture>
+            <picture data-only="en">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-text-dark-en.webp">
+              <img src="img/ex-text-en.webp" width="2000" height="1250" loading="lazy" alt="A law of cosines problem: Given, Find and Solution in different colours, the answer highlighted">
+            </picture>
           </div>
           <figcaption><h3 data-i18n="ex.h4">Текст із форматуванням</h3><p data-i18n="ex.c4">Друкуйте прямо на дошці. Окремі слова можна зробити жирними, курсивом, іншого кольору чи розміру.</p></figcaption>
         </figure>
@@ -463,19 +500,25 @@
           <div class="frame">
             <picture data-only="uk">
               <source media="(prefers-color-scheme: dark)" srcset="img/ex-home-dark-uk.webp">
-              <img src="img/ex-home-uk.webp" width="2000" height="1250" loading="lazy" alt="Екран «Усі дошки»: прев’ю дощок, теги предметів і тем, закріплені дошки, пошук">
+              <img src="img/ex-home-uk.webp" width="2000" height="1250" alt="Екран «Усі дошки»: прев’ю дощок, теги предметів і тем, закріплені дошки, пошук">
             </picture>
             <picture data-only="en">
               <source media="(prefers-color-scheme: dark)" srcset="img/ex-home-dark-en.webp">
-              <img src="img/ex-home-en.webp" width="2000" height="1250" loading="lazy" alt="The All boards screen: board previews, subject and topic tags, pinned boards, search">
+              <img src="img/ex-home-en.webp" width="2000" height="1250" alt="The All boards screen: board previews, subject and topic tags, pinned boards, search">
             </picture>
           </div>
           <figcaption><h3 data-i18n="ex.h5">Усі дошки</h3><p data-i18n="ex.c5">Прев’ю кожної дошки, кольорові теги для предметів і тем, пошук, закріплені дошки й кошик на 30 днів.</p></figcaption>
         </figure>
         <figure>
           <div class="frame">
-            <img data-only="uk" src="img/ex-chalkboard-uk.webp" width="2000" height="1250" loading="lazy" alt="Зелена крейдова дошка з параболою, прямою й точками їх перетину в темному інтерфейсі Inkboard">
-            <img data-only="en" src="img/ex-chalkboard-en.webp" width="2000" height="1250" loading="lazy" alt="A green chalkboard with a parabola, a line and their intersection points in Inkboard’s dark interface">
+            <picture data-only="uk">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-chalkboard-dark-uk.webp">
+              <img src="img/ex-chalkboard-uk.webp" width="2000" height="1250" alt="Зелена крейдова дошка з параболою, прямою й точками їх перетину в Inkboard">
+            </picture>
+            <picture data-only="en">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-chalkboard-dark-en.webp">
+              <img src="img/ex-chalkboard-en.webp" width="2000" height="1250" alt="A green chalkboard with a parabola, a line and their intersection points in Inkboard">
+            </picture>
           </div>
           <figcaption><h3 data-i18n="ex.h6">Темна тема й крейдова дошка</h3><p data-i18n="ex.c6">Темний інтерфейс і зелену крейдову поверхню можна ввімкнути окремо в експериментальних налаштуваннях.</p></figcaption>
         </figure>

@@ -12,8 +12,8 @@ const plane = {
   kind: 'plane' as const, xMin: -10, xMax: 10, yMin: -10, yMax: 10, unit: 24, labelStep: 1, grid: false
 }
 
-test('the format version is 7; a board is stamped with the lowest version that can show it', () => {
-  assert.equal(FORMAT_VERSION, 7)
+test('the format version is 8; a board is stamped with the lowest version that can show it', () => {
+  assert.equal(FORMAT_VERSION, 8)
   // Nothing from version 7 on the board: apps that only know version 6 can still open it.
   const f = serializeBoard({ items: [{ ...plane, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }], background: 'dots', camera: { x: 0, y: 0, zoom: 1 } })
   assert.equal(f.version, 6)
@@ -53,6 +53,32 @@ test('a plotted function keeps its keypad formula; stale rows are dropped', () =
   assert.deepEqual((deserializeBoard(file).items[0] as GraphItem).fns, [{ expr: 'x^3', color: '#e03131' }])
 })
 
+test('a chalkboard background is saved as version 8 and reads back', () => {
+  const f = JSON.parse(JSON.stringify(serializeBoard({ items: [], background: 'chalk-grid', camera: { x: 0, y: 0, zoom: 1 } }))) as BoardFile
+  assert.equal(f.version, 8)
+  assert.equal(deserializeBoard(f).background, 'chalk-grid')
+  assert.equal(deserializeBoard({ ...f, version: 7 }).background, 'chalk-grid')
+})
+
+test('a chalkboard with a formula preserves both the surface and the formula', () => {
+  const rows = [...'x^2'].reduce(typeChar, EMPTY_FORMULA).rows
+  const formula: FormulaItem = { type: 'formula', id: 'f1', z: 1, x: 10, y: 20, size: 32, color: '#1e1e1e', rows, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
+  const file = serializeBoard({ items: [formula], background: 'chalk-grid', camera: { x: 0, y: 0, zoom: 1 } })
+  const board = deserializeBoard(file)
+  assert.equal(file.version, 8)
+  assert.equal(board.background, 'chalk-grid')
+  assert.deepEqual((board.items[0] as FormulaItem).rows, rows)
+  assert.equal((board.items[0] as FormulaItem).color, formula.color)
+})
+
+test('unknown or missing backgrounds fall back to dots', () => {
+  const base = { format: 'inkboard', version: 6, camera: { x: 0, y: 0, zoom: 1 }, assets: {}, items: [] }
+  assert.equal(deserializeBoard({ ...base, background: 'marble' } as unknown as BoardFile).background, 'dots')
+  assert.equal(deserializeBoard({ ...base, background: 'chalk-marble' } as unknown as BoardFile).background, 'dots')
+  assert.equal(deserializeBoard(base as unknown as BoardFile).background, 'dots')
+  assert.equal(deserializeBoard({ ...base, background: 'lines' } as unknown as BoardFile).background, 'lines')
+})
+
 test('a plane with functions survives save and load', () => {
   const g: GraphItem = { ...plane, hideFormulas: true, fns: [{ expr: 'x^2', color: '#e03131' }, { expr: 'sin(x)', color: '#1971c2' }], bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
   const file = JSON.parse(JSON.stringify(serializeBoard({ items: [g], background: 'dots', camera: { x: 0, y: 0, zoom: 1 } }))) as BoardFile
@@ -85,7 +111,7 @@ test('malformed functions are dropped without losing the plane', () => {
 })
 
 test('files from a newer version are refused', () => {
-  assert.throws(() => deserializeBoard({ format: 'inkboard', version: 8, background: 'dots', camera: { x: 0, y: 0, zoom: 1 }, assets: {}, items: [] }))
+  assert.throws(() => deserializeBoard({ format: 'inkboard', version: FORMAT_VERSION + 1, background: 'dots', camera: { x: 0, y: 0, zoom: 1 }, assets: {}, items: [] }))
 })
 
 test('encodeBoard writes plain UTF-8 JSON and decodeBoard accepts both plain JSON and legacy gzip', async () => {

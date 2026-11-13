@@ -177,7 +177,10 @@ export interface FormulaItem extends ItemBase {
 
 export type Item = StrokeItem | ImageItem | GraphItem | TextItem | FormulaItem
 
-export type BackgroundKind = 'blank' | 'dots' | 'grid' | 'lines'
+/** Pattern printed on the board surface. */
+export type PaperPattern = 'blank' | 'dots' | 'grid' | 'lines'
+/** Pattern on white paper, or `chalk-<pattern>` on the green chalkboard (see engine/surface.ts). */
+export type BackgroundKind = PaperPattern | `chalk-${PaperPattern}`
 
 export interface Camera {
   /** World coordinate at the top-left corner of the viewport. */

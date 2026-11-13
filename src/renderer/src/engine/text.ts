@@ -1,3 +1,4 @@
+import { inkColor } from './surface'
 import type { BBox, TextFormat, TextItem, TextRun } from './types'
 
 /**
@@ -214,7 +215,7 @@ export function drawText(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderin
   for (const line of layoutText(t).lines) {
     for (const p of line.pieces) {
       ctx.font = runFont(p.run, p.run.size)
-      ctx.fillStyle = p.run.color
+      ctx.fillStyle = inkColor(p.run.color)
       const x = t.x + p.x
       const y = t.y + line.baseline
       ctx.fillText(p.text, x, y)
@@ -236,7 +237,7 @@ export function textSvg(t: TextItem): string {
           const attrs = [
             `x="${r2(t.x + p.x)}"`,
             `font-size="${r2(r.size)}"`,
-            `fill="${esc(r.color)}"`,
+            `fill="${esc(inkColor(r.color))}"`,
             r.bold ? 'font-weight="bold"' : '',
             r.italic ? 'font-style="italic"' : '',
             r.underline ? 'text-decoration="underline"' : ''

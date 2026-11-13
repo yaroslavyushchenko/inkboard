@@ -8,6 +8,7 @@ import { drawText } from './text'
 import { drawCompass, type Compass, type CompassState } from './compass'
 import { drawAngleLabel, drawProtractor, type Protractor, type ProtractorState } from './protractor'
 import { drawStraightedge, type Straightedge, type StraightState } from './straightedge'
+import { inkColor, withInkSurface } from './surface'
 import { buildInkPath, drawCaps, drawStroke, fillInk, linePath, strokeLine, type InkStyle } from './ink'
 import { xformBBox, type Xform } from './transform'
 import type { BackgroundKind, BBox, Camera, Item, LineCap, LineDash, Point } from './types'
@@ -82,6 +83,8 @@ export class BoardRenderer {
   width = 0
   height = 0
   dpr = 1
+  /** Background of the last base render: the overlay draws live ink for the same surface. */
+  private bg: BackgroundKind = 'dots'
 
   constructor(
     private baseCanvas: HTMLCanvasElement,
@@ -108,12 +111,13 @@ export class BoardRenderer {
   renderBase(items: readonly Item[], cam: Camera, bg: BackgroundKind, preview: Preview | null): void {
     const ctx = this.base
     ctx.setTransform(1, 0, 0, 1, 0, 0)
+    this.bg = bg
     drawBackground(ctx, bg, cam, this.width, this.height, this.dpr)
 
     this.applyCamera(ctx, cam)
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
-    drawItems(ctx, items, viewportBBox(cam, this.width, this.height), preview)
+    withInkSurface(bg, () => drawItems(ctx, items, viewportBBox(cam, this.width, this.height), preview))
   }
 
   renderOverlay(
@@ -224,16 +228,7 @@ export class BoardRenderer {
 
     if (live && (live.points.length > 0 || live.parts?.length)) {
       this.applyCamera(ctx, cam)
-      if (live.parts) {
-        for (const part of live.parts) strokeLine(ctx, linePath(part.points), live.color, live.size, live.tool, part.dash ?? live.dash)
-        if (live.parts.length === 1 && (live.startCap || live.endCap)) drawCaps(ctx, { ...live, points: live.parts[0].points })
-      } else if (live.geom === 'line' || live.dash) {
-        strokeLine(ctx, linePath(live.points), live.color, live.size, live.tool, live.dash)
-        if (live.startCap || live.endCap) drawCaps(ctx, live)
-      } else {
-        fillInk(ctx, buildInkPath(live.points, live, false), live.color, live.tool)
-        if (live.startCap || live.endCap) drawCaps(ctx, live)
-      }
+      withInkSurface(this.bg, () => drawLive(ctx, live))
     }
 
     if (cursor) {
@@ -274,7 +269,7 @@ export class BoardRenderer {
         ctx.strokeStyle = 'rgba(60,60,70,0.75)'
         ctx.stroke()
       } else {
-        ctx.fillStyle = cursor.color
+        ctx.fillStyle = withInkSurface(this.bg, () => inkColor(cursor.color))
         ctx.fill()
         ctx.lineWidth = 1
         ctx.strokeStyle = 'rgba(255,255,255,0.9)'
@@ -287,6 +282,20 @@ export class BoardRenderer {
     }
     if (extras.angleLabel) drawAngleLabel(ctx, this.dpr, extras.angleLabel.sx, extras.angleLabel.sy, extras.angleLabel.text)
     else if (extras.hint) drawAngleLabel(ctx, this.dpr, extras.hint.sx, extras.hint.sy, extras.hint.text, true)
+  }
+}
+
+/** The stroke being drawn (overlay canvas, camera transform already set). */
+function drawLive(ctx: CanvasRenderingContext2D, live: LiveStroke): void {
+  if (live.parts) {
+    for (const part of live.parts) strokeLine(ctx, linePath(part.points), live.color, live.size, live.tool, part.dash ?? live.dash)
+    if (live.parts.length === 1 && (live.startCap || live.endCap)) drawCaps(ctx, { ...live, points: live.parts[0].points })
+  } else if (live.geom === 'line' || live.dash) {
+    strokeLine(ctx, linePath(live.points), live.color, live.size, live.tool, live.dash)
+    if (live.startCap || live.endCap) drawCaps(ctx, live)
+  } else {
+    fillInk(ctx, buildInkPath(live.points, live, false), live.color, live.tool)
+    if (live.startCap || live.endCap) drawCaps(ctx, live)
   }
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { editor } from '../editor'
 import { commonFormat, formatRange, mergeRuns, sameFormat, TEXT_FONT, TEXT_LINE_HEIGHT, type FullRun } from '../engine/text'
+import { inkColor, withInkSurface } from '../engine/surface'
 import type { TextFormat } from '../engine/types'
 import { useT } from '../i18n'
 import { PEN_COLORS, useUI, type TextEdit } from '../store'
@@ -55,6 +56,8 @@ const sameRuns = (a: FullRun[], b: FullRun[]): boolean => a.length === b.length 
 
 const minSize = (te: TextEdit): number => (te.runs.length ? Math.min(...te.runs.map((r) => r.size)) : te.size)
 
+const shownColor = (c: string): string => withInkSurface(useUI.getState().background, () => inkColor(c))
+
 /** Rebuilds the DOM from runs: one span per run, plus a <br> marker so a trailing new line shows. */
 function render(root: HTMLElement, runs: FullRun[], zoom: number): void {
   root.textContent = ''
@@ -65,7 +68,8 @@ function render(root: HTMLElement, runs: FullRun[], zoom: number): void {
     if (r.bold) s.dataset.b = '1'
     if (r.italic) s.dataset.i = '1'
     if (r.underline) s.dataset.u = '1'
-    s.style.color = r.color
+    // Shown the way the board draws it (black text is chalk white on the chalkboard); data-color keeps the real colour.
+    s.style.color = shownColor(r.color)
     s.style.fontSize = `${r.size * zoom}px`
     s.style.fontWeight = r.bold ? 'bold' : 'normal'
     s.style.fontStyle = r.italic ? 'italic' : 'normal'
@@ -259,7 +263,7 @@ export function TextEditor() {
           fontSize: minSize(te) * zoom,
           lineHeight: TEXT_LINE_HEIGHT,
           fontFamily: TEXT_FONT,
-          color: te.color
+          color: shownColor(te.color)
         }}
         onInput={(e) => {
           const root = e.currentTarget

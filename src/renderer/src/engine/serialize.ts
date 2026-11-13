@@ -3,6 +3,7 @@ import { isEquation } from './formulaexpr'
 import { formulaBBox } from './formulatype'
 import { graphBBox, sanitizeGraph } from './graph'
 import { isShapeKind, MAX_BASE, MIN_BASE } from './shapes'
+import { isBackgroundKind, isChalk } from './surface'
 import { textBBox } from './text'
 import type { TextRun } from './types'
 import type { BackgroundKind, Camera, FormulaItem, GraphItem, GraphParams, Item, LineCap, LineDash, Point, ShapeSpec, TextItem } from './types'
@@ -20,14 +21,15 @@ export const FORMAT = 'inkboard'
  * 6 = functions plotted on coordinate planes (`fns` on graphs).
  * 7 = formula items (built on the math keypad); functions drawn on a range only (`from` / `to`, `yFrom` / `yTo`),
  *     named functions and other variables (`name`, `arg`; older versions show them as y and x).
+ * 8 = chalkboard surface (`chalk-<pattern>` backgrounds).
  * Readers accept ≤ this; older apps refuse newer files instead of silently dropping data.
- * A file is stamped with the lowest version that can show it, so a board without a version-7
- * feature still opens in an app that only knows version 6.
+ * A file is stamped with the lowest version that can show it.
  */
-export const FORMAT_VERSION = 7
+export const FORMAT_VERSION = 8
 
 /** Lowest format version that can represent these items without losing anything. */
-export function requiredVersion(items: readonly Item[]): number {
+export function requiredVersion({ items, background }: Pick<BoardData, 'items' | 'background'>): number {
+  if (isChalk(background)) return 8
   // Version 7: formulas, functions drawn on a range only (older versions would draw them whole), and
   // equations in x and y (older versions can't read them).
   const v7 = (i: Item): boolean =>
@@ -165,7 +167,7 @@ export function serializeBoard(data: BoardData): BoardFile {
       ...(it.locked ? { locked: true } : {})
     }
   })
-  return { format: FORMAT, version: requiredVersion(data.items), background: data.background, camera: data.camera, assets, items }
+  return { format: FORMAT, version: requiredVersion(data), background: data.background, camera: data.camera, assets, items }
 }
 
 export function deserializeBoard(file: BoardFile): BoardData {
@@ -238,7 +240,7 @@ export function deserializeBoard(file: BoardFile): BoardData {
   }
   return {
     items,
-    background: file.background ?? 'dots',
+    background: isBackgroundKind(file.background) ? file.background : 'dots',
     camera: file.camera ?? { x: 0, y: 0, zoom: 1 }
   }
 }

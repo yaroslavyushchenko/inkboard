@@ -1,3 +1,4 @@
+import { inkColor } from './surface'
 /**
  * Typesetting of keypad formulas (engine/formula.ts): the tree becomes the same vector primitives
  * as the labels of plotted functions (engine/mathtype.ts: text pieces and stroked polylines), so the
@@ -379,7 +380,7 @@ export function drawMathBox(ctx: CanvasRenderingContext2D, b: MathBox, x: number
 
 export function drawFormula(ctx: CanvasRenderingContext2D, f: Placed & { color: string }): void {
   const b = formulaBox(f)
-  drawMathBox(ctx, b, f.x, f.y + b.asc, f.color)
+  drawMathBox(ctx, b, f.x, f.y + b.asc, inkColor(f.color))
 }
 
 const r2 = (v: number): string => (Math.round(v * 100) / 100).toString()
@@ -403,5 +404,5 @@ export function mathBoxSvg(b: MathBox, x: number, baseline: number, color: strin
 
 export function formulaSvg(f: Placed & { color: string }): string {
   const b = formulaBox(f)
-  return mathBoxSvg(b, f.x, f.y + b.asc, f.color)
+  return mathBoxSvg(b, f.x, f.y + b.asc, inkColor(f.color))
 }

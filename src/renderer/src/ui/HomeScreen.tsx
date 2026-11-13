@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import appIcon from '../../../../build/icon.png'
 import { TAG_COLORS, type BoardEntry, type Tag } from '../../../shared/library'
 import { editor } from '../editor'
 import { relativeTime, useT } from '../i18n'
 import { platform } from '../platform'
 import { useUI } from '../store'
-import { ArrowLeftIcon, CheckIcon, DotsIcon, FolderIcon, PinIcon, PlusIcon, SearchIcon } from './icons'
+import { ArrowLeftIcon, CheckIcon, DotsIcon, FolderIcon, HomeIcon, PinIcon, PlusIcon, SearchIcon } from './icons'
 import { Popover } from './Popover'
 
 const lib = platform.library
@@ -120,7 +121,7 @@ function BoardCard({ entry, tags }: { entry: BoardEntry; tags: Tag[] }) {
   const folder = entry.filePath?.split(/[\\/]/).slice(-2, -1)[0]
   return (
     <div className={`board-card ${deleted ? 'deleted' : ''} ${entry.missing ? 'missing' : ''}`}>
-      <button className="card-open" onClick={open} disabled={deleted || entry.missing}>
+      <button className="card-open" aria-label={entry.title} onClick={open} disabled={deleted || entry.missing}>
         <Thumb entry={entry} />
       </button>
       <div className="card-body">
@@ -139,7 +140,7 @@ function BoardCard({ entry, tags }: { entry: BoardEntry; tags: Tag[] }) {
         ) : (
           <div className="card-title" title={entry.title} onClick={open}>
             {entry.pinned && <PinIcon width={14} height={14} className="card-pin" />}
-            {entry.title}
+            <span className="card-title-text">{entry.title}</span>
           </div>
         )}
         <div className="card-meta">
@@ -254,7 +255,6 @@ export function HomeScreen() {
   const t = useT()
   const { boards, tags } = useUI((s) => s.library)
   const current = useUI((s) => s.board)
-  const appVersion = useUI((s) => s.appVersion)
   const [query, setQuery] = useState('')
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [manage, setManage] = useState(false)
@@ -285,31 +285,38 @@ export function HomeScreen() {
 
   const canGoBack = current && boards.some((b) => b.id === current.id && !b.deletedAt)
   const nothing = pinned.length + rest.length === 0
+  const filtering = !!query.trim() || tagFilter !== null
 
   return (
     <div className="home">
       <header className="home-header">
-        <div className="home-title-row">
+        <div className="home-brand">
           {canGoBack && (
             <button className="icon-btn" title={t('home.back')} onClick={() => useUI.setState({ view: 'board' })}>
               <ArrowLeftIcon />
             </button>
           )}
-          <h1>{t('home.title')}</h1>
-          <span className="home-version">Inkboard {appVersion}</span>
+          <img src={appIcon} alt="" draggable={false} />
+          <span>Inkboard</span>
         </div>
-        <div className="home-actions">
-          <label className="search">
-            <SearchIcon width={18} height={18} />
-            <input value={query} placeholder={t('home.search')} onChange={(e) => setQuery(e.target.value)} />
-          </label>
-          <button className="text-btn outline" onClick={() => void editor.openFile()}>
-            <FolderIcon width={18} height={18} /> {t('home.openFile')}
-          </button>
+        <div className="home-title-row">
+          <h1>{t('home.title')}</h1>
+          <div className="home-actions">
+            <button className="text-btn outline" onClick={() => void editor.openFile()}>
+              <FolderIcon width={18} height={18} /> {t('home.openFile')}
+            </button>
+            <button className="text-btn primary" onClick={() => void editor.newBoard()}>
+              <PlusIcon width={18} height={18} /> {t('home.newBoard')}
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="tag-filter">
+        <label className="search">
+          <SearchIcon width={18} height={18} />
+          <input value={query} aria-label={t('home.search')} placeholder={t('home.search')} onChange={(e) => setQuery(e.target.value)} />
+        </label>
         <button className={`chip ${tagFilter === null ? 'active' : ''}`} onClick={() => setTagFilter(null)}>
           {t('home.allTags')}
         </button>
@@ -343,21 +350,25 @@ export function HomeScreen() {
           </section>
         )}
 
-        <section>
-          {pinned.length > 0 && <h2>{t('home.boards')}</h2>}
-          <div className="card-grid">
-            {!query && !tagFilter && (
-              <button className="new-board-card" onClick={() => void editor.newBoard()}>
-                <PlusIcon width={36} height={36} />
-                <span>{t('home.newBoard')}</span>
-              </button>
-            )}
-            {rest.map((b) => (
-              <BoardCard key={b.id} entry={b} tags={tags} />
-            ))}
+        {rest.length > 0 && (
+          <section>
+            {pinned.length > 0 && <h2>{t('home.boards')}</h2>}
+            <div className="card-grid">
+              {rest.map((b) => (
+                <BoardCard key={b.id} entry={b} tags={tags} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {nothing && (
+          <div className="home-empty">
+            <span className="home-empty-icon" aria-hidden="true">
+              {filtering ? <SearchIcon /> : <HomeIcon />}
+            </span>
+            <p>{t(filtering ? 'home.noResults' : 'home.empty')}</p>
           </div>
-          {nothing && (query || tagFilter) && <p className="muted">{t('home.noResults')}</p>}
-        </section>
+        )}
 
         {deleted.length > 0 && (
           <section className="deleted-section">

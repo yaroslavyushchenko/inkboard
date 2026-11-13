@@ -82,6 +82,10 @@ export function cleanPenButtons(v: unknown): PenButtons {
   return { lower: pick('lower'), upper: pick('upper'), eraserEnd: pick('eraserEnd') }
 }
 
+/** App interface theme (only used while the `darkTheme` feature flag is on). */
+export type ThemePref = 'system' | 'light' | 'dark'
+const THEME_PREFS: readonly ThemePref[] = ['system', 'light', 'dark']
+
 export interface InkSlot {
   color: string
   /** Width in world units (= screen px at 100% zoom). */
@@ -134,6 +138,7 @@ interface UIState {
   eraserRadius: number
   background: BackgroundKind
   lang: Lang
+  theme: ThemePref
   /** Mirrors editor.camera so React chrome (zoom label, selection toolbar) can follow it. */
   camera: Camera
   zoom: number
@@ -172,6 +177,7 @@ interface UIState {
   updateHighlighter: (patch: Partial<InkSlot>) => void
   setBackground: (bg: BackgroundKind) => void
   setLang: (lang: Lang) => void
+  setTheme: (theme: ThemePref) => void
 }
 
 export const useUI = create<UIState>()(
@@ -202,6 +208,7 @@ export const useUI = create<UIState>()(
       eraserRadius: 12,
       background: 'dots',
       lang: detectLanguage(),
+      theme: 'system',
       camera: { x: 0, y: 0, zoom: 1 },
       zoom: 1,
       canUndo: false,
@@ -228,7 +235,8 @@ export const useUI = create<UIState>()(
         set((s) => ({ pens: s.pens.map((p, i) => (i === index ? { ...p, ...patch } : p)) })),
       updateHighlighter: (patch) => set((s) => ({ highlighter: { ...s.highlighter, ...patch } })),
       setBackground: (background) => set({ background }),
-      setLang: (lang) => set({ lang })
+      setLang: (lang) => set({ lang }),
+      setTheme: (theme) => set({ theme })
     }),
     {
       // Only user preferences survive restarts; the board itself is restored from the autosave file.
@@ -240,6 +248,7 @@ export const useUI = create<UIState>()(
           ...current,
           ...p,
           penButtons: cleanPenButtons(p.penButtons),
+          theme: THEME_PREFS.includes(p.theme as ThemePref) ? (p.theme as ThemePref) : 'system',
           instruments: cleanInstrumentPrefs(p.instruments),
           hiddenTips: Array.isArray(p.hiddenTips) ? p.hiddenTips.filter((x) => typeof x === 'string') : [],
           formulaHistory: cleanFormulaHistory(p.formulaHistory)
@@ -251,6 +260,7 @@ export const useUI = create<UIState>()(
         eraserRadius: s.eraserRadius,
         background: s.background,
         lang: s.lang,
+        theme: s.theme,
         graphPresets: s.graphPresets,
         shapeBases: s.shapeBases,
         selectRadius: s.selectRadius,

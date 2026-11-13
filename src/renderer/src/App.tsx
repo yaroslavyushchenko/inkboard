@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { editor } from './editor'
 import { useUI } from './store'
+import { useAppTheme } from './theme'
 import { BackgroundPicker } from './ui/BackgroundPicker'
 import { FormulaEditor } from './ui/FormulaEditor'
 import { FunctionPanel } from './ui/FunctionPanel'
@@ -20,6 +21,7 @@ import { ZoomControls } from './ui/ZoomControls'
 
 export function App() {
   const view = useUI((s) => s.view)
+  useAppTheme()
   useEffect(() => {
     void editor.start()
   }, [])

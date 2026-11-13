@@ -1,4 +1,4 @@
-import { PAPER_COLOR } from './background'
+import { inkColor, inkPaper } from './surface'
 import { isBlank, type FormulaState, type Row } from './formula'
 import { fnHead, isFnLetter, labelRows, parsePlot, parseRows, readPlotRows, rowsToText } from './formulaexpr'
 import { typesetRows } from './formulatype'
@@ -766,7 +766,7 @@ export function drawGraph(ctx: CanvasRenderingContext2D, g: GraphItem): void {
     ctx.moveTo(l.x1, l.y1)
     ctx.lineTo(l.x2, l.y2)
     ctx.lineWidth = l.w
-    ctx.strokeStyle = l.color
+    ctx.strokeStyle = inkColor(l.color)
     ctx.stroke()
   }
   for (const t of p.tris) {
@@ -775,7 +775,7 @@ export function drawGraph(ctx: CanvasRenderingContext2D, g: GraphItem): void {
     ctx.lineTo(...t.pts[1])
     ctx.lineTo(...t.pts[2])
     ctx.closePath()
-    ctx.fillStyle = t.color
+    ctx.fillStyle = inkColor(t.color)
     ctx.fill()
   }
   ctx.lineJoin = 'round'
@@ -784,7 +784,7 @@ export function drawGraph(ctx: CanvasRenderingContext2D, g: GraphItem): void {
     ctx.moveTo(l.pts[0][0], l.pts[0][1])
     for (let i = 1; i < l.pts.length; i++) ctx.lineTo(l.pts[i][0], l.pts[i][1])
     ctx.lineWidth = l.w
-    ctx.strokeStyle = l.color
+    ctx.strokeStyle = inkColor(l.color)
     ctx.stroke()
   }
   for (const l of p.paths) polyline(l)
@@ -794,7 +794,7 @@ export function drawGraph(ctx: CanvasRenderingContext2D, g: GraphItem): void {
     ctx.textBaseline = t.baseline
   }
   // Paper-coloured outline under formula glyphs keeps them readable where curves cross.
-  ctx.strokeStyle = PAPER_COLOR
+  ctx.strokeStyle = inkPaper()
   for (const t of p.texts) {
     if (!t.math) continue
     font(t)
@@ -804,7 +804,7 @@ export function drawGraph(ctx: CanvasRenderingContext2D, g: GraphItem): void {
   for (const l of p.marks) polyline(l)
   for (const t of p.texts) {
     font(t)
-    ctx.fillStyle = t.color
+    ctx.fillStyle = inkColor(t.color)
     ctx.fillText(t.s, t.x, t.y)
   }
 }
@@ -815,26 +815,26 @@ export function graphSvg(g: GraphItem): string {
   const p = graphPrims(g)
   const parts: string[] = ['<g stroke-linecap="round">']
   for (const l of p.lines) {
-    parts.push(`<line x1="${r2(l.x1)}" y1="${r2(l.y1)}" x2="${r2(l.x2)}" y2="${r2(l.y2)}" stroke="${l.color}" stroke-width="${r2(l.w)}"/>`)
+    parts.push(`<line x1="${r2(l.x1)}" y1="${r2(l.y1)}" x2="${r2(l.x2)}" y2="${r2(l.y2)}" stroke="${inkColor(l.color)}" stroke-width="${r2(l.w)}"/>`)
   }
-  for (const t of p.tris) parts.push(`<path d="M${t.pts.map(([x, y]) => `${r2(x)},${r2(y)}`).join('L')}Z" fill="${t.color}"/>`)
+  for (const t of p.tris) parts.push(`<path d="M${t.pts.map(([x, y]) => `${r2(x)},${r2(y)}`).join('L')}Z" fill="${inkColor(t.color)}"/>`)
   for (const l of p.paths) {
-    parts.push(`<path d="M${l.pts.map(([x, y]) => `${r2(x)},${r2(y)}`).join('L')}" fill="none" stroke="${l.color}" stroke-width="${r2(l.w)}" stroke-linejoin="round"/>`)
+    parts.push(`<path d="M${l.pts.map(([x, y]) => `${r2(x)},${r2(y)}`).join('L')}" fill="none" stroke="${inkColor(l.color)}" stroke-width="${r2(l.w)}" stroke-linejoin="round"/>`)
   }
   for (const t of p.texts) {
     if (!t.math) continue
     parts.push(
-      `<text x="${r2(t.x)}" y="${r2(t.y)}" font-size="${r2(t.size)}" font-family='${MATH_FONT}'${t.italic ? ' font-style="italic"' : ''} fill="none" stroke="${PAPER_COLOR}" stroke-width="${r2(t.size * 0.22)}" stroke-linejoin="round">${esc(t.s)}</text>`
+      `<text x="${r2(t.x)}" y="${r2(t.y)}" font-size="${r2(t.size)}" font-family='${MATH_FONT}'${t.italic ? ' font-style="italic"' : ''} fill="none" stroke="${inkPaper()}" stroke-width="${r2(t.size * 0.22)}" stroke-linejoin="round">${esc(t.s)}</text>`
     )
   }
   for (const l of p.marks) {
-    parts.push(`<path d="M${l.pts.map(([x, y]) => `${r2(x)},${r2(y)}`).join('L')}" fill="none" stroke="${l.color}" stroke-width="${r2(l.w)}" stroke-linejoin="round"/>`)
+    parts.push(`<path d="M${l.pts.map(([x, y]) => `${r2(x)},${r2(y)}`).join('L')}" fill="none" stroke="${inkColor(l.color)}" stroke-width="${r2(l.w)}" stroke-linejoin="round"/>`)
   }
   for (const t of p.texts) {
     const anchor = t.align === 'center' ? 'middle' : t.align === 'right' ? 'end' : 'start'
     const base = t.baseline === 'top' ? 'hanging' : t.baseline === 'middle' ? 'central' : 'alphabetic'
     parts.push(
-      `<text x="${r2(t.x)}" y="${r2(t.y)}" font-size="${r2(t.size)}" font-family='${fontFamily(t.italic, t.math)}'${t.italic ? ' font-style="italic"' : ''} text-anchor="${anchor}" dominant-baseline="${base}" fill="${t.color}">${esc(t.s)}</text>`
+      `<text x="${r2(t.x)}" y="${r2(t.y)}" font-size="${r2(t.size)}" font-family='${fontFamily(t.italic, t.math)}'${t.italic ? ' font-style="italic"' : ''} text-anchor="${anchor}" dominant-baseline="${base}" fill="${inkColor(t.color)}">${esc(t.s)}</text>`
     )
   }
   parts.push('</g>')

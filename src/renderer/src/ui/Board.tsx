@@ -22,6 +22,7 @@ import { matchShortcut, type ShortcutId } from '../shortcuts'
 import { useUI, type InkSlot, type PenAction, type Tool } from '../store'
 import { translate, type Lang, type MessageKey } from '../i18n'
 import { BACKGROUND_STYLE } from '../engine/background'
+import { bgPattern } from '../engine/surface'
 import { COMPASS_CELL, compassArc, hitCompass, radiusCells, radiusFromHandle, snapSweep, type CompassHit, type CompassState } from '../engine/compass'
 import {
   cmText,
@@ -345,7 +346,7 @@ export function Board() {
     /** Grid spacing for Ctrl-snapping instruments to the paper grid. */
     const gridSteps = (): [number, number] => {
       const bg = useUI.getState().background
-      return [COMPASS_CELL, bg === 'lines' ? BACKGROUND_STYLE.lines.step : COMPASS_CELL]
+      return [COMPASS_CELL, bgPattern(bg) === 'lines' ? BACKGROUND_STYLE.lines.step : COMPASS_CELL]
     }
     const snapPt = (x: number, y: number): { x: number; y: number } => {
       const [sx, sy] = gridSteps()

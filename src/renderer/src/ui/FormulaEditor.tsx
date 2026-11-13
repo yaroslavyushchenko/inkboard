@@ -3,6 +3,7 @@ import { editor } from '../editor'
 import type { FormulaState, Row } from '../engine/formula'
 import { numericResult } from '../engine/formulaexpr'
 import { caretOf, typesetRows } from '../engine/formulatype'
+import { inkColor, withInkSurface } from '../engine/surface'
 import { useT } from '../i18n'
 import { useUI } from '../store'
 import { FormulaField } from './FormulaField'
@@ -19,6 +20,7 @@ export function FormulaEditor() {
   const t = useT()
   const fe = useUI((s) => s.formulaEdit)
   const cam = useUI((s) => s.camera)
+  const background = useUI((s) => s.background)
   const view = useUI((s) => s.view)
   const lang = useUI((s) => s.lang)
   const size = fe ? fe.size * cam.zoom : 0
@@ -69,7 +71,7 @@ export function FormulaEditor() {
   return (
     <div
       className="formula-editor"
-      style={{ left: (fe.x - cam.x) * cam.zoom - PAD, top: (fe.baseline - cam.y) * cam.zoom - lay.box.asc - PAD, color: fe.color }}
+      style={{ left: (fe.x - cam.x) * cam.zoom - PAD, top: (fe.baseline - cam.y) * cam.zoom - lay.box.asc - PAD, color: withInkSurface(background, () => inkColor(fe.color)) }}
       onPointerDown={(e) => e.stopPropagation()}
     >
       <FormulaField

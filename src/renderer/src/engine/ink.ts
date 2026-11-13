@@ -1,4 +1,5 @@
 import { getStroke, type StrokeOptions } from 'perfect-freehand'
+import { highlightBlend, inkColor, inkPaper } from './surface'
 import type { LineCap, LineDash, Point, StrokeItem } from './types'
 
 export const HIGHLIGHTER_ALPHA = 0.38
@@ -81,10 +82,10 @@ export function strokePath(s: StrokeItem): Path2D {
 }
 
 export function fillInk(ctx: CanvasRenderingContext2D, path: Path2D, color: string, tool: InkStyle['tool']): void {
-  ctx.fillStyle = color
+  ctx.fillStyle = inkColor(color)
   if (tool === 'highlighter') {
     ctx.globalAlpha = HIGHLIGHTER_ALPHA
-    ctx.globalCompositeOperation = 'multiply'
+    ctx.globalCompositeOperation = highlightBlend()
     ctx.fill(path)
     ctx.globalAlpha = 1
     ctx.globalCompositeOperation = 'source-over'
@@ -135,11 +136,11 @@ export function strokeLine(
   ctx.lineWidth = size
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  ctx.strokeStyle = color
+  ctx.strokeStyle = inkColor(color)
   ctx.setLineDash(dashPattern(dash, size))
   if (tool === 'highlighter') {
     ctx.globalAlpha = HIGHLIGHTER_ALPHA
-    ctx.globalCompositeOperation = 'multiply'
+    ctx.globalCompositeOperation = highlightBlend()
     ctx.stroke(path)
     ctx.globalAlpha = 1
     ctx.globalCompositeOperation = 'source-over'
@@ -192,6 +193,7 @@ export function capGeometry(s: Pick<StrokeItem, 'points' | 'size' | 'startCap' |
 }
 
 export function drawCaps(ctx: CanvasRenderingContext2D, s: Pick<StrokeItem, 'points' | 'size' | 'startCap' | 'endCap' | 'color'>): void {
+  const color = inkColor(s.color)
   for (const c of capGeometry(s)) {
     const px = -c.uy
     const py = c.ux
@@ -201,18 +203,18 @@ export function drawCaps(ctx: CanvasRenderingContext2D, s: Pick<StrokeItem, 'poi
       ctx.lineTo(c.x - c.ux * c.len + px * c.len * 0.5, c.y - c.uy * c.len + py * c.len * 0.5)
       ctx.lineTo(c.x - c.ux * c.len - px * c.len * 0.5, c.y - c.uy * c.len - py * c.len * 0.5)
       ctx.closePath()
-      ctx.fillStyle = s.color
+      ctx.fillStyle = color
       ctx.fill()
     } else if (c.kind === 'dot') {
       ctx.arc(c.x, c.y, Math.max(3, s.size * 1.6), 0, Math.PI * 2)
-      ctx.fillStyle = s.color
+      ctx.fillStyle = color
       ctx.fill()
     } else if (c.kind === 'circle') {
       ctx.arc(c.x, c.y, Math.max(4, s.size * 2), 0, Math.PI * 2)
-      ctx.fillStyle = '#ffffff'
+      ctx.fillStyle = inkPaper()
       ctx.fill()
       ctx.lineWidth = Math.max(1, s.size * 0.8)
-      ctx.strokeStyle = s.color
+      ctx.strokeStyle = color
       ctx.stroke()
     } else {
       const h = c.len * 0.5
@@ -220,7 +222,7 @@ export function drawCaps(ctx: CanvasRenderingContext2D, s: Pick<StrokeItem, 'poi
       ctx.lineTo(c.x - px * h, c.y - py * h)
       ctx.lineWidth = s.size
       ctx.lineCap = 'round'
-      ctx.strokeStyle = s.color
+      ctx.strokeStyle = color
       ctx.stroke()
     }
   }
@@ -240,6 +242,7 @@ const r2s = (v: number): string => (Math.round(v * 100) / 100).toString()
 
 /** SVG for the start/end decorations of a stroke. */
 export function capsSvg(s: StrokeItem): string {
+  const color = inkColor(s.color)
   return capGeometry(s)
     .map((c) => {
       const px = -c.uy
@@ -250,13 +253,13 @@ export function capsSvg(s: StrokeItem): string {
           [c.x - c.ux * c.len + px * c.len * 0.5, c.y - c.uy * c.len + py * c.len * 0.5],
           [c.x - c.ux * c.len - px * c.len * 0.5, c.y - c.uy * c.len - py * c.len * 0.5]
         ]
-        return `<path d="M${pts.map(([x, y]) => `${r2s(x)},${r2s(y)}`).join('L')}Z" fill="${s.color}"/>`
+        return `<path d="M${pts.map(([x, y]) => `${r2s(x)},${r2s(y)}`).join('L')}Z" fill="${color}"/>`
       }
-      if (c.kind === 'dot') return `<circle cx="${r2s(c.x)}" cy="${r2s(c.y)}" r="${r2s(Math.max(3, s.size * 1.6))}" fill="${s.color}"/>`
+      if (c.kind === 'dot') return `<circle cx="${r2s(c.x)}" cy="${r2s(c.y)}" r="${r2s(Math.max(3, s.size * 1.6))}" fill="${color}"/>`
       if (c.kind === 'circle')
-        return `<circle cx="${r2s(c.x)}" cy="${r2s(c.y)}" r="${r2s(Math.max(4, s.size * 2))}" fill="#fff" stroke="${s.color}" stroke-width="${r2s(Math.max(1, s.size * 0.8))}"/>`
+        return `<circle cx="${r2s(c.x)}" cy="${r2s(c.y)}" r="${r2s(Math.max(4, s.size * 2))}" fill="${inkPaper()}" stroke="${color}" stroke-width="${r2s(Math.max(1, s.size * 0.8))}"/>`
       const h = c.len * 0.5
-      return `<line x1="${r2s(c.x + px * h)}" y1="${r2s(c.y + py * h)}" x2="${r2s(c.x - px * h)}" y2="${r2s(c.y - py * h)}" stroke="${s.color}" stroke-width="${r2s(s.size)}" stroke-linecap="round"/>`
+      return `<line x1="${r2s(c.x + px * h)}" y1="${r2s(c.y + py * h)}" x2="${r2s(c.x - px * h)}" y2="${r2s(c.y - py * h)}" stroke="${color}" stroke-width="${r2s(s.size)}" stroke-linecap="round"/>`
     })
     .join('')
 }

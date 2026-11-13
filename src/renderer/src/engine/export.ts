@@ -1,9 +1,11 @@
-import { BACKGROUND_STYLE, drawBackground, PAPER_COLOR } from './background'
+import { BACKGROUND_STYLE, drawBackground, patternColor } from './background'
+import { SMUDGE_TILE, smudgeDataUrl } from './chalkTexture'
 import { loadImage } from './images'
 import { formulaSvg } from './formulatype'
 import { graphSvg } from './graph'
 import { capsSvg, dashPattern, HIGHLIGHTER_ALPHA, inkOutlineSvg, lineSvgPath, usesLineRender } from './ink'
 import { drawItems } from './renderer'
+import { bgPattern, highlightBlend, isChalk, inkColor, surfaceColor, withInkSurface } from './surface'
 import { textSvg } from './text'
 import { unionBBox } from './transform'
 import type { BackgroundKind, BBox, Camera, Item } from './types'
@@ -41,7 +43,7 @@ async function renderToBlob(
   ctx.setTransform(scale, 0, 0, scale, -cam.x * scale, -cam.y * scale)
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
-  drawItems(ctx, items, { minX: cam.x, minY: cam.y, maxX: cam.x + W / scale, maxY: cam.y + H / scale })
+  withInkSurface(bg, () => drawItems(ctx, items, { minX: cam.x, minY: cam.y, maxX: cam.x + W / scale, maxY: cam.y + H / scale }))
   const blob = await canvas.convertToBlob({ type, quality })
   return new Uint8Array(await blob.arrayBuffer())
 }
@@ -73,9 +75,14 @@ export async function renderPng(items: readonly Item[], bg: BackgroundKind): Pro
 const r2 = (v: number): string => (Math.round(v * 100) / 100).toString()
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
 
-function patternDefs(bg: BackgroundKind): string {
-  if (bg === 'blank') return ''
-  const st = BACKGROUND_STYLE[bg]
+function patternDefs(bgKind: BackgroundKind): string {
+  const bg = bgPattern(bgKind)
+  const smudge = isChalk(bgKind) ? smudgeDataUrl() : null
+  const smudgeTile = smudge
+    ? `<pattern id="smudge" width="${SMUDGE_TILE}" height="${SMUDGE_TILE}" patternUnits="userSpaceOnUse"><image href="${smudge}" width="${SMUDGE_TILE}" height="${SMUDGE_TILE}"/></pattern>`
+    : ''
+  if (bg === 'blank') return smudgeTile ? `<defs>${smudgeTile}</defs>` : ''
+  const st = { step: BACKGROUND_STYLE[bg].step, color: patternColor(bgKind, bg) }
   const s = st.step
   let tile = ''
   if (bg === 'dots') {
@@ -85,7 +92,7 @@ function patternDefs(bg: BackgroundKind): string {
   } else {
     tile = `<pattern id="paper" width="${s}" height="${s}" patternUnits="userSpaceOnUse"><rect width="${s}" height="1" fill="${st.color}"/></pattern>`
   }
-  return `<defs>${tile}</defs>`
+  return `<defs>${smudgeTile}${tile}</defs>`
 }
 
 /**
@@ -93,6 +100,10 @@ function patternDefs(bg: BackgroundKind): string {
  * width/height are the output size in px; very large boards are scaled down to stay printable.
  */
 export function renderSvg(items: readonly Item[], bg: BackgroundKind): { svg: string; width: number; height: number } {
+  return withInkSurface(bg, () => buildSvg(items, bg))
+}
+
+function buildSvg(items: readonly Item[], bg: BackgroundKind): { svg: string; width: number; height: number } {
   const box = contentBox(items, 24)
   const bw = box.maxX - box.minX
   const bh = box.maxY - box.minY
@@ -103,8 +114,9 @@ export function renderSvg(items: readonly Item[], bg: BackgroundKind): { svg: st
   const vb = `${r2(box.minX)} ${r2(box.minY)} ${r2(bw)} ${r2(bh)}`
   parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${vb}">`)
   parts.push(patternDefs(bg))
-  parts.push(`<rect x="${r2(box.minX)}" y="${r2(box.minY)}" width="${r2(bw)}" height="${r2(bh)}" fill="${PAPER_COLOR}"/>`)
-  if (bg !== 'blank') parts.push(`<rect x="${r2(box.minX)}" y="${r2(box.minY)}" width="${r2(bw)}" height="${r2(bh)}" fill="url(#paper)"/>`)
+  parts.push(`<rect x="${r2(box.minX)}" y="${r2(box.minY)}" width="${r2(bw)}" height="${r2(bh)}" fill="${surfaceColor(bg)}"/>`)
+  if (isChalk(bg) && smudgeDataUrl()) parts.push(`<rect x="${r2(box.minX)}" y="${r2(box.minY)}" width="${r2(bw)}" height="${r2(bh)}" fill="url(#smudge)"/>`)
+  if (bgPattern(bg) !== 'blank') parts.push(`<rect x="${r2(box.minX)}" y="${r2(box.minY)}" width="${r2(bw)}" height="${r2(bh)}" fill="url(#paper)"/>`)
   for (const it of items) {
     if (it.type === 'graph') {
       parts.push(graphSvg(it))
@@ -115,17 +127,17 @@ export function renderSvg(items: readonly Item[], bg: BackgroundKind): { svg: st
     } else if (it.type === 'image') {
       parts.push(`<image href="${esc(it.src)}" x="${r2(it.x)}" y="${r2(it.y)}" width="${r2(it.w)}" height="${r2(it.h)}" preserveAspectRatio="none"/>`)
     } else if (usesLineRender(it)) {
-      const hl = it.tool === 'highlighter' ? ` stroke-opacity="${HIGHLIGHTER_ALPHA}" style="mix-blend-mode:multiply"` : ''
+      const hl = it.tool === 'highlighter' ? ` stroke-opacity="${HIGHLIGHTER_ALPHA}" style="mix-blend-mode:${highlightBlend()}"` : ''
       const dash = it.dash ? ` stroke-dasharray="${dashPattern(it.dash, it.size).map(r2).join(' ')}"` : ''
       parts.push(
-        `<path d="${lineSvgPath(it.points)}" fill="none" stroke="${esc(it.color)}" stroke-width="${r2(it.size)}" stroke-linecap="round" stroke-linejoin="round"${dash}${hl}/>`
+        `<path d="${lineSvgPath(it.points)}" fill="none" stroke="${esc(inkColor(it.color))}" stroke-width="${r2(it.size)}" stroke-linecap="round" stroke-linejoin="round"${dash}${hl}/>`
       )
       parts.push(capsSvg(it))
     } else {
       const d = inkOutlineSvg(it)
       if (!d) continue
-      const hl = it.tool === 'highlighter' ? ` fill-opacity="${HIGHLIGHTER_ALPHA}" style="mix-blend-mode:multiply"` : ''
-      parts.push(`<path d="${d}" fill="${esc(it.color)}"${hl}/>`)
+      const hl = it.tool === 'highlighter' ? ` fill-opacity="${HIGHLIGHTER_ALPHA}" style="mix-blend-mode:${highlightBlend()}"` : ''
+      parts.push(`<path d="${d}" fill="${esc(inkColor(it.color))}"${hl}/>`)
     }
   }
   parts.push('</svg>')
