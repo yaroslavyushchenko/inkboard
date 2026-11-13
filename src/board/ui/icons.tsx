@@ -374,3 +374,13 @@ export function PolygonIcon({ n }: { n: number }) {
     </svg>
   )
 }
+
+/** Laser pointer: a pen-like pointer with a glowing red dot. */
+export const LaserIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M14.5 9.5 20 4" />
+    <path d="M17 3.5 20.5 7" />
+    <circle cx="8" cy="16" r="3.2" fill="#ff2d2d" stroke="#ff2d2d" />
+    <path d="M8 9.5v1.5M8 21v1M2 16h1.5M12.5 16h1.5M3.8 11.8l1 1M11.2 19.2l1 1" strokeWidth={1.4} />
+  </svg>
+)

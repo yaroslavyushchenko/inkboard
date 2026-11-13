@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from 'react'
-import { BACKGROUND_STYLE, CHALK_PATTERN_COLOR } from '../engine/background'
+import { BACKGROUND_STYLE, CHALK_PATTERN_COLOR, MAJOR_COLOR } from '../engine/background'
 import { bgPattern, CHALKBOARD_COLOR, isChalk, withPattern, withSurface } from '../engine/surface'
 import type { PaperPattern } from '../engine/types'
 import { useFeature } from '../features'
@@ -7,6 +7,7 @@ import { LANGUAGES, useT, type Lang, type MessageKey } from '../i18n'
 import { useUI } from '../store'
 import { PaperIcon } from './icons'
 import { PenSettings } from './PenSettings'
+import { BoardSettings } from './BoardSettings'
 import { ExperimentalSettings, ThemeSettings } from './ExperimentalSettings'
 import { Popover } from './Popover'
 
@@ -14,7 +15,10 @@ const OPTIONS: { kind: PaperPattern; label: MessageKey }[] = [
   { kind: 'blank', label: 'bg.blank' },
   { kind: 'dots', label: 'bg.dots' },
   { kind: 'grid', label: 'bg.grid' },
-  { kind: 'lines', label: 'bg.lines' }
+  { kind: 'lines', label: 'bg.lines' },
+  { kind: 'math', label: 'bg.math' },
+  { kind: 'hand', label: 'bg.hand' },
+  { kind: 'slant', label: 'bg.slant' }
 ]
 
 function Preview({ kind, chalk }: { kind: PaperPattern; chalk: boolean }) {
@@ -32,6 +36,31 @@ function Preview({ kind, chalk }: { kind: PaperPattern; chalk: boolean }) {
           </g>
         ))}
       {kind === 'lines' && cells.map((v) => <line key={v} x1="0" y1={v} x2="56" y2={v} stroke={ink('lines', '#cdd3dd')} />)}
+      {kind === 'math' &&
+        [4, 10, 16, 22, 28, 34, 40, 46, 52].map((v, i) => (
+          <g key={v} stroke={i % 5 === 0 ? (chalk ? MAJOR_COLOR.chalk : '#aab2c0') : ink('math', '#dfe2e8')}>
+            <line x1={v} y1="0" x2={v} y2="56" />
+            <line x1="0" y1={v} x2="56" y2={v} />
+          </g>
+        ))}
+      {kind === 'hand' &&
+        [8, 32].map((y) => (
+          <g key={y}>
+            <line x1="0" y1={y} x2="56" y2={y} stroke={chalk ? MAJOR_COLOR.chalk : '#aab2c0'} />
+            <line x1="0" y1={y + 8} x2="56" y2={y + 8} stroke={ink('hand', '#c3cad6')} strokeDasharray="2 2" />
+            <line x1="0" y1={y + 16} x2="56" y2={y + 16} stroke={chalk ? MAJOR_COLOR.chalk : '#aab2c0'} />
+          </g>
+        ))}
+      {kind === 'slant' && (
+        <g>
+          {[-16, -8, 0, 8, 16, 24, 32, 40, 48, 56].map((x) => (
+            <line key={x} x1={x} y1="56" x2={x + 26} y2="0" stroke={ink('slant', '#d3d9e3')} />
+          ))}
+          {[12, 22, 36, 46].map((y) => (
+            <line key={y} x1="0" y1={y} x2="56" y2={y} stroke={chalk ? MAJOR_COLOR.chalk : '#aab2c0'} />
+          ))}
+        </g>
+      )}
     </svg>
   )
 }
@@ -91,6 +120,7 @@ export function BackgroundPicker({
           )}
           {storageSettings}
           <ThemeSettings />
+          <BoardSettings />
           <PenSettings />
           {!surfaceFollowsTheme && <ExperimentalSettings />}
           {about}

@@ -8,7 +8,7 @@ import { drawText } from './text'
 import { drawCompass, type Compass, type CompassState } from './compass'
 import { drawAngleLabel, drawProtractor, type Protractor, type ProtractorState } from './protractor'
 import { drawStraightedge, type Straightedge, type StraightState } from './straightedge'
-import { inkColor, withInkSurface } from './surface'
+import { inkColor, isChalk, withInkSurface } from './surface'
 import { buildInkPath, drawCaps, drawStroke, fillInk, linePath, strokeLine, type InkStyle } from './ink'
 import { xformBBox, type Xform } from './transform'
 import type { BackgroundKind, BBox, Camera, Item, LineCap, LineDash, Point } from './types'
@@ -29,8 +29,8 @@ export interface CursorState {
   sy: number
   /** Pen is in range of the tablet but not touching. */
   penHover: boolean
-  /** 'ink' shows a dot of the pen colour and size, 'eraser' a ring, 'select' the brush-select circle. */
-  kind: 'ink' | 'eraser' | 'select'
+  /** 'ink' shows a dot of the pen colour and size, 'eraser' a ring, 'select' the brush-select circle, 'laser' a glowing red dot. */
+  kind: 'ink' | 'eraser' | 'select' | 'laser'
   color: string
   /** Radius in screen px. */
   radius: number
@@ -108,7 +108,10 @@ export class BoardRenderer {
     ctx.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s)
   }
 
-  renderBase(items: readonly Item[], cam: Camera, bg: BackgroundKind, preview: Preview | null): void {
+  /** Offscreen layer the selection is drawn into before it is tinted and lifted. */
+  private liftCanvas: HTMLCanvasElement | null = null
+
+  renderBase(items: readonly Item[], cam: Camera, bg: BackgroundKind, preview: Preview | null, selected?: ReadonlySet<string>): void {
     const ctx = this.base
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     this.bg = bg
@@ -117,7 +120,41 @@ export class BoardRenderer {
     this.applyCamera(ctx, cam)
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
-    withInkSurface(bg, () => drawItems(ctx, items, viewportBBox(cam, this.width, this.height), preview))
+    const view = viewportBBox(cam, this.width, this.height)
+    if (!selected?.size) {
+      withInkSurface(bg, () => drawItems(ctx, items, view, preview))
+      return
+    }
+    // The selection is drawn on top, tinted and lifted off the board with a soft shadow, so it's
+    // clear what is picked up. Only the screen changes: the items keep their colours.
+    const picked = items.filter((i) => selected.has(i.id))
+    withInkSurface(bg, () => drawItems(ctx, items.filter((i) => !selected.has(i.id)), view, preview))
+    const layer = (this.liftCanvas ??= document.createElement('canvas'))
+    if (layer.width !== this.baseCanvas.width || layer.height !== this.baseCanvas.height) {
+      layer.width = this.baseCanvas.width
+      layer.height = this.baseCanvas.height
+    }
+    const l = layer.getContext('2d')!
+    l.setTransform(1, 0, 0, 1, 0, 0)
+    l.clearRect(0, 0, layer.width, layer.height)
+    this.applyCamera(l, cam)
+    l.imageSmoothingEnabled = true
+    l.imageSmoothingQuality = 'high'
+    withInkSurface(bg, () => drawItems(l, picked, view, preview))
+    l.setTransform(1, 0, 0, 1, 0, 0)
+    l.globalCompositeOperation = 'source-atop'
+    l.fillStyle = SELECT_TINT
+    l.fillRect(0, 0, layer.width, layer.height)
+    l.globalCompositeOperation = 'source-over'
+    ctx.save()
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    // On the dark chalkboard a shadow barely shows: make it deeper and wider there.
+    const chalk = isChalk(bg)
+    ctx.shadowColor = chalk ? 'rgba(0, 0, 0, 0.85)' : 'rgba(20, 30, 60, 0.32)'
+    ctx.shadowBlur = (chalk ? 20 : 14) * this.dpr
+    ctx.shadowOffsetY = (chalk ? 9 : 6) * this.dpr
+    ctx.drawImage(layer, 0, 0)
+    ctx.restore()
   }
 
   renderOverlay(
@@ -133,6 +170,8 @@ export class BoardRenderer {
       /** Short hint next to the pointer (what dragging the part under it does). */
       hint?: { sx: number; sy: number; text: string } | null
       angleLabel?: { sx: number; sy: number; text: string } | null
+      /** Laser pointer trail: world points with the time each was drawn. */
+      laser?: { points: readonly (readonly [number, number, number])[]; now: number; fade: number } | null
     } = {}
   ): void {
     const ctx = this.overlay
@@ -226,6 +265,8 @@ export class BoardRenderer {
       }
     }
 
+    if (extras.laser) drawLaser(ctx, cam, this.dpr, extras.laser)
+
     if (live && (live.points.length > 0 || live.parts?.length)) {
       this.applyCamera(ctx, cam)
       withInkSurface(this.bg, () => drawLive(ctx, live))
@@ -250,7 +291,16 @@ export class BoardRenderer {
 
       ctx.beginPath()
       ctx.arc(sx, sy, r, 0, Math.PI * 2)
-      if (cursor.kind === 'select') {
+      if (cursor.kind === 'laser') {
+        ctx.shadowColor = LASER
+        ctx.shadowBlur = 12
+        ctx.fillStyle = LASER
+        ctx.fill()
+        ctx.shadowBlur = 0
+        ctx.lineWidth = 1.5
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)'
+        ctx.stroke()
+      } else if (cursor.kind === 'select') {
         ctx.fillStyle = 'rgba(79, 107, 237, 0.08)'
         ctx.fill()
         ctx.setLineDash([5, 4])
@@ -283,6 +333,41 @@ export class BoardRenderer {
     if (extras.angleLabel) drawAngleLabel(ctx, this.dpr, extras.angleLabel.sx, extras.angleLabel.sy, extras.angleLabel.text)
     else if (extras.hint) drawAngleLabel(ctx, this.dpr, extras.hint.sx, extras.hint.sy, extras.hint.text, true)
   }
+}
+
+const LASER = '#ff2d2d'
+/** Tint laid over selected items (the accent colour, see-through). */
+const SELECT_TINT = 'rgba(79, 107, 237, 0.38)'
+
+/** Laser pointer: a glowing red trail in screen space that fades with age (never saved to the board). */
+function drawLaser(
+  ctx: CanvasRenderingContext2D,
+  cam: Camera,
+  dpr: number,
+  laser: { points: readonly (readonly [number, number, number])[]; now: number; fade: number }
+): void {
+  const pts = laser.points
+  if (!pts.length) return
+  ctx.save()
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.shadowColor = LASER
+  ctx.shadowBlur = 10
+  ctx.strokeStyle = LASER
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1]
+    const b = pts[i]
+    const life = 1 - (laser.now - b[2]) / laser.fade
+    if (life <= 0) continue
+    ctx.globalAlpha = Math.min(1, life * 1.4)
+    ctx.lineWidth = 2 + 3 * life
+    ctx.beginPath()
+    ctx.moveTo((a[0] - cam.x) * cam.zoom, (a[1] - cam.y) * cam.zoom)
+    ctx.lineTo((b[0] - cam.x) * cam.zoom, (b[1] - cam.y) * cam.zoom)
+    ctx.stroke()
+  }
+  ctx.restore()
 }
 
 /** The stroke being drawn (overlay canvas, camera transform already set). */

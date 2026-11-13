@@ -178,7 +178,11 @@ export interface FormulaItem extends ItemBase {
 export type Item = StrokeItem | ImageItem | GraphItem | TextItem | FormulaItem
 
 /** Pattern printed on the board surface. */
-export type PaperPattern = 'blank' | 'dots' | 'grid' | 'lines'
+/**
+ * 'math' = grid with a darker line every 5 cells; 'hand' = handwriting rows (top, dashed middle and
+ * base line); 'slant' = copybook rows with slanted guide lines (Ukrainian "коса лінія").
+ */
+export type PaperPattern = 'blank' | 'dots' | 'grid' | 'lines' | 'math' | 'hand' | 'slant'
 /** Pattern on white paper, or `chalk-<pattern>` on the green chalkboard (see engine/surface.ts). */
 export type BackgroundKind = PaperPattern | `chalk-${PaperPattern}`
 

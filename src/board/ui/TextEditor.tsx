@@ -6,6 +6,7 @@ import type { TextFormat } from '../engine/types'
 import { useT } from '../i18n'
 import { PEN_COLORS, useUI, type TextEdit } from '../store'
 import { fitBox, screenArea } from './dock'
+import { autoBullet, continueList } from '../engine/lists'
 
 /*
  * The box shown while typing on the board: a contenteditable (plain-text editing, so the browser
@@ -159,6 +160,16 @@ interface Panel {
   whole: boolean
 }
 
+/** The line the caret is on: where it starts, its whole text and the part before the caret. */
+function caretLine(root: HTMLElement, te: { runs: FullRun[] }): { start: number; text: string; before: string } | null {
+  const sel = getSel(root)
+  if (!sel || sel.start !== sel.end) return null
+  const all = te.runs.map((r) => r.text).join('')
+  const start = all.lastIndexOf('\n', sel.start - 1) + 1
+  const endAt = all.indexOf('\n', sel.start)
+  return { start, text: all.slice(start, endAt < 0 ? all.length : endAt), before: all.slice(start, sel.start) }
+}
+
 export function TextEditor() {
   const te = useUI((s) => s.textEdit)
   const zoom = useUI((s) => s.camera.zoom)
@@ -291,9 +302,30 @@ export function TextEditor() {
           }
           if (e.code === 'Enter' || e.code === 'NumpadEnter') {
             e.preventDefault()
+            const root = e.currentTarget
+            const line = caretLine(root, useUI.getState().textEdit ?? te)
+            const list = line && !e.shiftKey ? continueList(line.text) : null
+            if (list?.exit) {
+              // Enter on an empty list item ends the list: the marker goes, no new line.
+              setSel(root, line!.start, line!.start + line!.text.length)
+              document.execCommand('delete')
+              return
+            }
             // A <br> (not the <div> the browser would make), so lines stay one flat run of text.
             document.execCommand('insertLineBreak')
+            if (list) document.execCommand('insertText', false, list.next)
             return
+          }
+          if (e.code === 'Space' && !mod && !e.altKey) {
+            // "- " or "* " at the start of a line becomes a bullet.
+            const line = caretLine(e.currentTarget, useUI.getState().textEdit ?? te)
+            const bullet = line ? autoBullet(line.before + ' ') : null
+            if (bullet) {
+              e.preventDefault()
+              setSel(e.currentTarget, line!.start, line!.start + line!.before.length)
+              document.execCommand('insertText', false, bullet)
+              return
+            }
           }
           // Ctrl+B / I / U by physical key, so any keyboard layout works.
           const k = mod && !e.altKey ? ({ KeyB: 'bold', KeyI: 'italic', KeyU: 'underline' } as const)[e.code as 'KeyB'] : undefined

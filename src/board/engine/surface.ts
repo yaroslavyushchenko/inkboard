@@ -11,7 +11,9 @@ import type { BackgroundKind, PaperPattern } from './types'
  * colours again. Board data never changes because of the surface.
  */
 
-export const PAPER_PATTERNS: readonly PaperPattern[] = ['blank', 'dots', 'grid', 'lines']
+export const PAPER_PATTERNS: readonly PaperPattern[] = ['blank', 'dots', 'grid', 'lines', 'math', 'hand', 'slant']
+/** Patterns added in format version 9 (older apps can't draw them). */
+export const SCHOOL_PATTERNS: readonly PaperPattern[] = ['math', 'hand', 'slant']
 
 export const PAPER_COLOR = '#ffffff'
 /** Classic lecture-hall green board. */

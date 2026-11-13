@@ -45,6 +45,7 @@ export type ShortcutId =
   | 'square60'
   | 'protractor'
   | 'compass'
+  | 'laser'
 
 const BOARD_FILE_SHORTCUTS = ['home', 'newBoard', 'openFile', 'save', 'saveAs'] as const
 export type BoardFileShortcut = (typeof BOARD_FILE_SHORTCUTS)[number]
@@ -92,6 +93,7 @@ export const SHORTCUTS: Shortcut[] = [
   S({ id: 'square60', codes: ['KeyS'], mod: false, shift: true, display: 'Shift+S', group: 'tools', label: 'shortcuts.square60' }),
   S({ id: 'protractor', codes: ['KeyT'], mod: false, shift: false, display: 'T', group: 'tools', label: 'shortcuts.protractor' }),
   S({ id: 'compass', codes: ['KeyK'], mod: false, shift: false, display: 'K', group: 'tools', label: 'shortcuts.compass' }),
+  S({ id: 'laser', codes: ['KeyL'], mod: false, shift: false, display: 'L', group: 'tools', label: 'shortcuts.laser' }),
   // Editing
   S({ id: 'undo', codes: ['KeyZ'], mod: true, shift: false, display: 'Ctrl+Z', group: 'editing', label: 'shortcuts.undo' }),
   S({ id: 'redo', codes: ['KeyY'], mod: true, shift: false, display: 'Ctrl+Y', group: 'editing', label: 'shortcuts.redo' }),

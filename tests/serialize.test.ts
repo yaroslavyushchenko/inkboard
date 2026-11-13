@@ -12,8 +12,8 @@ const plane = {
   kind: 'plane' as const, xMin: -10, xMax: 10, yMin: -10, yMax: 10, unit: 24, labelStep: 1, grid: false
 }
 
-test('the format version is 8; a board is stamped with the lowest version that can show it', () => {
-  assert.equal(FORMAT_VERSION, 8)
+test('the format version is 9; a board is stamped with the lowest version that can show it', () => {
+  assert.equal(FORMAT_VERSION, 9)
   // Nothing from version 7 on the board: apps that only know version 6 can still open it.
   const f = serializeBoard({ items: [{ ...plane, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }], background: 'dots', camera: { x: 0, y: 0, zoom: 1 } })
   assert.equal(f.version, 6)
@@ -148,4 +148,27 @@ test('a function drawn on a range keeps its range, name and variable, and needs 
   const bad = { ...plane, fns: [{ expr: 'x', color: '#e03131', from: 5, to: -2, arg: 't', name: 'xy' }] }
   const f2 = { format: 'inkboard', version: 7, background: 'dots', camera: { x: 0, y: 0, zoom: 1 }, assets: {}, items: [bad] } as unknown as BoardFile
   assert.deepEqual((deserializeBoard(f2).items[0] as GraphItem).fns, [{ expr: 'x', color: '#e03131', from: -2, to: 5 }])
+})
+
+test('ink drawn white before white was removed loads as black; other colours are untouched', () => {
+  const file: BoardFile = {
+    format: 'inkboard', version: 8, background: 'chalk-dots', camera: { x: 0, y: 0, zoom: 1 }, assets: {},
+    items: [
+      { type: 'stroke', id: 'w', z: 1, tool: 'pen', color: '#FFFFFF', size: 3, pressure: false, pts: [0, 0, 0.5, 10, 10, 0.5] },
+      { type: 'stroke', id: 'r', z: 2, tool: 'pen', color: '#e03131', size: 3, pressure: false, pts: [0, 0, 0.5, 10, 10, 0.5] }
+    ]
+  }
+  const { items } = deserializeBoard(file)
+  assert.equal(items[0].type === 'stroke' && items[0].color, '#1e1e1e')
+  assert.equal(items[1].type === 'stroke' && items[1].color, '#e03131')
+})
+
+test('school paper patterns need version 9 and read back, on paper and on the chalkboard', () => {
+  const cam = { x: 0, y: 0, zoom: 1 }
+  for (const bg of ['math', 'hand', 'slant', 'chalk-slant'] as const) {
+    const f = serializeBoard({ items: [], background: bg, camera: cam })
+    assert.equal(f.version, 9)
+    assert.equal(deserializeBoard(f).background, bg)
+  }
+  assert.equal(serializeBoard({ items: [], background: 'grid', camera: cam }).version, 6)
 })

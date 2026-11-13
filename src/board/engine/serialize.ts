@@ -3,7 +3,7 @@ import { isEquation } from './formulaexpr'
 import { formulaBBox } from './formulatype'
 import { graphBBox, sanitizeGraph } from './graph'
 import { isShapeKind, MAX_BASE, MIN_BASE } from './shapes'
-import { isBackgroundKind, isChalk } from './surface'
+import { bgPattern, isBackgroundKind, isChalk, SCHOOL_PATTERNS } from './surface'
 import { textBBox } from './text'
 import type { TextRun } from './types'
 import type { BackgroundKind, Camera, FormulaItem, GraphItem, GraphParams, Item, LineCap, LineDash, Point, ShapeSpec, TextItem } from './types'
@@ -22,13 +22,15 @@ export const FORMAT = 'inkboard'
  * 7 = formula items (built on the math keypad); functions drawn on a range only (`from` / `to`, `yFrom` / `yTo`),
  *     named functions and other variables (`name`, `arg`; older versions show them as y and x).
  * 8 = chalkboard surface (`chalk-<pattern>` backgrounds).
+ * 9 = school paper patterns (`math`, `hand`, `slant` backgrounds, on paper or chalkboard).
  * Readers accept ≤ this; older apps refuse newer files instead of silently dropping data.
  * A file is stamped with the lowest version that can show it.
  */
-export const FORMAT_VERSION = 8
+export const FORMAT_VERSION = 9
 
 /** Lowest format version that can represent these items without losing anything. */
 export function requiredVersion({ items, background }: Pick<BoardData, 'items' | 'background'>): number {
+  if (SCHOOL_PATTERNS.includes(bgPattern(background))) return 9
   if (isChalk(background)) return 8
   // Version 7: formulas, functions drawn on a range only (older versions would draw them whole), and
   // equations in x and y (older versions can't read them).
@@ -125,6 +127,12 @@ export interface BoardData {
   camera: Camera
 }
 
+/**
+ * White ink is no longer offered: on the chalkboard dark ink already shows as chalk white, and white
+ * vanishes on paper. Whatever was drawn white before is kept, as black.
+ */
+export const noWhite = (c: string): string => (/^#(fff|ffffff)$/i.test(c) ? '#1e1e1e' : c)
+
 const r2 = (v: number): number => Math.round(v * 100) / 100
 const r3 = (v: number): number => Math.round(v * 1000) / 1000
 
@@ -189,7 +197,7 @@ export function deserializeBoard(file: BoardFile): BoardData {
       if (points.length === 0) continue
       const pad = s.size
       items.push({
-        type: 'stroke', id: s.id, z: s.z, tool: s.tool, color: s.color, size: s.size, pressure: s.pressure, points,
+        type: 'stroke', id: s.id, z: s.z, tool: s.tool, color: noWhite(s.color), size: s.size, pressure: s.pressure, points,
         ...(s.geom === 'line' ? { geom: 'line' as const } : {}),
         ...(s.groupId ? { groupId: s.groupId } : {}),
         ...(s.dash ? { dash: s.dash } : {}),
@@ -200,7 +208,7 @@ export function deserializeBoard(file: BoardFile): BoardData {
         bbox: { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad }
       })
     } else if (s.type === 'graph') {
-      const g: GraphItem = { ...sanitizeGraph(s), type: 'graph', id: s.id, z: s.z, ox: s.ox, oy: s.oy, color: s.color, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
+      const g: GraphItem = { ...sanitizeGraph(s), type: 'graph', id: s.id, z: s.z, ox: s.ox, oy: s.oy, color: noWhite(s.color), bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
       if (s.groupId) g.groupId = s.groupId
       if (s.locked) g.locked = true
       g.bbox = graphBBox(g)
@@ -208,7 +216,7 @@ export function deserializeBoard(file: BoardFile): BoardData {
     } else if (s.type === 'text') {
       if (typeof s.text !== 'string' || !s.text || !(s.size > 0)) continue
       const t: TextItem = {
-        type: 'text', id: s.id, z: s.z, x: s.x, y: s.y, text: s.text, size: s.size, color: s.color,
+        type: 'text', id: s.id, z: s.z, x: s.x, y: s.y, text: s.text, size: s.size, color: noWhite(s.color),
         ...(readRuns(s.runs, s.text) ? { runs: readRuns(s.runs, s.text)! } : {}),
         ...(s.groupId ? { groupId: s.groupId } : {}),
         ...(s.locked ? { locked: true } : {}),
@@ -220,7 +228,7 @@ export function deserializeBoard(file: BoardFile): BoardData {
       const rows = validateRows(s.rows)
       if (!rows || !rows.length || !(s.size > 0) || typeof s.color !== 'string') continue
       const f: FormulaItem = {
-        type: 'formula', id: s.id, z: s.z, x: s.x, y: s.y, size: s.size, color: s.color, rows,
+        type: 'formula', id: s.id, z: s.z, x: s.x, y: s.y, size: s.size, color: noWhite(s.color), rows,
         ...(s.groupId ? { groupId: s.groupId } : {}),
         ...(s.locked ? { locked: true } : {}),
         bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 }
@@ -281,7 +289,7 @@ function readRuns(v: unknown, text: string): TextRun[] | null {
   for (const r of v as Record<string, unknown>[]) {
     if (!r || typeof r.text !== 'string') return null
     const o: TextRun = { text: r.text }
-    if (typeof r.color === 'string') o.color = r.color
+    if (typeof r.color === 'string') o.color = noWhite(r.color)
     if (typeof r.size === 'number' && r.size > 0 && Number.isFinite(r.size)) o.size = r.size
     if (r.bold === true) o.bold = true
     if (r.italic === true) o.italic = true

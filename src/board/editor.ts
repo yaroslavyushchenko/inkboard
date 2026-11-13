@@ -57,9 +57,10 @@ class Editor {
       this.invalidate(true)
     })
     useUI.subscribe((s, prev) => {
-      if (s.background !== prev.background) {
+      // The selection is drawn lifted on the board itself, so a new selection redraws the board.
+      if (s.background !== prev.background || s.selectedIds !== prev.selectedIds) {
         this.invalidate(true)
-      } else if (s.selectedIds !== prev.selectedIds || s.tool !== prev.tool) {
+      } else if (s.tool !== prev.tool) {
         this.invalidate(false)
       }
       // The function panel belongs to one selected plane: close it when that plane stops being the selection.
@@ -203,7 +204,10 @@ class Editor {
   editText(item: TextItem): void {
     if (item.locked) return
     this.commitText()
-    useUI.setState({ textEdit: { id: item.id, x: item.x, y: item.y, size: item.size, color: item.color, runs: fullRuns(item) }, selectedIds: [] })
+    useUI.setState({
+      textEdit: { id: item.id, x: item.x, y: item.y, size: item.size, color: item.color, runs: fullRuns(item) },
+      selectedIds: []
+    })
     this.invalidate(true)
   }
 

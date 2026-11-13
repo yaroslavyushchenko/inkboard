@@ -29,6 +29,7 @@ depend on them. New shortcuts: add to `shortcuts.ts`, this file, the test and bo
 | Shift+S | Show / hide 30° / 60° set square |
 | T | Show / hide protractor |
 | K | Show / hide compass |
+| L | Laser pointer (the trail fades and is never saved) |
 | Space (hold) | Move the board |
 
 ## Editing

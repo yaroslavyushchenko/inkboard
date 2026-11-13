@@ -6,7 +6,7 @@ import { TEXT_SIZES } from '../engine/text'
 import { SHORTCUTS } from '../shortcuts'
 import { DEFAULT_TOOLBAR, isToolbarDivider, toolbarToolId, type ToolbarToolId, type ToolbarItemId } from '../toolbarLayout'
 import {
-  AxesIcon, BrushSelectIcon, ChevronDownIcon, CompassIcon, EraserIcon, FormulaIcon, HandIcon, ImageIcon, LassoIcon,
+  AxesIcon, BrushSelectIcon, ChevronDownIcon, CompassIcon, EraserIcon, FormulaIcon, HandIcon, ImageIcon, LaserIcon, LassoIcon,
   MoveIcon, PenIcon, ProtractorIcon, RedoIcon, RulerIcon, SetSquare45Icon, SetSquare60Icon, ShapesIcon,
   StampIcon, TextIcon, ToolbarSettingsIcon, UndoIcon
 } from './icons'
@@ -15,7 +15,7 @@ import { LineStyleControls, SizeSlider } from './LineStyle'
 import { Popover } from './Popover'
 import { ToolbarCustomizer } from './ToolbarCustomizer'
 
-type Open = { kind: 'pen'; index: number } | { kind: 'highlighter' } | { kind: 'text' } | null
+type Open = { kind: 'pen'; index: number } | { kind: 'highlighter' } | { kind: 'text' } | { kind: 'eraser' } | null
 
 interface ToolbarItem {
   label: MessageKey
@@ -30,8 +30,40 @@ interface ToolbarItem {
 }
 
 const instrumentShortcuts = new Map<string, string>(SHORTCUTS.filter(({ id }) =>
-  id === 'ruler' || id === 'square45' || id === 'square60' || id === 'protractor' || id === 'compass'
+  id === 'ruler' || id === 'square45' || id === 'square60' || id === 'protractor' || id === 'compass' || id === 'laser'
 ).map(({ id, display }) => [id, display]))
+
+/** Eraser popover: whole strokes or only what it touches, and its size. */
+function EraserOptions() {
+  const t = useT()
+  const mode = useUI((s) => s.eraserMode)
+  const radius = useUI((s) => s.eraserRadius)
+  return (
+    <>
+      <div className="popover-title">{t('eraser.mode')}</div>
+      <div className="lang-options">
+        {(['stroke', 'point'] as const).map((m) => (
+          <button key={m} className={`lang-option ${mode === m ? 'active' : ''}`} onClick={() => useUI.setState({ eraserMode: m })}>
+            {t(m === 'stroke' ? 'eraser.stroke' : 'eraser.point')}
+          </button>
+        ))}
+      </div>
+      <div className="line-row size-row">
+        <span className="line-label">{t('eraser.size')}</span>
+        <input
+          type="range"
+          min={4}
+          max={80}
+          value={radius}
+          aria-label={t('eraser.size')}
+          onChange={(e) => useUI.setState({ eraserRadius: Number(e.target.value) })}
+        />
+        <span className="size-value">{radius}</span>
+      </div>
+      <p className="settings-hint line-hint">{t('eraser.hint')}</p>
+    </>
+  )
+}
 
 /** Colour and size of new text (text tool popover). */
 function TextOptions() {
@@ -302,7 +334,19 @@ export function Toolbar({ extraTools, menu, settings }: { extraTools?: ReactNode
         else pickTool('highlighter')
       }
     },
-    eraser: { label: 'toolbar.eraser', title: 'tool.eraser', icon: <EraserIcon />, pen: true, active: tool === 'eraser', action: () => pickTool('eraser') },
+    eraser: {
+      label: 'toolbar.eraser',
+      title: 'tool.eraser',
+      icon: <EraserIcon />,
+      pen: true,
+      popover: true,
+      active: tool === 'eraser',
+      action: () => {
+        if (tool === 'eraser') setOpen(open?.kind === 'eraser' ? null : { kind: 'eraser' })
+        else pickTool('eraser')
+      }
+    },
+    laser: { label: 'toolbar.laser', title: 'tool.laser', icon: <LaserIcon />, active: tool === 'laser', action: () => pickTool('laser') },
     text: {
       label: 'toolbar.text',
       title: 'tool.text',
@@ -373,7 +417,9 @@ export function Toolbar({ extraTools, menu, settings }: { extraTools?: ReactNode
                     ? <TextOptions />
                     : open?.kind === 'highlighter' && id === 'highlighter'
                       ? <InkOptions slot={highlighter} colors={HIGHLIGHTER_COLORS} sizes={HIGHLIGHTER_SIZES} onChange={updateHighlighter} />
-                      : null
+                      : open?.kind === 'eraser' && id === 'eraser'
+                        ? <EraserOptions />
+                        : null
                 return (
                   <div className={`toolbar-item ${isToolbarDivider(id) ? 'toolbar-divider' : ''} ${marker}`} key={id}>
                     {customizing ? (

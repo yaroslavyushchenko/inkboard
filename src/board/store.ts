@@ -13,7 +13,15 @@ import type { FullRun } from './engine/text'
 import type { BackgroundKind, Camera, GraphParams, LineCap, LineDash } from './engine/types'
 import { detectLanguage, type Lang } from './i18n'
 
-export type Tool = 'select' | 'brushSelect' | 'move' | 'pen' | 'highlighter' | 'eraser' | 'pan' | 'shape' | 'text'
+export type Tool = 'select' | 'brushSelect' | 'move' | 'pen' | 'highlighter' | 'eraser' | 'pan' | 'shape' | 'text' | 'laser'
+
+/** 'stroke' removes whole strokes (like Whiteboard); 'point' cuts away only what it touches. */
+export type EraserMode = 'stroke' | 'point'
+/** What the plain mouse wheel does on the board. */
+export type WheelMode = 'scroll' | 'zoom'
+
+/** How long the pen is held still before a stroke snaps to a shape (ms). */
+export const SNAP_DELAY = { min: 500, max: 2000, default: 1000 }
 
 /** How many recent formulas the keypad remembers. */
 export const FORMULA_HISTORY = 20
@@ -98,8 +106,12 @@ export interface InkSlot {
   endCap?: LineCap
 }
 
+/**
+ * No white: on the chalkboard dark ink is already shown as chalk white, so a real white pen would
+ * look the same there and vanish on paper (and in exports).
+ */
 export const PEN_COLORS = [
-  '#1e1e1e', '#5c5f66', '#ffffff', '#e03131', '#f76707', '#f59f00',
+  '#1e1e1e', '#5c5f66', '#e03131', '#f76707', '#f59f00',
   '#2f9e44', '#0c8599', '#1971c2', '#6741d9', '#c2255c', '#8d5524'
 ]
 export const HIGHLIGHTER_COLORS = ['#ffe066', '#8ce99a', '#74c0fc', '#f783ac', '#ffa94d', '#b197fc']
@@ -137,6 +149,12 @@ interface UIState {
   selectRadius: number
   /** Eraser radius in screen px. */
   eraserRadius: number
+  eraserMode: EraserMode
+  wheelMode: WheelMode
+  /** Hold the pen still at the end of a stroke to snap it to a clean shape. */
+  shapeSnap: boolean
+  /** How long to hold (ms). */
+  shapeSnapDelay: number
   background: BackgroundKind
   lang: Lang
   theme: ThemePref
@@ -208,6 +226,10 @@ export const useUI = create<UIState>()(
       ],
       highlighter: { color: '#ffe066', size: 18 },
       eraserRadius: 12,
+      eraserMode: 'stroke',
+      wheelMode: 'scroll',
+      shapeSnap: true,
+      shapeSnapDelay: SNAP_DELAY.default,
       background: 'dots',
       lang: detectLanguage(),
       theme: 'system',
@@ -252,7 +274,19 @@ export const useUI = create<UIState>()(
           ...current,
           ...p,
           penButtons: cleanPenButtons(p.penButtons),
+          // White was removed from the palette: pens saved with it go back to black.
+          ...(Array.isArray(p.pens) ? { pens: p.pens.map((pen) => (pen?.color?.toLowerCase() === '#ffffff' ? { ...pen, color: '#1e1e1e' } : pen)) } : {}),
+          ...(p.textStyle?.color?.toLowerCase() === '#ffffff' ? { textStyle: { ...p.textStyle, color: '#1e1e1e' } } : {}),
           theme: THEME_PREFS.includes(p.theme as ThemePref) ? (p.theme as ThemePref) : 'system',
+          eraserMode: p.eraserMode === 'point' ? 'point' : 'stroke',
+          eraserRadius: typeof p.eraserRadius === 'number' && p.eraserRadius >= 4 && p.eraserRadius <= 120 ? p.eraserRadius : current.eraserRadius,
+          wheelMode: p.wheelMode === 'zoom' ? 'zoom' : 'scroll',
+          shapeSnap: typeof p.shapeSnap === 'boolean' ? p.shapeSnap : current.shapeSnap,
+          // 700 ms was the first default (too eager): treat it as "never chosen" and use the current one.
+          shapeSnapDelay:
+            typeof p.shapeSnapDelay === 'number' && p.shapeSnapDelay !== 700 && p.shapeSnapDelay >= SNAP_DELAY.min && p.shapeSnapDelay <= SNAP_DELAY.max
+              ? p.shapeSnapDelay
+              : SNAP_DELAY.default,
           instruments: cleanInstrumentPrefs(p.instruments),
           toolbarLayout: cleanToolbarLayout(p.toolbarLayout),
           hiddenTips: Array.isArray(p.hiddenTips) ? p.hiddenTips.filter((x) => typeof x === 'string') : [],
@@ -263,6 +297,10 @@ export const useUI = create<UIState>()(
         pens: s.pens,
         highlighter: s.highlighter,
         eraserRadius: s.eraserRadius,
+        eraserMode: s.eraserMode,
+        wheelMode: s.wheelMode,
+        shapeSnap: s.shapeSnap,
+        shapeSnapDelay: s.shapeSnapDelay,
         background: s.background,
         lang: s.lang,
         theme: s.theme,

@@ -3,6 +3,27 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
+## Unreleased
+
+### Added
+- Point eraser that cuts lines apart (Eraser options: "Only what it touches"), plus an eraser size slider.
+- Laser pointer (L) with a fading red trail that is never saved.
+- Hold-to-snap shapes: keep the pen still at the end of a stroke to turn a rough circle, oval, arc,
+  rectangle, square or triangle into a clean one. Keep holding and drag to resize it; Shift or a
+  finger on the screen makes it perfect (square, circle, equilateral triangle). Everything but the
+  arc becomes a regular shape you can stretch or switch afterwards. On/off and hold time
+  (1 s by default) in Settings → Board.
+- School paper backgrounds: math grid (darker line every 5 cells), handwriting rows and slanted
+  copybook lines, on paper and on the chalkboard. Boards using them are saved as format version 9.
+- Selected items are tinted and lifted off the board with a soft shadow.
+- Bullet and numbered lists in text: Enter continues the list, "- " becomes a bullet.
+- Settings → Board → Mouse wheel: scroll or zoom. A touchpad keeps two-finger scrolling and pinch zoom.
+
+### Changed
+- White is no longer in the pen palette (it clashed with the chalkboard's chalk-white ink). Pens saved as
+  white switch to black, and white ink, text and formulas already on boards and templates load as black
+  (on the chalkboard black is shown as chalk white, so it looks the same there).
+
 ## [0.9.2] (2026-11-13)
 
 ### Added

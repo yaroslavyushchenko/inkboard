@@ -52,7 +52,8 @@ const CONTRACT: [KeyLike, string, 'app' | 'board'][] = [
   [key('KeyS'), 'square45', 'board'],
   [key('KeyS', { shiftKey: true }), 'square60', 'board'],
   [key('KeyT'), 'protractor', 'board'],
-  [key('KeyK'), 'compass', 'board']
+  [key('KeyK'), 'compass', 'board'],
+  [key('KeyL'), 'laser', 'board']
 ]
 
 test('every promised shortcut triggers its action', () => {

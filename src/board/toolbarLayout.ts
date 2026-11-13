@@ -1,6 +1,6 @@
 export const DEFAULT_TOOLBAR = [
   'select', 'brushSelect', 'move', 'pan',
-  'pen1', 'pen2', 'pen3', 'highlighter', 'eraser',
+  'pen1', 'pen2', 'pen3', 'highlighter', 'eraser', 'laser',
   'text', 'formula', 'shapes', 'graph', 'templates', 'image',
   'ruler', 'square45', 'square60', 'protractor', 'compass',
   'undo', 'redo'

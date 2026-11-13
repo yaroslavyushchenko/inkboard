@@ -59,12 +59,12 @@ in progress and the pen cursor (so drawing never forces a full board redraw).
 - [x] Pen popover: colour palette + thickness
 - [x] Zoom control bottom-right
 - [x] Lasso selection: move, scale, delete, duplicate, copy/cut/paste (ink and images)
-- [ ] Point eraser (splits strokes), eraser size
-- [ ] Ruler (draw straight lines along it)
-- [ ] Laser pointer (fading trail, handy for showing things to students)
-- [ ] Dark board theme (classic green/black chalkboard)
-- [ ] Setting: mouse wheel = scroll or zoom
-- [ ] Settings menu (wheel behaviour, shape-snap delay)
+- [x] Point eraser (splits strokes), eraser size
+- [x] Ruler and set squares (draw straight lines along them)
+- [x] Laser pointer (fading trail, handy for showing things to students)
+- [x] Dark interface theme and green chalkboard
+- [x] Setting: mouse wheel = scroll or zoom
+- [x] Settings menu (wheel behaviour, shape-snap delay)
 - [x] Pens, colours, language and background remembered between launches
 
 ### Stage 3: files & library (v0.2)
@@ -134,19 +134,19 @@ in progress and the pen cursor (so drawing never forces a full board redraw).
 - [x] Selection bar and its popovers always stay inside the window; compact, icon-only bar
 
 ### Stage 4: content
-- [ ] **Hold-to-snap shapes** (like Procreate's QuickShape): draw and keep the pen down ~0.7 s
-      (configurable) → the stroke becomes a clean line / circle / ellipse / rectangle / triangle / arrow.
-      While still holding, the shape can be dragged to resize/rotate. The result stays a vector stroke.
-      On/off in settings.
-- [ ] Sticky notes, lists in text
-- [ ] Import PDF pages as backgrounds (worksheets for students)
-- [ ] Templates (math grid, handwriting practice, etc.)
+- [x] **Hold-to-snap shapes**: hold the pen still ~1 s (configurable) at the end of a stroke → a rough
+      circle, oval, arc, rectangle, square or triangle becomes a clean, level one (board shapes, except
+      the arc); keep holding and drag to resize; Shift / a finger = perfect. Nothing else snaps: lines,
+      arrows, zigzags and turned shapes were tried and dropped as unreliable.
+- [x] Bullet and numbered lists in text (sticky notes were tried and dropped)
+- [x] School paper backgrounds: math grid, handwriting rows, slanted copybook lines (format 9)
 
 ### Stage 5: release
-- [ ] Icon, final name
-- [ ] Installers: Windows (NSIS), Linux (AppImage, .deb)
-- [ ] GitHub Actions: build for every OS on each tag
-- [ ] Performance: tile cache, R-tree spatial index (for very large boards)
+- [ ] Final name
+- [x] Installers: Windows (NSIS), macOS, Linux (AppImage, .deb)
+- [x] GitHub Actions: build for every OS on each tag, auto-update feed
+- [ ] Later: performance for very large boards (tile cache, R-tree spatial index). Not needed yet;
+      revisit when big boards start to feel slow.
 
 ### Later, for fun
 - [ ] Online collaboration (CRDT, e.g. Yjs)
