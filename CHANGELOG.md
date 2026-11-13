@@ -3,6 +3,16 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
+## [0.9.2] (2026-11-13)
+
+### Added
+- Drag-and-drop toolbar customization with persistent layouts and reusable dividers.
+- Individual drawing-instrument buttons and shortcuts for the ruler and both set squares.
+
+### Changed
+- Unified the top bar with horizontally scrolling tools.
+- Desktop board surfaces follow the interface theme.
+
 ## [0.9.1] (2026-11-13)
 
 ### Added

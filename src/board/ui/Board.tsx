@@ -1479,6 +1479,9 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         lasso: () => ui.setTool('select'),
         brushSelect: () => ui.setTool('brushSelect'),
         move: () => ui.setTool('move'),
+        ruler: () => { if (!e.repeat) editor.toggleRuler() },
+        square45: () => { if (!e.repeat) editor.toggleSetSquare('square45') },
+        square60: () => { if (!e.repeat) editor.toggleSetSquare('square60') },
         protractor: () => editor.toggleProtractor(),
         compass: () => editor.toggleCompass()
       }

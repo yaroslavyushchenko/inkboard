@@ -46,9 +46,11 @@ export function BoardWorkspace({
       <TextEditor />
       <FormulaEditor />
       <SelectionToolbar actions={selectionActions} />
-      {menu}
-      <Toolbar extraTools={extraTools} />
-      <BackgroundPicker storageSettings={storageSettings} about={about} fixedLanguage={fixedLanguage} surfaceFollowsTheme={surfaceFollowsTheme} />
+      <Toolbar
+        extraTools={extraTools}
+        menu={menu}
+        settings={<BackgroundPicker storageSettings={storageSettings} about={about} fixedLanguage={fixedLanguage} surfaceFollowsTheme={surfaceFollowsTheme} />}
+      />
       <ZoomControls />
       <GraphDialog />
       <FunctionPanel />

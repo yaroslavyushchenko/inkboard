@@ -1,7 +1,7 @@
 import type { BBox, Camera } from '../engine/types'
 
 const MARGIN = 16
-/** Keep clear of the top toolbar (lower when a narrow window puts it on a second row). */
+/** Keep clear of the top toolbar. */
 const topMin = (): number => Math.max(84, (document.querySelector('.toolbar')?.getBoundingClientRect().bottom ?? 0) + MARGIN)
 
 /**

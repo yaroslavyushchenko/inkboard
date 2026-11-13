@@ -40,6 +40,9 @@ export type ShortcutId =
   | 'lasso'
   | 'brushSelect'
   | 'move'
+  | 'ruler'
+  | 'square45'
+  | 'square60'
   | 'protractor'
   | 'compass'
 
@@ -84,6 +87,9 @@ export const SHORTCUTS: Shortcut[] = [
   S({ id: 'lasso', codes: ['KeyV'], mod: false, shift: false, display: 'V', group: 'tools', label: 'shortcuts.lasso' }),
   S({ id: 'brushSelect', codes: ['KeyC'], mod: false, shift: false, display: 'C', group: 'tools', label: 'shortcuts.brushSelect' }),
   S({ id: 'move', codes: ['KeyM'], mod: false, shift: false, display: 'M', group: 'tools', label: 'shortcuts.move' }),
+  S({ id: 'ruler', codes: ['KeyR'], mod: false, shift: false, display: 'R', group: 'tools', label: 'shortcuts.ruler' }),
+  S({ id: 'square45', codes: ['KeyS'], mod: false, shift: false, display: 'S', group: 'tools', label: 'shortcuts.square45' }),
+  S({ id: 'square60', codes: ['KeyS'], mod: false, shift: true, display: 'Shift+S', group: 'tools', label: 'shortcuts.square60' }),
   S({ id: 'protractor', codes: ['KeyT'], mod: false, shift: false, display: 'T', group: 'tools', label: 'shortcuts.protractor' }),
   S({ id: 'compass', codes: ['KeyK'], mod: false, shift: false, display: 'K', group: 'tools', label: 'shortcuts.compass' }),
   // Editing

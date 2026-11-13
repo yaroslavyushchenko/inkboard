@@ -8,6 +8,7 @@ import type { Compass } from './engine/compass'
 import type { Straightedge } from './engine/straightedge'
 import { validateRows, type Cursor, type FormulaState, type Row } from './engine/formula'
 import { cleanInstrumentPrefs, DEFAULT_INSTRUMENTS, type InstrumentPrefs } from './engine/instruments'
+import { cleanToolbarLayout, type ToolbarItemId } from './toolbarLayout'
 import type { FullRun } from './engine/text'
 import type { BackgroundKind, Camera, GraphParams, LineCap, LineDash } from './engine/types'
 import { detectLanguage, type Lang } from './i18n'
@@ -171,6 +172,7 @@ interface UIState {
   protractorPanel: boolean
   /** Instrument tips the user closed ("protractor", "compass"); they don't show again. */
   hiddenTips: string[]
+  toolbarLayout: ToolbarItemId[] | null
   setTool: (tool: Tool) => void
   selectPen: (index: number) => void
   updatePen: (index: number, patch: Partial<InkSlot>) => void
@@ -227,6 +229,7 @@ export const useUI = create<UIState>()(
       instruments: DEFAULT_INSTRUMENTS,
       protractorPanel: false,
       hiddenTips: [],
+      toolbarLayout: null,
       justUpdatedTo: null,
       appVersion: '',
       setTool: (tool) => set({ tool }),
@@ -251,6 +254,7 @@ export const useUI = create<UIState>()(
           penButtons: cleanPenButtons(p.penButtons),
           theme: THEME_PREFS.includes(p.theme as ThemePref) ? (p.theme as ThemePref) : 'system',
           instruments: cleanInstrumentPrefs(p.instruments),
+          toolbarLayout: cleanToolbarLayout(p.toolbarLayout),
           hiddenTips: Array.isArray(p.hiddenTips) ? p.hiddenTips.filter((x) => typeof x === 'string') : [],
           formulaHistory: cleanFormulaHistory(p.formulaHistory)
         }
@@ -270,7 +274,8 @@ export const useUI = create<UIState>()(
         formulaStyle: s.formulaStyle,
         formulaHistory: s.formulaHistory,
         hiddenTips: s.hiddenTips,
-        instruments: s.instruments
+        instruments: s.instruments,
+        toolbarLayout: s.toolbarLayout
       })
     }
   )

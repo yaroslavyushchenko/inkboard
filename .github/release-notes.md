@@ -2,7 +2,16 @@
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
-## What's new in 0.9.1
+## What's new in 0.9.2
+
+- Customize the toolbar by dragging tools into position or back into the palette.
+- Add multiple dividers to organize tools into groups. Your layout is saved between launches.
+- One top bar with horizontally scrolling tools keeps controls on a single row.
+- Ruler, both set squares, protractor and compass have individual toolbar buttons.
+- New shortcuts: R for ruler, S for the 45° set square, Shift+S for the 30° / 60° set square.
+- The desktop board follows the interface theme, using a green chalkboard in dark mode.
+
+## Also in 0.9.1
 
 - [Try Inkboard in your browser](https://yaroslavyushchenko.github.io/inkboard/#demo). The live demo uses
   the same editor as the desktop app, with drawing tools, formulas and graphs.

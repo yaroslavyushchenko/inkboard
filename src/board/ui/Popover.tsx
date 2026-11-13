@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { fitBox, screenArea } from './dock'
 
 /** Popovers on screen now; opening one closes the others (except ones it sits inside). */
@@ -16,14 +17,21 @@ export function Popover({
   onClose,
   className,
   fit,
+  toolbar,
   children
 }: {
   onClose: () => void
   className?: string
   fit?: 'above' | 'below'
+  toolbar?: boolean
   children: ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const marker = useRef<HTMLSpanElement>(null)
+  const [host, setHost] = useState<HTMLElement | null>(null)
+  useLayoutEffect(() => {
+    if (toolbar) setHost(marker.current?.closest('header.toolbar') ?? null)
+  }, [toolbar])
   const closeRef = useRef(onClose)
   closeRef.current = onClose
   useEffect(() => {
@@ -35,7 +43,7 @@ export function Popover({
     return () => {
       open.delete(me)
     }
-  }, [])
+  }, [host])
   useEffect(() => {
     const down = (e: PointerEvent): void => {
       const t = e.target as Node
@@ -54,15 +62,21 @@ export function Popover({
   // Runs after every render: the anchor follows the board, so the best place changes with it.
   useLayoutEffect(() => {
     const el = ref.current
-    const anchor = el?.parentElement
+    const anchor = toolbar ? marker.current?.parentElement : el?.parentElement
     if (!fit || !el || !anchor) return
     const place = (): void => {
       el.style.maxHeight = ''
       const a = anchor.getBoundingClientRect()
+      const origin = host?.getBoundingClientRect() ?? a
+      const viewport = anchor.closest('.toolbar-viewport')?.getBoundingClientRect()
+      if (viewport && (a.right <= viewport.left || a.left >= viewport.right)) {
+        closeRef.current()
+        return
+      }
       const f = fitBox(a, el.offsetWidth, el.offsetHeight, screenArea(), fit)
       Object.assign(el.style, {
-        left: `${f.left - a.left}px`,
-        top: `${f.top - a.top}px`,
+        left: `${f.left - origin.left - (host?.clientLeft ?? 0)}px`,
+        top: `${f.top - origin.top - (host?.clientTop ?? 0)}px`,
         bottom: 'auto',
         transform: 'none',
         maxHeight: `${f.maxHeight}px`,
@@ -71,11 +85,17 @@ export function Popover({
     }
     place()
     window.addEventListener('resize', place)
-    return () => window.removeEventListener('resize', place)
+    const viewport = toolbar ? anchor.closest('.toolbar-viewport') : null
+    viewport?.addEventListener('scroll', place)
+    return () => {
+      window.removeEventListener('resize', place)
+      viewport?.removeEventListener('scroll', place)
+    }
   })
-  return (
+  const content = (
     <div ref={ref} className={`panel popover ${className ?? ''}`}>
       {children}
     </div>
   )
+  return toolbar ? <><span ref={marker} hidden />{host && createPortal(content, host)}</> : content
 }

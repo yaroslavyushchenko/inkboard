@@ -217,6 +217,12 @@ export const GearIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 )
 
+export const ToolbarSettingsIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)} aria-hidden>
+    <path d="M4 7h6m4 0h6M4 12h10m4 0h2M4 17h3m4 0h9M12 5v4m4 1v4m-7 1v4" />
+  </svg>
+)
+
 export const ProtractorIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <path d="M2.5 17.5a9.5 9.5 0 0 1 19 0z" />
@@ -276,14 +282,6 @@ export const SetSquare60Icon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <path d="M3 7v13h18z" />
     <path d="M6.2 12.8v4h6.2z" strokeWidth="1.4" />
-  </svg>
-)
-
-export const InstrumentsIcon = (p: SVGProps<SVGSVGElement>) => (
-  <svg {...base(p)}>
-    <path d="M3.5 4.5v16h16z" />
-    <path d="M7.2 12.2v4.8h4.8z" strokeWidth="1.4" />
-    <path d="M3.5 16.5h2M3.5 12.5h2M3.5 8.5h2" strokeWidth="1.4" />
   </svg>
 )
 

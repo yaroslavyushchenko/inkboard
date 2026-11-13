@@ -121,32 +121,234 @@ button:disabled {
 }
 
 /* ---------- ink toolbar (top centre) ---------- */
-.toolbar-wrap {
+.toolbar {
   position: absolute;
   top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  inset-inline: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 52px;
+  padding: 5px 7px;
+}
+
+.toolbar.is-customizing {
+  z-index: 72;
+}
+
+.toolbar-start {
+  flex: 0 1 auto;
+  min-width: 84px;
+  max-width: min(280px, 30%);
+  border-inline-end: 1px solid var(--line);
+}
+
+.toolbar-end {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 3px;
+  padding-inline-start: 6px;
+  border-inline-start: 1px solid var(--line);
+}
+
+.toolbar-scroll {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border-radius: 9px;
+}
+
+.toolbar-scroll.is-drop-zone {
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+
+.toolbar-viewport {
+  flex: 1;
+  min-width: 0;
+  overflow: auto hidden;
+  scrollbar-width: none;
+}
+
+.toolbar-items {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  width: max-content;
+  min-width: 100%;
+  padding: 0 3px;
+}
+
+.toolbar-item {
+  position: relative;
+  flex: none;
+}
+
+.toolbar-item .icon-btn:focus-visible,
+.toolbar-item .pen:focus-visible {
+  outline-offset: -2px;
+}
+
+.toolbar .toolbar-scroll-arrow {
+  width: 20px;
+  height: 32px;
+  flex: none;
+}
+
+.toolbar .toolbar-scroll-arrow[hidden] {
+  display: none;
+}
+
+.toolbar-left {
+  transform: rotate(90deg);
+}
+
+.toolbar-right {
+  transform: rotate(-90deg);
+}
+
+.toolbar-customize {
+  background: var(--surface-2);
+}
+
+.toolbar-edit-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 71;
+  background: rgb(16 20 30 / 32%);
+}
+
+.toolbar-dialog {
+  position: absolute;
+  inset: calc(100% + 8px) 0 auto;
+  width: min(760px, 100%);
+  max-height: calc(100dvh - 84px);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--text);
+}
+
+.toolbar-dialog-header,
+.toolbar-dialog-footer {
+  padding: 14px 18px;
+}
+
+.toolbar-dialog-header h2 {
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+
+.toolbar-dialog-header p,
+.toolbar-palette p,
+.toolbar-empty {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.toolbar-empty {
+  display: block;
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.toolbar-palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 44px;
+  margin: 0 18px 14px;
+  padding: 8px;
+  overflow: auto;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.toolbar-palette.drop-active {
+  border-color: var(--accent);
+}
+
+.toolbar-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 4px;
+  width: 82px;
+  padding: 4px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.toolbar-tile,
+.toolbar.is-customizing .toolbar-item button {
+  cursor: grab;
+}
+
+.toolbar-tile:hover {
+  background: var(--hover);
+}
+
+.toolbar-tile kbd {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.toolbar-item.drop-before::before,
+.toolbar-item.drop-after::after {
+  content: '';
+  position: absolute;
+  inset: 4px auto 4px -2px;
+  z-index: 1;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.toolbar-item.drop-after::after {
+  left: auto;
+  right: -2px;
+}
+
+.toolbar-tile-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  color: var(--icon);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.toolbar-tile-icon > svg {
+  max-height: 32px;
+}
+
+.toolbar-dialog-footer,
+.toolbar-dialog-footer > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  z-index: 10;
 }
 
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 5px 7px;
-  height: 52px;
+.toolbar-dialog-footer {
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
 }
 
-.pens {
-  display: flex;
-  align-items: center;
-  height: 40px;
-  gap: 2px;
-  padding: 0 2px;
+.ink-popover {
+  position: absolute;
+  width: max-content;
+  max-width: calc(100vw - 16px);
 }
 
 .pen {
@@ -284,19 +486,7 @@ button:disabled {
 
 /* ---------- background picker (top right) ---------- */
 .bg-picker {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 11;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-.icon-btn.solo {
-  width: 44px;
-  height: 44px;
+  position: relative;
 }
 
 .bg-options {
@@ -394,26 +584,25 @@ button:disabled {
 
 /* ---------- main menu (top left) ---------- */
 .main-menu {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  /* Above the toolbar: on narrow windows the toolbar sits on a second row, under this menu's popovers. */
-  z-index: 11;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
+  position: relative;
 }
 
 .main-menu-bar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 14px 2px 2px;
-  max-width: 320px;
+  gap: 2px;
+  padding-inline-end: 6px;
+}
+
+.main-menu-bar > .icon-btn,
+.main-menu-bar > .save-status {
+  flex: none;
 }
 
 .menu-popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
   padding: 6px;
   min-width: 240px;
 }
@@ -453,7 +642,7 @@ button:disabled {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 260px;
+  min-width: 0;
   padding: 6px 8px;
   border-radius: 6px;
 }
@@ -465,7 +654,8 @@ button:disabled {
 .board-name-input {
   font: inherit;
   font-size: 14px;
-  width: 240px;
+  width: 100%;
+  min-width: 0;
   padding: 5px 7px;
   border: 1px solid var(--accent);
   border-radius: 6px;
@@ -1419,6 +1609,9 @@ button:disabled {
 
 /* ---------- settings: pen buttons, shortcuts ---------- */
 .bg-popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
   max-height: calc(100vh - 90px);
   overflow-y: auto;
 }
@@ -2298,4 +2491,36 @@ button:disabled {
 
 .surface-options {
   margin-bottom: 8px;
+}
+
+.toolbar.is-customizing .toolbar-item button,
+.toolbar-tile {
+  touch-action: none;
+}
+.toolbar-drag-preview {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.toolbar-divider-line {
+  display: block;
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+}
+.toolbar-divider-static {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 40px;
+}
+.toolbar.is-customizing .toolbar-divider .icon-btn {
+  width: 24px;
+  background: var(--surface-2);
 }

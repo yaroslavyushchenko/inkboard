@@ -16,12 +16,18 @@ export function useAppTheme(surfaceFollowsTheme: boolean): void {
       else delete root.dataset.theme
       if (surfaceFollowsTheme) {
         const { background, setBackground } = useUI.getState()
-        setBackground(withSurface(background, dark))
+        const next = withSurface(background, dark)
+        if (next !== background) setBackground(next)
       }
     }
     apply()
-    if (!enabled || pref !== 'system') return
-    system.addEventListener('change', apply)
-    return () => system.removeEventListener('change', apply)
+    const unsubscribe = useUI.subscribe((state, previous) => {
+      if (surfaceFollowsTheme && state.background !== previous.background) apply()
+    })
+    if (enabled && pref === 'system') system.addEventListener('change', apply)
+    return () => {
+      unsubscribe()
+      system.removeEventListener('change', apply)
+    }
   }, [enabled, pref, surfaceFollowsTheme])
 }

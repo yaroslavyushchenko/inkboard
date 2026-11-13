@@ -49,7 +49,7 @@ export function BackgroundPicker({
   const close = useCallback(() => setOpen(false), [])
   return (
     <div className="bg-picker">
-      <button data-popover-anchor className="panel icon-btn solo" title={t('settings.title')} onClick={() => setOpen((o) => !o)}>
+      <button data-popover-anchor className="icon-btn" title={t('settings.title')} onClick={() => setOpen((o) => !o)}>
         <PaperIcon />
       </button>
       {open && (

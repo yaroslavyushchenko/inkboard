@@ -25,6 +25,7 @@ export function App() {
   }, [])
   return (
     <BoardWorkspace
+      surfaceFollowsTheme
       fileActions={fileActions}
       menu={<MainMenu />}
       extraTools={<TemplatesMenu />}

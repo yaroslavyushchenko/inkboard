@@ -82,7 +82,7 @@ export function MainMenu() {
   }
   return (
     <div className="main-menu">
-      <div className="panel main-menu-bar">
+      <div className="main-menu-bar">
         <button className="icon-btn" title={`${t('menu.home')} (Ctrl+H)`} onClick={() => void boardLibrary.goHome()}>
           <HomeIcon />
         </button>
