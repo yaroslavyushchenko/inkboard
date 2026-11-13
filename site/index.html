@@ -169,7 +169,8 @@
   .track { display: grid; }
   .track figure { grid-area: 1 / 1; margin: 0; display: grid; grid-template-columns: minmax(0, min(100%, calc((100vh - 330px) * 1.6))) 300px; justify-content: center; gap: 40px; align-items: center; visibility: hidden; }
   .track figure.cur { visibility: visible; }
-  .frame { border-radius: 16px; overflow: hidden; background: #fff; border: 1px solid var(--frame); aspect-ratio: 16 / 10; box-shadow: 0 24px 50px -28px rgba(20,24,40,.35); opacity: 0; transform: translateY(18px) scale(.985); transition: opacity .55s var(--ease), transform .7s var(--ease); }
+  .frame { border-radius: 16px; overflow: hidden; background: var(--card); border: 1px solid var(--frame); aspect-ratio: 16 / 10; box-shadow: 0 24px 50px -28px rgba(20,24,40,.35); opacity: 0; transform: translateY(18px) scale(.985); transition: opacity .55s var(--ease), transform .7s var(--ease); }
+  .frame picture { display: block; width: 100%; height: 100%; }
   .frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left center; }
   figcaption { opacity: 0; transform: translateY(14px); transition: opacity .5s var(--ease), transform .6s var(--ease); }
   .track figure.cur .frame, .track figure.cur figcaption { opacity: 1; transform: none; }
@@ -310,8 +311,8 @@
   footer a { color: var(--muted); }
 
   /* Language-specific screenshots. */
-  img[data-only="en"], html[lang="en"] img[data-only="uk"] { display: none !important; }
-  html[lang="en"] img[data-only="en"] { display: block !important; }
+  html:not([lang="en"]) [data-only="en"],
+  html[lang="en"] [data-only="uk"] { display: none; }
 
   @media (max-width: 1100px) { .free-note { display: none; } }
   @media (max-width: 960px) {
@@ -402,7 +403,7 @@
   </div>
 
   <section id="examples">
-    <div class="ex-scroll" id="ex-scroll" style="--n: 6">
+    <div class="ex-scroll" id="ex-scroll" style="--n: 7">
     <div class="ex-sticky">
     <div class="wrap">
       <div class="ex-head">
@@ -419,6 +420,7 @@
           <button type="button" role="tab" aria-selected="false" data-i18n="ex.t3">3D-фігури</button>
           <button type="button" role="tab" aria-selected="false" data-i18n="ex.t4">Текст</button>
           <button type="button" role="tab" aria-selected="false" data-i18n="ex.t5">Усі дошки</button>
+          <button type="button" role="tab" aria-selected="false" data-i18n="ex.t6">Крейдова дошка</button>
         </div>
       </div>
       <div class="track rv d2" id="track">
@@ -459,10 +461,23 @@
         </figure>
         <figure>
           <div class="frame">
-            <img data-only="uk" src="img/ex-home-uk.webp" width="2000" height="1250" loading="lazy" alt="Екран «Усі дошки»: прев’ю дощок, теги предметів і тем, закріплені дошки, пошук">
-            <img data-only="en" src="img/ex-home-en.webp" width="2000" height="1250" loading="lazy" alt="The All boards screen: board previews, subject and topic tags, pinned boards, search">
+            <picture data-only="uk">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-home-dark-uk.webp">
+              <img src="img/ex-home-uk.webp" width="2000" height="1250" loading="lazy" alt="Екран «Усі дошки»: прев’ю дощок, теги предметів і тем, закріплені дошки, пошук">
+            </picture>
+            <picture data-only="en">
+              <source media="(prefers-color-scheme: dark)" srcset="img/ex-home-dark-en.webp">
+              <img src="img/ex-home-en.webp" width="2000" height="1250" loading="lazy" alt="The All boards screen: board previews, subject and topic tags, pinned boards, search">
+            </picture>
           </div>
           <figcaption><h3 data-i18n="ex.h5">Усі дошки</h3><p data-i18n="ex.c5">Прев’ю кожної дошки, кольорові теги для предметів і тем, пошук, закріплені дошки й кошик на 30 днів.</p></figcaption>
+        </figure>
+        <figure>
+          <div class="frame">
+            <img data-only="uk" src="img/ex-chalkboard-uk.webp" width="2000" height="1250" loading="lazy" alt="Зелена крейдова дошка з параболою, прямою й точками їх перетину в темному інтерфейсі Inkboard">
+            <img data-only="en" src="img/ex-chalkboard-en.webp" width="2000" height="1250" loading="lazy" alt="A green chalkboard with a parabola, a line and their intersection points in Inkboard’s dark interface">
+          </div>
+          <figcaption><h3 data-i18n="ex.h6">Темна тема й крейдова дошка</h3><p data-i18n="ex.c6">Темний інтерфейс і зелену крейдову поверхню можна ввімкнути окремо в експериментальних налаштуваннях.</p></figcaption>
         </figure>
       </div>
     </div>
@@ -702,6 +717,9 @@
     'ex.c4': 'Type right on the board. Make single words bold, italic, or a different colour or size.',
     'ex.h5': 'All boards',
     'ex.c5': 'A preview of every board, colour tags for subjects and topics, search, pinned boards and a 30-day bin.',
+    'ex.t6': 'Chalkboard',
+    'ex.h6': 'Dark theme and chalkboard',
+    'ex.c6': 'Turn on the dark interface and the green chalkboard separately in Experimental features.',
     'f.kicker': 'Features',
     'f.title': 'Made for a pen, not a mouse',
     'f.sub': 'For explanations, lectures, notes and rough work: anything that’s easier to show by hand than with a mouse.',
