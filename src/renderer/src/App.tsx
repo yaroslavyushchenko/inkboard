@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { BoardWorkspace } from '../../board/BoardWorkspace'
-import { useUI } from '../../board/store'
 import type { BoardFileActions } from '../../board/ui/Board'
 import { boardLibrary } from './boardLibrary'
 import { BackupSettings } from './ui/BackupSettings'
@@ -9,6 +8,7 @@ import { MainMenu } from './ui/MainMenu'
 import { SaveSelectionTemplate } from './ui/SaveSelectionTemplate'
 import { TemplatesMenu } from './ui/TemplatesMenu'
 import { AboutSection, UpdateBanner } from './ui/UpdateBanner'
+import { useApp } from './appState'
 
 const fileActions: BoardFileActions = {
   newBoard: () => boardLibrary.newBoard(),
@@ -19,12 +19,13 @@ const fileActions: BoardFileActions = {
 }
 
 export function App() {
-  const view = useUI((s) => s.view)
+  const view = useApp((s) => s.view)
   useEffect(() => {
     void boardLibrary.start()
   }, [])
   return (
     <BoardWorkspace
+      editor={boardLibrary.editor}
       surfaceFollowsTheme
       fileActions={fileActions}
       menu={<MainMenu />}

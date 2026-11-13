@@ -1,7 +1,7 @@
 import { FEATURE_IDS } from '../../shared/features'
 import { useFeatures } from '../features'
 import { useT, type MessageKey } from '../i18n'
-import { useUI, type ThemePref } from '../store'
+import { type ThemePref, usePrefs } from '../store'
 
 const THEMES: ThemePref[] = ['system', 'light', 'dark']
 
@@ -9,8 +9,8 @@ const THEMES: ThemePref[] = ['system', 'light', 'dark']
 export function ThemeSettings() {
   const t = useT()
   const enabled = useFeatures((s) => s.flags.darkTheme)
-  const theme = useUI((s) => s.theme)
-  const setTheme = useUI((s) => s.setTheme)
+  const theme = usePrefs((s) => s.theme)
+  const setTheme = usePrefs((s) => s.setTheme)
   if (!enabled) return null
   return (
     <>

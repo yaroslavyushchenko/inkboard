@@ -3,10 +3,11 @@ import { createPortal } from 'react-dom'
 import { backspace, insert, insertFraction, moveLeft, moveRight, typeChar, type FormulaState, type Row } from '@inkboard/math/formula'
 import { typesetRows } from '../engine/formulatype'
 import { useT, type MessageKey } from '../i18n'
-import { useUI } from '../store'
+import { usePrefs } from '../store'
 import { fitBox, screenArea } from './dock'
 import { MathSvg } from './MathSvg'
 import { keypadLayout, letterKeys, type KeypadTab, type MathKey } from './mathKeys'
+import { useSession } from '../editorContext'
 
 const TABS: { id: KeypadTab; lines: [string, string]; title: MessageKey }[] = [
   { id: 'basic', lines: ['+ −', '× ÷'], title: 'keypad.tabBasic' },
@@ -39,10 +40,10 @@ interface More {
  */
 export function MathKeypad() {
   const t = useT()
-  const target = useUI((s) => s.mathTarget)
-  const view = useUI((s) => s.view)
-  const lang = useUI((s) => s.lang)
-  const history = useUI((s) => s.formulaHistory)
+  const target = useSession((s) => s.mathTarget)
+  const active = useSession((s) => s.active)
+  const lang = usePrefs((s) => s.lang)
+  const history = usePrefs((s) => s.formulaHistory)
   const [tab, setTab] = useState<KeypadTab>('basic')
   const [letters, setLetters] = useState(false)
   const [more, setMore] = useState<More | null>(null)
@@ -50,7 +51,7 @@ export function MathKeypad() {
   const hold = useRef<{ timer: number; opened: boolean } | null>(null)
   const repeat = useRef(0)
 
-  const open = !!target && view === 'board'
+  const open = !!target && active
   useEffect(() => {
     if (!open) {
       setMore(null)

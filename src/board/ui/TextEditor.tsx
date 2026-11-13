@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { editor } from '../editor'
 import { commonFormat, formatRange, mergeRuns, sameFormat, TEXT_FONT, TEXT_LINE_HEIGHT, type FullRun } from '../engine/text'
 import { inkColor, withInkSurface } from '../engine/surface'
 import type { TextFormat } from '@inkboard/core/types'
 import { useT } from '../i18n'
-import { PEN_COLORS, useUI, type TextEdit } from '../store'
+import { PEN_COLORS, type TextEdit, prefsStore } from '../store'
 import { fitBox, screenArea } from './dock'
 import { autoBullet, continueList } from '../engine/lists'
+import { useEditor, useSession } from '../editorContext'
 
 /*
  * The box shown while typing on the board: a contenteditable (plain-text editing, so the browser
@@ -57,7 +57,7 @@ const sameRuns = (a: FullRun[], b: FullRun[]): boolean => a.length === b.length 
 
 const minSize = (te: TextEdit): number => (te.runs.length ? Math.min(...te.runs.map((r) => r.size)) : te.size)
 
-const shownColor = (c: string): string => withInkSurface(useUI.getState().background, () => inkColor(c))
+const shownColor = (c: string): string => withInkSurface(prefsStore.getState().background, () => inkColor(c))
 
 /** Rebuilds the DOM from runs: one span per run, plus a <br> marker so a trailing new line shows. */
 function render(root: HTMLElement, runs: FullRun[], zoom: number): void {
@@ -171,9 +171,10 @@ function caretLine(root: HTMLElement, te: { runs: FullRun[] }): { start: number;
 }
 
 export function TextEditor() {
-  const te = useUI((s) => s.textEdit)
-  const zoom = useUI((s) => s.camera.zoom)
-  const cam = useUI((s) => s.camera)
+  const editor = useEditor()
+  const te = useSession((s) => s.textEdit)
+  const zoom = useSession((s) => s.camera.zoom)
+  const cam = useSession((s) => s.camera)
   const ref = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const rendered = useRef<{ zoom: number } | null>(null)
@@ -190,7 +191,7 @@ export function TextEditor() {
   // Start of an edit: build the DOM, focus, caret at the end.
   useLayoutEffect(() => {
     const el = ref.current
-    const cur = useUI.getState().textEdit
+    const cur = editor.session.getState().textEdit
     if (!el || !cur) return
     render(el, cur.runs, zoom)
     rendered.current = { zoom }
@@ -240,12 +241,12 @@ export function TextEditor() {
   const fmt = commonFormat(te.runs, range.start, range.end)
 
   const apply = (patch: TextFormat): void => {
-    const cur = useUI.getState().textEdit
+    const cur = editor.session.getState().textEdit
     if (!cur) return
     const now = ref.current ? getSel(ref.current) : null
     const r = panel?.whole || !now || now.start === now.end ? { start: 0, end: Infinity } : now
     const whole = r.start === 0 && r.end >= total
-    useUI.setState({
+    editor.session.setState({
       textEdit: {
         ...cur,
         // Formatting everything also changes what newly typed text gets.
@@ -279,9 +280,9 @@ export function TextEditor() {
         onInput={(e) => {
           const root = e.currentTarget
           ensureEnd(root)
-          const cur = useUI.getState().textEdit
+          const cur = editor.session.getState().textEdit
           if (!cur) return
-          useUI.setState({ textEdit: { ...cur, runs: parse(root, cur) } })
+          editor.session.setState({ textEdit: { ...cur, runs: parse(root, cur) } })
           setPanel((p) => (p?.whole ? null : p))
         }}
         onBlur={() => editor.commitText()}
@@ -303,7 +304,7 @@ export function TextEditor() {
           if (e.code === 'Enter' || e.code === 'NumpadEnter') {
             e.preventDefault()
             const root = e.currentTarget
-            const line = caretLine(root, useUI.getState().textEdit ?? te)
+            const line = caretLine(root, editor.session.getState().textEdit ?? te)
             const list = line && !e.shiftKey ? continueList(line.text) : null
             if (list?.exit) {
               // Enter on an empty list item ends the list: the marker goes, no new line.
@@ -318,7 +319,7 @@ export function TextEditor() {
           }
           if (e.code === 'Space' && !mod && !e.altKey) {
             // "- " or "* " at the start of a line becomes a bullet.
-            const line = caretLine(e.currentTarget, useUI.getState().textEdit ?? te)
+            const line = caretLine(e.currentTarget, editor.session.getState().textEdit ?? te)
             const bullet = line ? autoBullet(line.before + ' ') : null
             if (bullet) {
               e.preventDefault()

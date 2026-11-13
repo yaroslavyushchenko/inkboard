@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useT } from '../../../board/i18n'
-import { useUI } from '../../../board/store'
 import { StampIcon } from '../../../board/ui/icons'
 import { MenuButton } from '../../../board/ui/InsertMenus'
 import { boardLibrary } from '../boardLibrary'
+import { useSession } from '../../../board/editorContext'
+import { useApp } from '../appState'
 
 export function TemplateThumb({ id, v }: { id: string; v?: number }) {
   const [url, setUrl] = useState<string | null>(null)
@@ -20,8 +21,8 @@ export function TemplateThumb({ id, v }: { id: string; v?: number }) {
 export function TemplatesMenu() {
   const t = useT()
   const [open, setOpen] = useState(false)
-  const templates = useUI((s) => s.library.templates)
-  const hasSelection = useUI((s) => s.selectedIds.length > 0)
+  const templates = useApp((s) => s.library.templates)
+  const hasSelection = useSession((s) => s.selectedIds.length > 0)
   const [name, setName] = useState('')
   const [editing, setEditing] = useState<string | null>(null)
   return (

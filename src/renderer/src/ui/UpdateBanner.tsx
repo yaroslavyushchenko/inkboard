@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useUI } from '../../../board/store'
 import { boardLibrary } from '../boardLibrary'
 import { useT } from '../../../board/i18n'
 import type { UpdateState } from '../../../shared/platform'
 import { platform } from '../platform'
+import { useApp } from '../appState'
 
 /** Bottom-left notice when a new version is downloading / ready / available. */
 export function UpdateBanner() {
@@ -16,7 +16,7 @@ export function UpdateBanner() {
   }, [])
   const key = `${s.status}:${s.version}`
   // "Updated to X": shown once after the app starts with a new version.
-  const justUpdated = useUI((st) => st.justUpdatedTo)
+  const justUpdated = useApp((st) => st.justUpdatedTo)
   if (justUpdated && hidden !== `updated:${justUpdated}`) {
     return (
       <div className="panel update-banner success">

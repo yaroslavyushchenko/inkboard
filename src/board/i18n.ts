@@ -1,4 +1,4 @@
-import { useUI } from './store'
+import { usePrefs } from './store'
 
 const en = {
   'toolbar.divider': 'Divider',
@@ -826,7 +826,7 @@ export function translate(lang: Lang, key: MessageKey, vars?: Record<string, str
 }
 
 export function useT(): (key: MessageKey, vars?: Record<string, string | number>) => string {
-  const lang = useUI((s) => s.lang)
+  const lang = usePrefs((s) => s.lang)
   return (key, vars) => translate(lang, key, vars)
 }
 

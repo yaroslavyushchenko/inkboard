@@ -2,14 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { boardLibrary } from '../boardLibrary'
 import { useT } from '../../../board/i18n'
 import { platform } from '../platform'
-import { useUI } from '../../../board/store'
 import { AlertIcon, CheckIcon, HomeIcon, MenuIcon } from '../../../board/ui/icons'
 import { Popover } from '../../../board/ui/Popover'
+import { useSession } from '../../../board/editorContext'
+import { useApp } from '../appState'
 
 /** Inline-editable board title. */
 function BoardTitle() {
   const t = useT()
-  const board = useUI((s) => s.board)
+  const board = useApp((s) => s.board)
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState('')
   const input = useRef<HTMLInputElement>(null)
@@ -49,8 +50,8 @@ function BoardTitle() {
 
 function SaveStatus() {
   const t = useT()
-  const status = useUI((s) => s.saveStatus)
-  const board = useUI((s) => s.board)
+  const status = useApp((s) => s.saveStatus)
+  const board = useApp((s) => s.board)
   if (!board) return null
   const where = board.kind === 'file' && board.filePath ? t('save.inFile', { path: board.filePath }) : t('save.inApp')
   if (status === 'error') {
@@ -71,9 +72,9 @@ function SaveStatus() {
 /** Top-left: all-boards button, menu, editable board name and save status. */
 export function MainMenu() {
   const t = useT()
-  const board = useUI((s) => s.board)
-  const hasSelection = useUI((s) => s.selectedIds.length > 0)
-  const appVersion = useUI((s) => s.appVersion)
+  const board = useApp((s) => s.board)
+  const hasSelection = useSession((s) => s.selectedIds.length > 0)
+  const appVersion = useApp((s) => s.appVersion)
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const run = (fn: () => unknown) => () => {

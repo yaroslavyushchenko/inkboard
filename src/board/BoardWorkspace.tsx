@@ -1,4 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
+import type { Editor } from './editor'
+import { EditorProvider } from './editorContext'
 import { useAppTheme } from './theme'
 import { BackgroundPicker } from './ui/BackgroundPicker'
 import { FormulaEditor } from './ui/FormulaEditor'
@@ -15,6 +17,8 @@ import { InstrumentTip } from './ui/InstrumentTip'
 import { ZoomControls } from './ui/ZoomControls'
 
 interface BoardWorkspaceProps {
+  /** The board's editor, made by the app with createEditor(). */
+  editor: Editor
   fileActions?: BoardFileActions
   menu?: ReactNode
   extraTools?: ReactNode
@@ -27,7 +31,7 @@ interface BoardWorkspaceProps {
 }
 
 export function BoardWorkspace({
-  fileActions, menu, extraTools, selectionActions, storageSettings, about, fixedLanguage, surfaceFollowsTheme = false, children
+  editor, fileActions, menu, extraTools, selectionActions, storageSettings, about, fixedLanguage, surfaceFollowsTheme = false, children
 }: BoardWorkspaceProps) {
   useAppTheme(surfaceFollowsTheme)
   useEffect(() => {
@@ -41,6 +45,7 @@ export function BoardWorkspace({
     return () => window.removeEventListener('pointerup', drop, true)
   }, [])
   return (
+    <EditorProvider editor={editor}>
     <div className="app">
       <Board fileActions={fileActions} />
       <TextEditor />
@@ -60,5 +65,6 @@ export function BoardWorkspace({
       <ShortcutsDialog fileActions={!!fileActions} />
       {children}
     </div>
+    </EditorProvider>
   )
 }

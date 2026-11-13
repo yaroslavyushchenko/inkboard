@@ -19,7 +19,8 @@ import { isBlank } from '@inkboard/math/formula'
 import { formulaBBox, formulaBox } from './engine/formulatype'
 import type { BBox, Camera, FormulaItem, GraphItem, GraphParams, PlotFn, ImageItem, Item, LineCap, LineDash, ShapeSpec, StrokeItem, TextFormat, TextItem } from '@inkboard/core/types'
 import { translate, type MessageKey } from './i18n'
-import { FORMULA_HISTORY, useUI } from './store'
+import { createSessionStore, type Session } from './session'
+import { FORMULA_HISTORY, prefsStore } from './store'
 
 const CLIPBOARD_MIME = 'application/x-inkboard'
 
@@ -34,21 +35,24 @@ export const DEFAULT_CAMERA: Camera = { x: -80, y: -80, zoom: 1 }
  * Glue between the imperative board engine and the React UI.
  * UI components call these methods; the Board component registers the render callback.
  */
-class Editor {
+export class Editor {
   readonly scene = new Scene()
+  /** This board's tool, selection, camera, instruments and edits; React reads it through useSession. */
+  readonly session = createSessionStore()
   camera: Camera = { ...DEFAULT_CAMERA }
   viewport = { width: 0, height: 0 }
   /** Live move/scale of the selection, drawn without touching the scene until committed. */
   preview: { ids: ReadonlySet<string>; t: Xform } | null = null
 
   private invalidate: (base?: boolean) => void = () => {}
+  private readonly unsubscribe: (() => void)[] = []
 
   constructor() {
     this.scene.subscribe(() => {
       // Drop selected ids that no longer exist (e.g. after undo).
-      const sel = useUI.getState().selectedIds
+      const sel = this.session.getState().selectedIds
       const alive = sel.length ? this.scene.getById(sel).map((i) => i.id) : sel
-      useUI.setState({
+      this.session.setState({
         canUndo: this.scene.canUndo,
         canRedo: this.scene.canRedo,
         sceneVersion: this.scene.version,
@@ -56,25 +60,37 @@ class Editor {
       })
       this.invalidate(true)
     })
-    useUI.subscribe((s, prev) => {
-      // The selection is drawn lifted on the board itself, so a new selection redraws the board.
-      if (s.background !== prev.background || s.selectedIds !== prev.selectedIds) {
-        this.invalidate(true)
-      } else if (s.tool !== prev.tool) {
-        this.invalidate(false)
-      }
-      // The function panel belongs to one selected plane: close it when that plane stops being the selection.
-      if (s.fnPanel && (s.selectedIds.length !== 1 || s.selectedIds[0] !== s.fnPanel.id || s.view !== 'board')) {
-        useUI.setState({ fnPanel: null })
-      }
-      if (s.tool !== prev.tool) {
-        // Picking a drawing tool means "done with the selection": drop it (lasso ↔ move keep it).
-        if (s.tool !== 'select' && s.tool !== 'brushSelect' && s.tool !== 'move' && s.selectedIds.length) useUI.setState({ selectedIds: [] })
-        if (s.tool !== 'text' && s.textEdit) this.commitText()
-        // (Starting a formula switches the tool itself: that one is not a reason to finish it.)
-        if (s.formulaEdit && s.formulaEdit === prev.formulaEdit) this.commitFormula(false)
-      }
-    })
+    this.unsubscribe.push(
+      prefsStore.subscribe((p, prev) => {
+        if (p.background !== prev.background) this.invalidate(true)
+      }),
+      this.session.subscribe((s, prev) => this.onSessionChange(s, prev))
+    )
+  }
+
+  /** Stop listening to the shared preferences (call when the board is closed for good). */
+  dispose(): void {
+    for (const off of this.unsubscribe.splice(0)) off()
+  }
+
+  private onSessionChange(s: Session, prev: Session): void {
+    // The selection is drawn lifted on the board itself, so a new selection redraws the board.
+    if (s.selectedIds !== prev.selectedIds) {
+      this.invalidate(true)
+    } else if (s.tool !== prev.tool) {
+      this.invalidate(false)
+    }
+    // The function panel belongs to one selected plane: close it when that plane stops being the selection.
+    if (s.fnPanel && (s.selectedIds.length !== 1 || s.selectedIds[0] !== s.fnPanel.id || !s.active)) {
+      this.session.setState({ fnPanel: null })
+    }
+    if (s.tool !== prev.tool) {
+      // Picking a drawing tool means "done with the selection": drop it (lasso ↔ move keep it).
+      if (s.tool !== 'select' && s.tool !== 'brushSelect' && s.tool !== 'move' && s.selectedIds.length) this.session.setState({ selectedIds: [] })
+      if (s.tool !== 'text' && s.textEdit) this.commitText()
+      // (Starting a formula switches the tool itself: that one is not a reason to finish it.)
+      if (s.formulaEdit && s.formulaEdit === prev.formulaEdit) this.commitFormula(false)
+    }
   }
 
   attach(invalidate: (base?: boolean) => void): () => void {
@@ -89,7 +105,7 @@ class Editor {
   }
 
   t(key: MessageKey): string {
-    return translate(useUI.getState().lang, key)
+    return translate(prefsStore.getState().lang, key)
   }
 
   // ---------------------------------------------------------------- camera
@@ -102,7 +118,7 @@ class Editor {
 
   setCamera(cam: Camera): void {
     this.camera = cam
-    useUI.setState({ camera: cam, zoom: cam.zoom })
+    this.session.setState({ camera: cam, zoom: cam.zoom })
     this.invalidate(true)
   }
 
@@ -155,7 +171,7 @@ class Editor {
   // ---------------------------------------------------------------- selection
 
   selectedItems(): Item[] {
-    const ids = useUI.getState().selectedIds
+    const ids = this.session.getState().selectedIds
     return ids.length ? this.scene.getById(ids) : []
   }
 
@@ -163,7 +179,7 @@ class Editor {
   setSelection(items: Item[]): void {
     const groups = new Set(items.map((i) => i.groupId).filter(Boolean))
     const all = groups.size ? this.scene.getItems().filter((i) => (i.groupId && groups.has(i.groupId)) || items.includes(i)) : items
-    useUI.setState({ selectedIds: all.map((i) => i.id) })
+    this.session.setState({ selectedIds: all.map((i) => i.id) })
   }
 
   /** Change colour / width / pattern / ends of the selected lines (undoable). Ends don't go on closed shapes. */
@@ -196,15 +212,15 @@ class Editor {
   /** Start typing new text with its top-left corner at a board point. */
   startText(x: number, y: number): void {
     this.commitText()
-    const { color, size } = useUI.getState().textStyle
-    useUI.setState({ textEdit: { x, y, size, color, runs: [] }, selectedIds: [] })
+    const { color, size } = prefsStore.getState().textStyle
+    this.session.setState({ textEdit: { x, y, size, color, runs: [] }, selectedIds: [] })
   }
 
   /** Edit an existing text item in place (it's hidden on the board meanwhile). */
   editText(item: TextItem): void {
     if (item.locked) return
     this.commitText()
-    useUI.setState({
+    this.session.setState({
       textEdit: { id: item.id, x: item.x, y: item.y, size: item.size, color: item.color, runs: fullRuns(item) },
       selectedIds: []
     })
@@ -213,9 +229,9 @@ class Editor {
 
   /** Finish typing: add / update the text item (empty text removes it). Undoable. */
   commitText(): void {
-    const te = useUI.getState().textEdit
+    const te = this.session.getState().textEdit
     if (!te) return
-    useUI.setState({ textEdit: null })
+    this.session.setState({ textEdit: null })
     const fields = textFields(trimRunsEnd(te.runs), te)
     const old = te.id ? (this.scene.getById([te.id])[0] as TextItem | undefined) : undefined
     if (!fields.text) {
@@ -243,17 +259,17 @@ class Editor {
 
   /** Format the whole text being typed (text tool options while editing). */
   formatEditingText(patch: TextFormat): void {
-    const te = useUI.getState().textEdit
+    const te = this.session.getState().textEdit
     if (!te) return
     const runs = formatRange(te.runs, 0, Infinity, patch)
-    useUI.setState({ textEdit: { ...te, ...(patch.color ? { color: patch.color } : {}), ...(patch.size ? { size: patch.size } : {}), runs } })
+    this.session.setState({ textEdit: { ...te, ...(patch.color ? { color: patch.color } : {}), ...(patch.size ? { size: patch.size } : {}), runs } })
   }
 
   /** Paste plain text as a text item in the middle of the view. */
   insertText(text: string): void {
     const clean = text.replace(/\r\n?/g, '\n').replace(/\t/g, '    ').trim()
     if (!clean) return
-    const { color, size } = useUI.getState().textStyle
+    const { color, size } = prefsStore.getState().textStyle
     const item: TextItem = { type: 'text', id: newId(), z: this.scene.allocZ(), x: 0, y: 0, text: clean, size, color, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
     const b = textBBox(item)
     const c = screenToWorld(this.camera, this.view().width / 2, this.view().height / 2)
@@ -261,7 +277,7 @@ class Editor {
     item.y = c.y - (b.maxY - b.minY) / 2
     item.bbox = textBBox(item)
     this.scene.add([item])
-    useUI.setState({ tool: 'select' })
+    this.session.setState({ tool: 'select' })
     this.setSelection([item])
   }
 
@@ -285,9 +301,9 @@ class Editor {
   startFormula(): void {
     this.commitText()
     this.commitFormula(false)
-    const { color, size } = useUI.getState().formulaStyle
+    const { color, size } = prefsStore.getState().formulaStyle
     const c = screenToWorld(this.camera, this.view().width / 2, this.view().height * 0.36)
-    useUI.setState({
+    this.session.setState({
       tool: 'select',
       selectedIds: [],
       formulaEdit: { x: c.x - size * 2, baseline: c.y, size, color, rows: [], cur: { path: [], i: 0 } }
@@ -299,7 +315,7 @@ class Editor {
     if (item.locked) return
     this.commitText()
     this.commitFormula(false)
-    useUI.setState({
+    this.session.setState({
       selectedIds: [],
       formulaEdit: { id: item.id, x: item.x, baseline: item.y + formulaBox(item).asc, size: item.size, color: item.color, rows: item.rows, cur: { path: [], i: item.rows.length } }
     })
@@ -313,9 +329,9 @@ class Editor {
 
   /** Finish a formula: add / update its item (an empty one is removed). Undoable. */
   commitFormula(select = true): void {
-    const fe = useUI.getState().formulaEdit
+    const fe = this.session.getState().formulaEdit
     if (!fe) return
-    useUI.setState({ formulaEdit: null, mathTarget: null })
+    this.session.setState({ formulaEdit: null, mathTarget: null })
     const old = fe.id ? (this.scene.getById([fe.id])[0] as FormulaItem | undefined) : undefined
     if (isBlank(fe.rows)) {
       if (old) this.scene.remove([old])
@@ -342,7 +358,7 @@ class Editor {
     if (old) this.scene.replace([old], [item])
     else this.scene.add([item])
     const key = JSON.stringify(fe.rows)
-    useUI.setState((s) => ({ formulaHistory: [fe.rows, ...s.formulaHistory.filter((r) => JSON.stringify(r) !== key)].slice(0, FORMULA_HISTORY) }))
+    prefsStore.setState((s) => ({ formulaHistory: [fe.rows, ...s.formulaHistory.filter((r) => JSON.stringify(r) !== key)].slice(0, FORMULA_HISTORY) }))
     if (select) this.setSelection([item])
   }
 
@@ -350,7 +366,7 @@ class Editor {
   restyleFormula(patch: { color?: string; size?: number }): void {
     const list = this.selectedItems().filter((i): i is FormulaItem => i.type === 'formula' && !i.locked)
     if (!list.length) return
-    useUI.setState((s) => ({ formulaStyle: { ...s.formulaStyle, ...patch } }))
+    prefsStore.setState((s) => ({ formulaStyle: { ...s.formulaStyle, ...patch } }))
     this.scene.replace(
       list,
       list.map((f) => {
@@ -379,11 +395,11 @@ class Editor {
   }
 
   clearSelection(): void {
-    if (useUI.getState().selectedIds.length) useUI.setState({ selectedIds: [] })
+    if (this.session.getState().selectedIds.length) this.session.setState({ selectedIds: [] })
   }
 
   selectAll(): void {
-    useUI.setState({ tool: 'select' })
+    this.session.setState({ tool: 'select' })
     this.setSelection([...this.scene.getItems()])
   }
 
@@ -402,7 +418,7 @@ class Editor {
   }
 
   setPreview(t: Xform | null): void {
-    this.preview = t ? { ids: new Set(useUI.getState().selectedIds), t } : null
+    this.preview = t ? { ids: new Set(this.session.getState().selectedIds), t } : null
     this.invalidate(true)
   }
 
@@ -419,7 +435,7 @@ class Editor {
     const all = this.selectedItems()
     const items = all.filter((i) => !i.locked)
     const kept = all.filter((i) => i.locked)
-    useUI.setState({ selectedIds: kept.map((i) => i.id) })
+    this.session.setState({ selectedIds: kept.map((i) => i.id) })
     this.scene.remove(items)
   }
 
@@ -493,7 +509,7 @@ class Editor {
   copyToClipboard(e: ClipboardEvent, cut: boolean): boolean {
     const items = this.selectedItems()
     if (!items.length || !e.clipboardData) return false
-    const file = serializeBoard({ items, background: useUI.getState().background, camera: this.camera })
+    const file = serializeBoard({ items, background: prefsStore.getState().background, camera: this.camera })
     e.clipboardData.setData(CLIPBOARD_MIME, JSON.stringify(file))
     // Only text selected: other apps get the words themselves.
     const onlyText = items.every((i) => i.type === 'text')
@@ -545,7 +561,7 @@ class Editor {
     const snap = (v: number): number => Math.round(v / 24) * 24
     const copies = this.cloneItems(items, snap(c.x - (box.minX + box.maxX) / 2), snap(c.y - (box.minY + box.maxY) / 2))
     this.scene.add(copies)
-    useUI.setState({ tool: 'select' })
+    this.session.setState({ tool: 'select' })
     this.setSelection(copies)
   }
 
@@ -572,7 +588,7 @@ class Editor {
     }
     g.bbox = graphBBox(g)
     this.scene.add([g])
-    useUI.setState({ tool: 'select' })
+    this.session.setState({ tool: 'select' })
     this.setSelection([g])
     return g.id
   }
@@ -623,9 +639,9 @@ class Editor {
     }
     g.bbox = graphBBox(g)
     this.scene.add([g])
-    useUI.setState({ tool: 'select' })
+    this.session.setState({ tool: 'select' })
     this.setSelection([g])
-    useUI.setState({ fnPanel: { id: g.id, session: Date.now() } })
+    this.session.setState({ fnPanel: { id: g.id, session: Date.now() } })
   }
 
   /**
@@ -669,56 +685,56 @@ class Editor {
 
   /** Show the ruler in the middle of the view, or hide it. */
   toggleRuler(): void {
-    if (useUI.getState().ruler) {
-      useUI.setState({ ruler: null })
+    if (this.session.getState().ruler) {
+      this.session.setState({ ruler: null })
       return
     }
     const { width, height } = this.view()
     const c = screenToWorld(this.camera, width / 2, height / 2)
     const maxCm = Math.max(4, Math.floor((width * 0.55) / this.camera.zoom / CM))
     const size = Math.min(12, maxCm) * CM
-    useUI.setState({ ruler: { kind: 'ruler', x: c.x, y: c.y, rot: 0, size } })
+    this.session.setState({ ruler: { kind: 'ruler', x: c.x, y: c.y, rot: 0, size } })
   }
 
   /** Show a 45° or 30°/60° set square in the middle of the view, switch between them, or hide it. */
   toggleSetSquare(kind: 'square45' | 'square60'): void {
-    const cur = useUI.getState().setSquare
+    const cur = this.session.getState().setSquare
     if (cur?.kind === kind) {
-      useUI.setState({ setSquare: null })
+      this.session.setState({ setSquare: null })
       return
     }
     if (cur) {
-      useUI.setState({ setSquare: { ...cur, kind } })
+      this.session.setState({ setSquare: { ...cur, kind } })
       return
     }
     const { width, height } = this.view()
     const c = screenToWorld(this.camera, width / 2, height / 2)
     const maxCm = Math.max(4, Math.floor((Math.min(width, height) * 0.42) / this.camera.zoom / CM))
     const size = Math.min(10, maxCm) * CM
-    useUI.setState({ setSquare: { kind, x: c.x, y: c.y + size * 0.1, rot: 0, size } })
+    this.session.setState({ setSquare: { kind, x: c.x, y: c.y + size * 0.1, rot: 0, size } })
   }
 
   /** Show the compass in the middle of the view (legs open 4 cells), or hide it. */
   toggleCompass(): void {
-    if (useUI.getState().compass) {
-      useUI.setState({ compass: null })
+    if (this.session.getState().compass) {
+      this.session.setState({ compass: null })
       return
     }
     const { width, height } = this.view()
     const c = screenToWorld(this.camera, width / 2, height / 2)
     const r = Math.min(COMPASS_CELL * 4, (Math.min(width, height) * 0.25) / this.camera.zoom)
-    useUI.setState({ compass: { x: c.x - r / 2, y: c.y + r * 0.3, r, a: 0 } })
+    this.session.setState({ compass: { x: c.x - r / 2, y: c.y + r * 0.3, r, a: 0 } })
   }
 
   toggleProtractor(): void {
-    if (useUI.getState().protractor) {
-      useUI.setState({ protractor: null })
+    if (this.session.getState().protractor) {
+      this.session.setState({ protractor: null })
       return
     }
     const { width, height } = this.view()
     const r = (Math.min(width, height) * 0.3) / this.camera.zoom
     const c = screenToWorld(this.camera, width / 2, height / 2)
-    useUI.setState({ protractor: { x: c.x, y: c.y + r * 0.45, r, rot: 0 } })
+    this.session.setState({ protractor: { x: c.x, y: c.y + r * 0.45, r, rot: 0 } })
   }
 
   // ---------------------------------------------------------------- images
@@ -758,24 +774,31 @@ class Editor {
       inserted.push(item)
     }
     if (inserted.length) {
-      useUI.setState({ tool: 'select' })
+      this.session.setState({ tool: 'select' })
       this.setSelection(inserted)
     }
   }
 
   loadData(data: BoardData): void {
     this.preview = null
-    useUI.setState({ selectedIds: [], background: data.background })
+    this.session.setState({ selectedIds: [] })
+    prefsStore.setState({ background: data.background })
     this.scene.load(data.items)
     this.setCamera(data.camera)
   }
 }
 
-export const editor = new Editor()
-
-// Dev builds only: lets UI tests in the browser inspect the board state.
-if (import.meta.env.DEV) {
-  const w = window as unknown as { __inkboard: Editor; __inkboardUI: typeof useUI }
-  w.__inkboard = editor
-  w.__inkboardUI = useUI
+/**
+ * A new editor for one board. The app creates it (one per open board) and hands it to the board UI
+ * with <EditorProvider>; nothing else creates editors or keeps a global one.
+ */
+export function createEditor(): Editor {
+  const editor = new Editor()
+  // Dev builds only: lets UI tests in the browser inspect the latest board's state.
+  if (import.meta.env.DEV) {
+    const w = window as unknown as { __inkboard: Editor; __inkboardPrefs: typeof prefsStore }
+    w.__inkboard = editor
+    w.__inkboardPrefs = prefsStore
+  }
+  return editor
 }

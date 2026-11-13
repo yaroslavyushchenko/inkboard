@@ -1,18 +1,18 @@
 import { useCallback, useState } from 'react'
 import type { TemplateEntry } from '../../../shared/library'
 import { useT } from '../../../board/i18n'
-import { useUI } from '../../../board/store'
 import { BookmarkIcon } from '../../../board/ui/icons'
 import { Popover } from '../../../board/ui/Popover'
 import { boardLibrary } from '../boardLibrary'
 import { TemplateThumb } from './TemplatesMenu'
+import { useApp } from '../appState'
 
 export function SaveSelectionTemplate({ side }: { side: 'above' | 'below' }) {
   const t = useT()
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
   const [replacing, setReplacing] = useState<TemplateEntry | null>(null)
-  const templates = useUI((s) => s.library.templates)
+  const templates = useApp((s) => s.library.templates)
   const close = useCallback(() => {
     setSaving(false)
     setReplacing(null)

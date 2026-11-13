@@ -1,28 +1,29 @@
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { canHaveEnds, editor } from '../editor'
+import { canHaveEnds } from '../editor'
 import { SELECTION_PAD } from '../engine/renderer'
 import { editableShape } from '@inkboard/core/shapeItems'
 import { isLinear, SHAPE_BASES, SHAPES_2D, SHAPES_3D, type ShapeKind } from '@inkboard/core/shapes'
 import { fullRuns, TEXT_SIZES } from '../engine/text'
 import type { FormulaItem, StrokeItem, TextItem } from '@inkboard/core/types'
 import { useT, type MessageKey } from '../i18n'
-import { useUI } from '../store'
 import { PEN_COLORS, PEN_SIZES } from '../store'
 import { DuplicateIcon, FitIcon, FormulaIcon, FunctionIcon, GearIcon, GroupIcon, LockIcon, ShapesIcon, StyleIcon, TextIcon, TrashIcon, UngroupIcon, UnlockIcon } from './icons'
 import { BaseRow, ShapePreview } from './InsertMenus'
 import { LineStyleControls, SizeSlider } from './LineStyle'
 import { fitBox, screenArea } from './dock'
 import { Popover } from './Popover'
+import { useEditor, useSession } from '../editorContext'
 
 /** Small floating action bar above the current selection (like Whiteboard's context menu). */
 export function SelectionToolbar({ actions }: { actions?: (side: 'above' | 'below') => ReactNode }) {
+  const editor = useEditor()
   const t = useT()
-  const selectedIds = useUI((s) => s.selectedIds)
-  const view = useUI((s) => s.view)
-  const fnPanel = useUI((s) => s.fnPanel)
+  const selectedIds = useSession((s) => s.selectedIds)
+  const active = useSession((s) => s.active)
+  const fnPanel = useSession((s) => s.fnPanel)
   // Re-render when the camera or items move so the bar follows the selection.
-  useUI((s) => s.camera)
-  useUI((s) => s.sceneVersion)
+  useSession((s) => s.camera)
+  useSession((s) => s.sceneVersion)
   const [styling, setStyling] = useState(false)
   const [shaping, setShaping] = useState(false)
   const closeShape = useCallback(() => setShaping(false), [])
@@ -33,7 +34,7 @@ export function SelectionToolbar({ actions }: { actions?: (side: 'above' | 'belo
     const el = ref.current
     if (el && (el.offsetWidth !== size.w || el.offsetHeight !== size.h)) setSize({ w: el.offsetWidth, h: el.offsetHeight })
   })
-  if (!selectedIds.length || view !== 'board') return null
+  if (!selectedIds.length || !active) return null
   const box = editor.selectionBBox()
   if (!box) return null
   const items = editor.selectedItems()
@@ -92,7 +93,7 @@ export function SelectionToolbar({ actions }: { actions?: (side: 'above' | 'belo
           <button
             className="labeled-btn"
             title={t('graph.editTitle')}
-            onClick={() => useUI.setState({ graphDialog: { mode: 'edit', id: graph.id, params: { ...graph } } })}
+            onClick={() => editor.session.setState({ graphDialog: { mode: 'edit', id: graph.id, params: { ...graph } } })}
           >
             <GearIcon />
           </button>
@@ -100,7 +101,7 @@ export function SelectionToolbar({ actions }: { actions?: (side: 'above' | 'belo
             <button
               className={`labeled-btn ${fnPanel?.id === graph.id ? 'active' : ''}`}
               title={t('graph.plotTitle')}
-              onClick={() => useUI.setState({ fnPanel: fnPanel?.id === graph.id ? null : { id: graph.id, session: Date.now() } })}
+              onClick={() => editor.session.setState({ fnPanel: fnPanel?.id === graph.id ? null : { id: graph.id, session: Date.now() } })}
             >
               <FunctionIcon />
             </button>
@@ -240,6 +241,7 @@ export function SelectionToolbar({ actions }: { actions?: (side: 'above' | 'belo
 
 /** Bold / italic / underline for whole text items (lit when every character has it). */
 function TextFormatButtons({ text }: { text: TextItem }) {
+  const editor = useEditor()
   const t = useT()
   const runs = fullRuns(text)
   const all = (k: 'bold' | 'italic' | 'underline'): boolean => runs.every((r) => r[k])

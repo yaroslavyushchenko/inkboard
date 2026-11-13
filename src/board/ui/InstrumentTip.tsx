@@ -1,5 +1,6 @@
 import { useT } from '../i18n'
-import { useUI } from '../store'
+import { usePrefs, prefsStore } from '../store'
+import { useSession } from '../editorContext'
 
 /**
  * How to use the ruler / set square / protractor / compass, shown at the bottom while one is on
@@ -7,11 +8,11 @@ import { useUI } from '../store'
  */
 export function InstrumentTip() {
   const t = useT()
-  const ruler = useUI((s) => s.ruler !== null)
-  const sq = useUI((s) => s.setSquare !== null)
-  const prot = useUI((s) => s.protractor !== null)
-  const comp = useUI((s) => s.compass !== null)
-  const hidden = useUI((s) => s.hiddenTips)
+  const ruler = useSession((s) => s.ruler !== null)
+  const sq = useSession((s) => s.setSquare !== null)
+  const prot = useSession((s) => s.protractor !== null)
+  const comp = useSession((s) => s.compass !== null)
+  const hidden = usePrefs((s) => s.hiddenTips)
   const which =
     comp && !hidden.includes('compass')
       ? 'compass'
@@ -24,7 +25,7 @@ export function InstrumentTip() {
   return (
     <div className="panel instrument-tip" onPointerDown={(e) => e.stopPropagation()}>
       <span>{t(which === 'compass' ? 'tip.compass' : which === 'protractor' ? 'tip.protractor' : 'tip.straightedge')}</span>
-      <button className="text-btn" onClick={() => useUI.setState((s) => ({ hiddenTips: [...s.hiddenTips, which] }))}>
+      <button className="text-btn" onClick={() => prefsStore.setState((s) => ({ hiddenTips: [...s.hiddenTips, which] }))}>
         {t('tip.hide')}
       </button>
     </div>

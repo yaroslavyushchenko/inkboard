@@ -17,9 +17,10 @@ import { buildShapeItems, editableShape, regenerateShape, shapeMembers } from '@
 import { DEFAULT_SHAPE_SIZE, isLinear, SHAPE_BASES, shapeBox, shapeParts, snapAngle, type ShapeKind } from '@inkboard/core/shapes'
 import { hitTest, itemsInLasso } from '../engine/transform'
 import type { BBox, Item, Point, ShapeSpec, StrokeItem, TextItem } from '@inkboard/core/types'
-import { editor } from '../editor'
+import { useEditor } from '../editorContext'
+import type { Session } from '../session'
 import { isBoardFileShortcut, matchShortcut, type BoardFileShortcut, type ShortcutId } from '../shortcuts'
-import { useUI, type InkSlot, type PenAction, type Tool } from '../store'
+import { prefsStore, type InkSlot, type PenAction, type Prefs, type Tool } from '../store'
 import { translate, type Lang, type MessageKey } from '../i18n'
 import { BACKGROUND_STYLE } from '../engine/background'
 import { bgPattern } from '../engine/surface'
@@ -149,12 +150,16 @@ export type BoardFileActions = Record<BoardFileShortcut, () => unknown>
 export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
   const baseRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
+  const editor = useEditor()
 
   useEffect(() => {
     const baseCanvas = baseRef.current!
     const overlay = overlayRef.current!
     const renderer = new BoardRenderer(baseCanvas, overlay)
     const scene = editor.scene
+    const session = editor.session
+    /** A snapshot of the preferences and this board's session together, for reading in event handlers. */
+    const readUI = (): Prefs & Session => ({ ...prefsStore.getState(), ...session.getState() })
 
     let gesture: Gesture | null = null
     let hover: Hover | null = null
@@ -180,7 +185,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
 
     const frame = (): void => {
       raf = 0
-      const ui = useUI.getState()
+      const ui = readUI()
       if (baseDirty) {
         // Text being edited is shown by the text box instead.
         const editing = ui.textEdit?.id ?? ui.formulaEdit?.id
@@ -277,7 +282,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       line: StrokeItem | null
       shape: { spec: ShapeSpec; parts: StrokeItem[] } | null
     } | null => {
-      if (!useUI.getState().selectedIds.length) return null
+      if (!session.getState().selectedIds.length) return null
       const items = editor.selectedItems()
       const box = editor.selectionBBox()
       if (!box || !items.length) return null
@@ -350,7 +355,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       if (spaceDown) return 'pan'
       if (e.pointerType === 'pen') {
         // Pen buttons, as configured in Settings → Pen buttons.
-        const pb = useUI.getState().penButtons
+        const pb = prefsStore.getState().penButtons
         const act = (a: PenAction): Effective | null => (a === 'tool' ? null : a)
         let mapped: Effective | null = null
         if (e.button === 5 || (e.buttons & 32) !== 0) mapped = act(pb.eraserEnd)
@@ -358,7 +363,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         else if (e.button === 1 || (e.buttons & 4) !== 0) mapped = act(pb.upper)
         if (mapped) return mapped
       }
-      return toolEffect(useUI.getState().tool)
+      return toolEffect(session.getState().tool)
     }
 
     /** Item (or its whole group) under a screen point, for hover highlight and quick move. */
@@ -381,7 +386,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
 
     /** Grid spacing for Ctrl-snapping instruments to the paper grid. */
     const gridSteps = (): [number, number] => {
-      const bg = useUI.getState().background
+      const bg = prefsStore.getState().background
       return [COMPASS_CELL, bgPattern(bg) === 'lines' ? BACKGROUND_STYLE.lines.step : COMPASS_CELL]
     }
     const snapPt = (x: number, y: number): { x: number; y: number } => {
@@ -391,7 +396,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
 
     /** What a press at screen point (sx, sy) hits on the compass, if it's shown. */
     const compassHitAt = (sx: number, sy: number): CompassHit | null => {
-      const c = useUI.getState().compass
+      const c = session.getState().compass
       if (!c) return null
       const w = screenToWorld(editor.camera, sx, sy)
       return hitCompass(c, w.x, w.y, editor.camera.zoom)
@@ -399,7 +404,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
 
     /** Open or close the settings card beside the protractor. */
     const togglePanel = (): void => {
-      useUI.setState((s) => ({ protractorPanel: !s.protractorPanel }))
+      session.setState((s) => ({ protractorPanel: !s.protractorPanel }))
     }
 
     /** Which compass part is lit (being dragged, or under a hovering mouse / pen) and what to show with it. */
@@ -412,20 +417,20 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       else if (drawing) hot = 'pencil'
       else if (!g && hover && hover.pointerType !== 'touch' && !spaceDown) {
         // Same rule as a press: the pan tool and the eraser go through the compass.
-        const tool = useUI.getState().tool
+        const tool = session.getState().tool
         const eraserEnd = hover.pointerType === 'pen' && (hover.buttons & 32) !== 0
         if (tool !== 'pan' && tool !== 'eraser' && !eraserEnd) hot = compassHitAt(hover.sx, hover.sy)
       }
       const key = !g && hot ? (hot === 'pencil' || hot === 'radius' || hot === 'close' ? hot : 'move') : null
       return {
         state: { hot, sweepFrom: drawing ? drawing.a0 : null, ticks: hot === 'radius' },
-        hint: key ? translate(useUI.getState().lang, `compass.hint.${key}` as MessageKey) : null
+        hint: key ? translate(prefsStore.getState().lang, `compass.hint.${key}` as MessageKey) : null
       }
     }
 
     /** Which protractor part is lit, the angle under the pointer on its edge, and the hint to show. */
     const protractorState = (): { state: ProtractorState; hint: string | null } => {
-      const ui = useUI.getState()
+      const ui = readUI()
       const prot = ui.protractor!
       const g = gesture
       let hot: ProtractorHit | null = null
@@ -453,13 +458,13 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
 
     /** The ink a pen stroke would use now (the compass pencil draws with it too). */
     const inkSlot = (): InkSlot => {
-      const ui = useUI.getState()
+      const ui = readUI()
       return ui.tool === 'highlighter' ? ui.highlighter : ui.pens[ui.activePen]
     }
 
     /** What a press at screen point (sx, sy) hits on the protractor, if it's shown. */
     const protractorHitAt = (sx: number, sy: number): ProtractorHit | null => {
-      const prot = useUI.getState().protractor
+      const prot = session.getState().protractor
       if (!prot) return null
       const w = screenToWorld(editor.camera, sx, sy)
       return hitProtractor(prot, w.x, w.y, editor.camera.zoom)
@@ -467,7 +472,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
 
     /** What a press at screen point (sx, sy) hits on the ruler or set square, if shown. */
     const straightHitAt = (slot: StraightSlot, sx: number, sy: number): StraightHit | null => {
-      const s = useUI.getState()[slot]
+      const s = session.getState()[slot]
       if (!s) return null
       const w = screenToWorld(editor.camera, sx, sy)
       return hitStraightedge(s, w.x, w.y, editor.camera.zoom)
@@ -475,7 +480,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
 
     /** Which part of the ruler / set square is lit, the scale mark under the pointer, and the hint to show. */
     const straightState = (slot: StraightSlot): { state: StraightState; hint: string | null } => {
-      const ui = useUI.getState()
+      const ui = readUI()
       const s = ui[slot]!
       const g = gesture
       let hot: StraightHit | null = null
@@ -509,7 +514,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
     function cursorState(): CursorState | null {
       if (!hover || spaceDown) return null
       if (gesture?.kind === 'pan' || gesture?.kind === 'pinch') return null
-      const ui = useUI.getState()
+      const ui = readUI()
       const penHover = hover.pointerType === 'pen' && hover.buttons === 0
       const eraserButton = hover.pointerType === 'pen' && (hover.buttons & 32) !== 0
       const eff = eraserButton ? 'eraser' : toolEffect(ui.tool)
@@ -537,7 +542,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
     }
 
     const updateCssCursor = (): void => {
-      const tool = useUI.getState().tool
+      const tool = session.getState().tool
       let c = 'none'
       // Protractor / straightedge part under a hovering pointer, hit-tested once (null while a gesture runs).
       const pHit = !gesture && hover ? protractorHitAt(hover.sx, hover.sy) : null
@@ -595,7 +600,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
     }
 
     const eraseSegment = (x0: number, y0: number, x1: number, y1: number, g: Gesture & { kind: 'eraser' }): void => {
-      const r = useUI.getState().eraserRadius / editor.camera.zoom
+      const r = prefsStore.getState().eraserRadius / editor.camera.zoom
       const box = {
         minX: Math.min(x0, x1) - r,
         minY: Math.min(y0, y1) - r,
@@ -607,7 +612,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       const steps = Math.max(1, Math.ceil(dist / (r * 0.5)))
       const hit = new Set<Item>()
       const items = scene.getItems()
-      if (useUI.getState().eraserMode === 'point') {
+      if (prefsStore.getState().eraserMode === 'point') {
         // Point eraser: cut away only what the circle covers; the rest stays as separate strokes.
         const cut: Item[] = []
         const pieces: Item[] = []
@@ -680,7 +685,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
      * (whole groups), or removed from it with Ctrl / Alt held.
      */
     const brushSegment = (x0: number, y0: number, x1: number, y1: number, g: Gesture & { kind: 'brush' }): void => {
-      const r = useUI.getState().selectRadius / editor.camera.zoom
+      const r = prefsStore.getState().selectRadius / editor.camera.zoom
       const box = { minX: Math.min(x0, x1) - r, minY: Math.min(y0, y1) - r, maxX: Math.max(x0, x1) + r, maxY: Math.max(y0, y1) + r }
       const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (r * 0.5)))
       const hit: Item[] = []
@@ -710,7 +715,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
           gone.add(h.id)
         }
         const next = current.filter((i) => !gone.has(i.id)).map((i) => i.id)
-        if (next.length !== current.length) useUI.setState({ selectedIds: next })
+        if (next.length !== current.length) session.setState({ selectedIds: next })
       } else {
         const have = new Set(current.map((i) => i.id))
         const fresh = hit.filter((i) => !have.has(i.id))
@@ -733,7 +738,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
     const armHold = (sx: number, sy: number): void => {
       clearTimeout(holdTimer)
       holdAt = { x: sx, y: sy }
-      const ui = useUI.getState()
+      const ui = readUI()
       if (!ui.shapeSnap) return
       holdTimer = window.setTimeout(() => {
         const g = gesture
@@ -811,14 +816,14 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
           ...(live.endCap ? { endCap: live.endCap } : {})
         }
         // An arc drawn along the protractor gets its angle written next to it ("50°"), kept with it as a group.
-        const prot = useUI.getState().protractor
+        const prot = session.getState().protractor
         const deg = g.snap?.mode === 'arc' && g.snap.endDeg !== undefined ? Math.round(Math.abs(g.snap.endDeg - g.snap.startDeg) * 10) / 10 : 0
         if (prot && deg >= 1 && g.snap?.mode === 'arc') {
           const size = Math.max(14, Math.min(48, prot.r * 0.075))
           const mid = (((g.snap.startDeg + g.snap.endDeg!) / 2) * Math.PI) / 180
           const rr = prot.r + live.size + size * 1.1
           const at = toWorld(prot, Math.cos(mid) * rr, -Math.sin(mid) * rr)
-          const label: TextItem = { type: 'text', id: newId(), z: scene.allocZ(), x: 0, y: 0, text: degText(deg, useUI.getState().lang === 'uk'), size, color: live.color, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
+          const label: TextItem = { type: 'text', id: newId(), z: scene.allocZ(), x: 0, y: 0, text: degText(deg, prefsStore.getState().lang === 'uk'), size, color: live.color, bbox: { minX: 0, minY: 0, maxX: 0, maxY: 0 } }
           const b = textBBox(label)
           label.x = at.x - (b.maxX - b.minX) / 2
           label.y = at.y - (b.maxY - b.minY) / 2
@@ -887,15 +892,15 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         togglePanel()
       } else if (ch === 'needle' || ch === 'body') {
         const w = screenToWorld(editor.camera, p.x, p.y)
-        const c = useUI.getState().compass!
+        const c = session.getState().compass!
         gesture = { kind: 'compMove', pointerId: e.pointerId, ox: c.x - w.x, oy: c.y - w.y }
       } else if (ph && ph !== 'close' && ph !== 'rotate') {
         const w = screenToWorld(editor.camera, p.x, p.y)
-        const prot = useUI.getState().protractor!
+        const prot = session.getState().protractor!
         gesture = { kind: 'protMove', pointerId: e.pointerId, ox: prot.x - w.x, oy: prot.y - w.y }
       } else if (shSlot && sh && sh !== 'close' && sh !== 'rotate') {
         const w = screenToWorld(editor.camera, p.x, p.y)
-        const s = useUI.getState()[shSlot]!
+        const s = session.getState()[shSlot]!
         gesture = { kind: 'straightMove', slot: shSlot, pointerId: e.pointerId, ox: s.x - w.x, oy: s.y - w.y }
       } else if (touches.size === 1) {
         gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
@@ -917,16 +922,16 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         editor.setCamera(cam)
       } else if (gesture?.kind === 'compMove' && gesture.pointerId === e.pointerId) {
         const w = screenToWorld(editor.camera, local(e).x, local(e).y)
-        const c = useUI.getState().compass
-        if (c) useUI.setState({ compass: { ...c, x: w.x + gesture.ox, y: w.y + gesture.oy } })
+        const c = session.getState().compass
+        if (c) session.setState({ compass: { ...c, x: w.x + gesture.ox, y: w.y + gesture.oy } })
       } else if (gesture?.kind === 'protMove' && gesture.pointerId === e.pointerId) {
         const w = screenToWorld(editor.camera, local(e).x, local(e).y)
-        const prot = useUI.getState().protractor
-        if (prot) useUI.setState({ protractor: { ...prot, x: w.x + gesture.ox, y: w.y + gesture.oy } })
+        const prot = session.getState().protractor
+        if (prot) session.setState({ protractor: { ...prot, x: w.x + gesture.ox, y: w.y + gesture.oy } })
       } else if (gesture?.kind === 'straightMove' && gesture.pointerId === e.pointerId) {
         const w = screenToWorld(editor.camera, local(e).x, local(e).y)
-        const s = useUI.getState()[gesture.slot]
-        if (s) useUI.setState({ [gesture.slot]: { ...s, x: w.x + gesture.ox, y: w.y + gesture.oy } })
+        const s = session.getState()[gesture.slot]
+        if (s) session.setState({ [gesture.slot]: { ...s, x: w.x + gesture.ox, y: w.y + gesture.oy } })
       } else if (gesture?.kind === 'pan' && gesture.pointerId === e.pointerId) {
         const p = local(e)
         editor.setCamera(panBy(editor.camera, p.x - gesture.lastX, p.y - gesture.lastY))
@@ -962,9 +967,9 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       if (e.pointerType === 'pen') lastPenTime = performance.now()
       e.preventDefault()
       // A press anywhere on the board finishes the text being typed (that press does nothing else in text mode).
-      if (useUI.getState().textEdit) {
+      if (session.getState().textEdit) {
         editor.commitText()
-        if (useUI.getState().tool === 'text' && e.button === 0) return
+        if (session.getState().tool === 'text' && e.button === 0) return
       }
       // The same for a formula being built.
       editor.commitFormula(false)
@@ -985,10 +990,10 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       const protGrab = pHit === 'body' || (pHit !== null && pHit !== 'close' && pHit !== 'rotate' && pHit !== 'settings' && eff !== 'ink')
       const straightGrab = sHit === 'body' || (sHit !== null && sHit !== 'close' && sHit !== 'rotate' && eff !== 'ink')
       if (cHit) {
-        const c = useUI.getState().compass!
+        const c = session.getState().compass!
         const w = screenToWorld(editor.camera, p.x, p.y)
         if (cHit === 'close') {
-          useUI.setState({ compass: null })
+          session.setState({ compass: null })
           try {
             overlay.releasePointerCapture(e.pointerId)
           } catch {
@@ -999,7 +1004,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         } else if (cHit === 'pencil') {
           // The pencil turns around the needle and draws with the current pen.
           editor.clearSelection()
-          const ui = useUI.getState()
+          const ui = readUI()
           const isHl = ui.tool === 'highlighter'
           const slot = inkSlot()
           const start: Point = [c.x + Math.cos(c.a) * c.r, c.y + Math.sin(c.a) * c.r, 0.5]
@@ -1028,7 +1033,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         gesture = { kind: 'endpoint', pointerId: e.pointerId, original: endGrab.item, current: endGrab.item, which: endGrab.which }
         hoverBox = null
       } else if (pHit === 'close') {
-        useUI.setState({ protractor: null })
+        session.setState({ protractor: null })
         try {
           overlay.releasePointerCapture(e.pointerId)
         } catch {
@@ -1045,10 +1050,10 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         gesture = { kind: 'protRotate', pointerId: e.pointerId }
       } else if (protGrab) {
         const w = screenToWorld(editor.camera, p.x, p.y)
-        const prot = useUI.getState().protractor!
+        const prot = session.getState().protractor!
         gesture = { kind: 'protMove', pointerId: e.pointerId, ox: prot.x - w.x, oy: prot.y - w.y }
       } else if (sSlot && sHit === 'close') {
-        useUI.setState({ [sSlot]: null })
+        session.setState({ [sSlot]: null })
         try {
           overlay.releasePointerCapture(e.pointerId)
         } catch {
@@ -1058,7 +1063,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         gesture = { kind: 'straightRotate', slot: sSlot, pointerId: e.pointerId }
       } else if (sSlot && straightGrab) {
         const w = screenToWorld(editor.camera, p.x, p.y)
-        const s = useUI.getState()[sSlot]!
+        const s = session.getState()[sSlot]!
         gesture = { kind: 'straightMove', slot: sSlot, pointerId: e.pointerId, ox: s.x - w.x, oy: s.y - w.y }
       } else if (eff === 'pan') {
         gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
@@ -1072,7 +1077,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         const hit = hitTest(scene.getItems(), w.x, w.y, 4 / editor.camera.zoom)
         if (hit?.type === 'text' && !hit.locked) editor.editText(hit)
         else {
-          const size = useUI.getState().textStyle.size
+          const size = prefsStore.getState().textStyle.size
           editor.startText(w.x, w.y - (size * 1.25) / 2)
         }
         try {
@@ -1151,7 +1156,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         hoverBox = null
       } else if (eff === 'shape') {
         editor.clearSelection()
-        const ui = useUI.getState()
+        const ui = readUI()
         const w = screenToWorld(editor.camera, p.x, p.y)
         const slot = ui.pens[ui.activePen]
         const base = SHAPE_BASES[ui.shape] ? (ui.shapeBases[ui.shape] ?? SHAPE_BASES[ui.shape]!.def) : undefined
@@ -1212,7 +1217,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         eraseSegment(w.x, w.y, w.x, w.y, g)
       } else {
         editor.clearSelection()
-        const ui = useUI.getState()
+        const ui = readUI()
         const isHl = ui.tool === 'highlighter'
         const slot = isHl ? ui.highlighter : ui.pens[ui.activePen]
         const pressure = e.pointerType === 'pen' && !isHl
@@ -1237,12 +1242,12 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         if (e.shiftKey) gesture.live = { ...gesture.live, geom: 'line', pressure: false }
         else armHold(p.x, p.y)
         // Drawing along the protractor: arc along the edge, ray from the centre, or along the baseline.
-        const prot = useUI.getState().protractor
+        const prot = session.getState().protractor
         if (prot && (pHit === 'arc' || pHit === 'center' || pHit === 'base')) {
           const w = screenToWorld(editor.camera, p.x, p.y)
           const g = gesture
           g.live = { ...g.live, geom: 'line', pressure: false }
-          const ins = useUI.getState().instruments
+          const ins = prefsStore.getState().instruments
           if (pHit === 'arc') {
             g.snap = { mode: 'arc', startDeg: snapDeg(scaleAngle(prot, w.x, w.y), ins.protStep) }
           }
@@ -1250,7 +1255,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
           else g.snap = { mode: 'base', u0: Math.max(-prot.r, Math.min(prot.r, toLocal(prot, w.x, w.y).u)) }
           g.live.points = []
         } else if (sSlot && edgeOf(sHit) !== null) {
-          const s = useUI.getState()[sSlot]
+          const s = session.getState()[sSlot]
           const edge = edgeOf(sHit)!
           if (s) {
             const w = screenToWorld(editor.camera, p.x, p.y)
@@ -1282,32 +1287,32 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
           g.lastY = p.y
         } else if (g.kind === 'compMove') {
           const w = screenToWorld(editor.camera, p.x, p.y)
-          const c = useUI.getState().compass
+          const c = session.getState().compass
           if (c) {
             const rx = w.x + g.ox
             const ry = w.y + g.oy
             const pt = e.ctrlKey || e.metaKey ? snapPt(rx, ry) : { x: rx, y: ry }
-            useUI.setState({ compass: { ...c, ...pt } })
+            session.setState({ compass: { ...c, ...pt } })
           }
         } else if (g.kind === 'compRadius') {
           const w = screenToWorld(editor.camera, p.x, p.y)
-          const c = useUI.getState().compass
+          const c = session.getState().compass
           if (c) {
             const next = radiusFromHandle(c, w.x, w.y, editor.camera.zoom)
-            useUI.setState({ compass: next })
-            angleLabel = { sx: p.x, sy: p.y, text: radiusLabel(useUI.getState().lang, next.r) }
+            session.setState({ compass: next })
+            angleLabel = { sx: p.x, sy: p.y, text: radiusLabel(prefsStore.getState().lang, next.r) }
           }
         } else if (g.kind === 'protMove') {
           const w = screenToWorld(editor.camera, p.x, p.y)
-          const prot = useUI.getState().protractor
+          const prot = session.getState().protractor
           if (prot) {
             const rx = w.x + g.ox
             const ry = w.y + g.oy
             const pt = e.ctrlKey || e.metaKey ? snapPt(rx, ry) : { x: rx, y: ry }
-            useUI.setState({ protractor: { ...prot, ...pt } })
+            session.setState({ protractor: { ...prot, ...pt } })
           }
         } else if (g.kind === 'protRotate') {
-          const prot = useUI.getState().protractor
+          const prot = session.getState().protractor
           if (prot) {
             const w = screenToWorld(editor.camera, p.x, p.y)
             let rot = Math.atan2(w.y - prot.y, w.x - prot.x)
@@ -1316,26 +1321,26 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
             // Shift: 15° steps; otherwise a gentle magnet to horizontal / vertical.
             if (e.shiftKey || Math.abs(rot - snapped) < (3 * Math.PI) / 180) rot = snapped
             const r = Math.max(60 / editor.camera.zoom, Math.hypot(w.x - prot.x, w.y - prot.y) - 26 / editor.camera.zoom)
-            useUI.setState({ protractor: { ...prot, rot, r } })
+            session.setState({ protractor: { ...prot, rot, r } })
           }
         } else if (g.kind === 'straightMove') {
           const w = screenToWorld(editor.camera, p.x, p.y)
-          const s = useUI.getState()[g.slot]
+          const s = session.getState()[g.slot]
           if (s) {
             const raw = { ...s, x: w.x + g.ox, y: w.y + g.oy }
             const [sx, sy] = gridSteps()
             const next = e.ctrlKey || e.metaKey ? snapStraightedgeToGrid(raw, sx, sy) : raw
-            useUI.setState({ [g.slot]: next })
+            session.setState({ [g.slot]: next })
           }
         } else if (g.kind === 'straightRotate') {
-          const s = useUI.getState()[g.slot]
+          const s = session.getState()[g.slot]
           if (s) {
             const w = screenToWorld(editor.camera, p.x, p.y)
             const next = rotateFromHandle(s, w.x, w.y, editor.camera.zoom, e.shiftKey)
-            useUI.setState({ [g.slot]: next })
+            session.setState({ [g.slot]: next })
             let deg = Math.round((-next.rot * 180) / Math.PI) % 360
             if (deg < 0) deg += 360
-            const lang = useUI.getState().lang
+            const lang = prefsStore.getState().lang
             angleLabel = { sx: p.x, sy: p.y, text: `${deg}° · ${cmText(next.size, translate(lang, 'instruments.cm'), lang === 'uk')}` }
           }
         } else if (g.kind === 'lasso') {
@@ -1350,7 +1355,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
           const ends = lineEnds(g.original)!
           let fixed: End = ends[1 - g.which]
           let end: End = [w.x, w.y]
-          const prot = useUI.getState().protractor
+          const prot = session.getState().protractor
           const near = 20 / editor.camera.zoom
           let deg: number
           if (prot && Math.hypot(fixed[0] - prot.x, fixed[1] - prot.y) <= near) {
@@ -1407,8 +1412,8 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
           // Coalesced events give every sample the tablet produced (often 200+ Hz), not just one per frame.
           const samples = e.getCoalescedEvents?.() ?? []
           const events = samples.length ? samples : [e]
-          const prot = useUI.getState().protractor
-          const comp = useUI.getState().compass
+          const prot = session.getState().protractor
+          const comp = session.getState().compass
           if (g.kind === 'ink' && g.snap?.mode === 'compass') {
             if (comp) {
               // Follow the pointer around the needle; the sweep adds up (up to one full turn either way).
@@ -1421,34 +1426,34 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
               g.snap.sweep = Math.max(-Math.PI * 2, Math.min(Math.PI * 2, g.snap.sweep + d))
               // The raw sweep keeps adding up the turns; what is drawn snaps to quarter turns.
               const sweep = snapSweep(g.snap.sweep, comp.r, editor.camera.zoom)
-              useUI.setState({ compass: { ...comp, a: g.snap.a0 + sweep } })
+              session.setState({ compass: { ...comp, a: g.snap.a0 + sweep } })
               g.live = { ...g.live, points: compassArc(comp, g.snap.a0, sweep) }
               angleLabel = { sx: p.x, sy: p.y, text: `${Math.round(Math.abs((sweep * 180) / Math.PI))}°` }
             }
           } else if (g.kind === 'ink' && g.snap?.mode === 'straight') {
-            const s = useUI.getState()[g.snap.slot]
+            const s = session.getState()[g.snap.slot]
             if (s) {
               const w = screenToWorld(editor.camera, p.x, p.y)
               const off = g.live.size / 2 + 1 / editor.camera.zoom
               const d1 = edgePos(s, g.snap.edge, w.x, w.y)
               g.live = { ...g.live, points: edgeStroke(s, g.snap.edge, g.snap.d0, d1, off) }
-              const lang = useUI.getState().lang
+              const lang = prefsStore.getState().lang
               angleLabel = { sx: p.x, sy: p.y, text: cmText(Math.abs(d1 - g.snap.d0), translate(lang, 'instruments.cm'), lang === 'uk') }
             }
           } else if (g.kind === 'ink' && g.snap && g.snap.mode !== 'compass' && g.snap.mode !== 'straight' && prot) {
             const w = screenToWorld(editor.camera, p.x, p.y)
             const off = g.live.size / 2 + 1 / editor.camera.zoom
-            const ins = useUI.getState().instruments
+            const ins = prefsStore.getState().instruments
             if (g.snap.mode === 'arc') {
               const cur = snapDeg(scaleAngle(prot, w.x, w.y), ins.protStep)
               g.snap.endDeg = cur
               g.live = { ...g.live, points: arcStroke(prot, g.snap.startDeg, cur, off) }
-              angleLabel = { sx: p.x, sy: p.y, text: degText(Math.abs(cur - g.snap.startDeg), useUI.getState().lang === 'uk') }
+              angleLabel = { sx: p.x, sy: p.y, text: degText(Math.abs(cur - g.snap.startDeg), prefsStore.getState().lang === 'uk') }
             } else if (g.snap.mode === 'center') {
               const deg = snapDeg(scaleAngle(prot, w.x, w.y), ins.protStep)
               const len = Math.max(Math.hypot(w.x - prot.x, w.y - prot.y), 2 / editor.camera.zoom)
               g.live = { ...g.live, points: rayStroke(prot, deg, len) }
-              angleLabel = { sx: p.x, sy: p.y, text: degText(deg, useUI.getState().lang === 'uk') }
+              angleLabel = { sx: p.x, sy: p.y, text: degText(deg, prefsStore.getState().lang === 'uk') }
             } else {
               const u = Math.max(-prot.r, Math.min(prot.r, toLocal(prot, w.x, w.y).u))
               g.live = { ...g.live, points: baseStroke(prot, g.snap.u0, u, off) }
@@ -1505,7 +1510,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       }
       if (!gesture) {
         // Hover highlight in select / move mode (not over the current selection's frame).
-        const tool = useUI.getState().tool
+        const tool = session.getState().tool
         const prev = hoverBox
         const picking = (tool === 'select' || tool === 'move') && !spaceDown
         hoverBox = picking && !selectionHit(p.x, p.y) ? (hoverTarget(p.x, p.y)?.box ?? null) : null
@@ -1543,10 +1548,10 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       const dx = e.deltaX * unit
       const dy = e.deltaY * unit
       const mouse = wheelSource.isMouse(e)
-      if (useUI.getState().tool === 'brushSelect' && !e.ctrlKey && !e.metaKey && !spaceDown) {
+      if (session.getState().tool === 'brushSelect' && !e.ctrlKey && !e.metaKey && !spaceDown) {
         // Brush select: the wheel sizes the circle (like Blender's circle select).
-        const r = useUI.getState().selectRadius * Math.exp(-dy * 0.002)
-        useUI.setState({ selectRadius: Math.max(6, Math.min(240, r)) })
+        const r = prefsStore.getState().selectRadius * Math.exp(-dy * 0.002)
+        prefsStore.setState({ selectRadius: Math.max(6, Math.min(240, r)) })
         invalidate(false)
         return
       }
@@ -1555,7 +1560,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         editor.setCamera(zoomAt(editor.camera, p.x, p.y, editor.camera.zoom * Math.exp(-dy * 0.0025)))
       } else if (e.shiftKey && dx === 0) {
         editor.setCamera(panBy(editor.camera, -dy, 0))
-      } else if (useUI.getState().wheelMode === 'zoom' && mouse) {
+      } else if (prefsStore.getState().wheelMode === 'zoom' && mouse) {
         // Settings: the plain mouse wheel zooms. A touchpad keeps scrolling with two fingers and
         // zooming with a pinch (which arrives as Ctrl + wheel above).
         editor.setCamera(zoomAt(editor.camera, p.x, p.y, editor.camera.zoom * Math.exp(-dy * 0.0025)))
@@ -1574,9 +1579,9 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
 
     const onKeyDown = (e: KeyboardEvent): void => {
       if (isTyping(e.target)) return
-      const ui = useUI.getState()
+      const ui = readUI()
       // Hold Space = pan (not a one-shot shortcut).
-      if (e.code === 'Space' && ui.view === 'board' && !e.ctrlKey && !e.metaKey) {
+      if (e.code === 'Space' && ui.active && !e.ctrlKey && !e.metaKey) {
         e.preventDefault()
         if (!spaceDown) {
           spaceDown = true
@@ -1586,7 +1591,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         return
       }
       // All shortcuts come from shortcuts.ts and match the physical key, so they work on any layout.
-      const sc = matchShortcut(e, ui.view === 'board' ? 'board' : 'app')
+      const sc = matchShortcut(e, ui.active ? 'board' : 'app')
       if (!sc) return
       if (isBoardFileShortcut(sc.id)) {
         if (!fileActions) return
@@ -1647,7 +1652,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
 
     // ---------- images: paste & drag-and-drop ----------
     const onPaste = (e: ClipboardEvent): void => {
-      if (isTyping(e.target) || useUI.getState().view !== 'board') return
+      if (isTyping(e.target) || !session.getState().active) return
       if (editor.pasteFromClipboard(e)) e.preventDefault()
     }
     const onCopy = (e: ClipboardEvent): void => {
@@ -1664,7 +1669,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       // Always prevent default, otherwise Electron navigates to the dropped file.
       e.preventDefault()
       const files = [...(e.dataTransfer?.files ?? [])]
-      if (!files.length || useUI.getState().view !== 'board') return
+      if (!files.length || !session.getState().active) return
       const p = local(e)
       void editor.insertImages(files, p.x, p.y)
     }
@@ -1678,13 +1683,15 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
     })
     ro.observe(overlay.parentElement!)
 
-    const unsubTool = useUI.subscribe((s, prev) => {
+    const unsubPrefs = prefsStore.subscribe((p, prev) => {
+      if (p.instruments !== prev.instruments) invalidate(false)
+    })
+    const unsubTool = session.subscribe((s, prev) => {
       if (
         s.protractor !== prev.protractor ||
         s.compass !== prev.compass ||
         s.ruler !== prev.ruler ||
-        s.setSquare !== prev.setSquare ||
-        s.instruments !== prev.instruments
+        s.setSquare !== prev.setSquare
       )
         invalidate(false)
       if (s.textEdit?.id !== prev.textEdit?.id || s.formulaEdit?.id !== prev.formulaEdit?.id) invalidate(true)
@@ -1725,6 +1732,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
     return () => {
       ro.disconnect()
       unsubTool()
+      unsubPrefs()
       detach()
       cancelAnimationFrame(raf)
       overlay.removeEventListener('pointerdown', onPointerDown)
@@ -1746,7 +1754,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       window.removeEventListener('dragover', onDragOver)
       window.removeEventListener('drop', onDrop)
     }
-  }, [fileActions])
+  }, [editor, fileActions])
 
   return (
     <div className="board">

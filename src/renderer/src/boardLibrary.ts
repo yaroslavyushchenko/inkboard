@@ -1,10 +1,11 @@
 import type { BoardEntry, TemplateEntry } from '../../shared/library'
-import { DEFAULT_CAMERA, editor } from '../../board/editor'
+import { createEditor, DEFAULT_CAMERA, type Editor } from '../../board/editor'
 import { renderPng, renderSvg, renderThumbnail } from '../../board/engine/export'
 import { decodeBoard, encodeBoard, type BoardData } from '../../board/engine/serialize'
 import { translate } from '../../board/i18n'
-import { useUI } from '../../board/store'
+import { prefsStore } from '../../board/store'
 import { platform } from './platform'
+import { useApp } from './appState'
 
 /**
  * Autosave: write at most 5 s after the first unsaved change, even while drawing non-stop, so a crash
@@ -26,14 +27,20 @@ class BoardLibrary {
   private saveTimer: ReturnType<typeof setTimeout> | null = null
   private saving: Promise<void> | null = null
 
-  constructor() {
+  /** The editor of the board on screen; the desktop app has one and reuses it for every board it opens. */
+  constructor(readonly editor: Editor) {
     editor.scene.subscribe(() => this.markChanged())
-    useUI.subscribe((s, prev) => {
+    prefsStore.subscribe((s, prev) => {
       if (s.background !== prev.background) {
         this.metaVersion++
         this.markChanged()
       }
-      if (s.lang !== prev.lang || s.board !== prev.board || s.view !== prev.view) this.updateTitle()
+      if (s.lang !== prev.lang) this.updateTitle()
+    })
+    useApp.subscribe((s, prev) => {
+      if (s.board !== prev.board || s.view !== prev.view) this.updateTitle()
+      // The board only reacts to keys and shows its panels while it is on screen.
+      if (s.view !== prev.view) editor.session.setState({ active: s.view === 'board' })
     })
   }
 
@@ -41,10 +48,10 @@ class BoardLibrary {
 
   /** Save the selection as a reusable template. */
   async saveSelectionAsTemplate(name: string): Promise<TemplateEntry | null> {
-    const items = editor.selectedItems()
+    const items = this.editor.selectedItems()
     if (!items.length) return null
-    const bg = useUI.getState().background
-    const bytes = await encodeBoard({ items, background: bg, camera: editor.camera })
+    const bg = prefsStore.getState().background
+    const bytes = await encodeBoard({ items, background: bg, camera: this.editor.camera })
     const thumb = await renderThumbnail(items, bg)
     const entry = await platform.library.saveTemplate(name, bytes, thumb)
     await this.refreshLibrary()
@@ -53,10 +60,10 @@ class BoardLibrary {
 
   /** Replace a template's content with the selection (the UI asks for confirmation first). */
   async replaceTemplateWithSelection(id: string): Promise<boolean> {
-    const items = editor.selectedItems()
+    const items = this.editor.selectedItems()
     if (!items.length) return false
-    const bg = useUI.getState().background
-    const bytes = await encodeBoard({ items, background: bg, camera: editor.camera })
+    const bg = prefsStore.getState().background
+    const bytes = await encodeBoard({ items, background: bg, camera: this.editor.camera })
     const thumb = await renderThumbnail(items, bg)
     const entry = await platform.library.replaceTemplate(id, bytes, thumb)
     // Drop the cached preview so the new one is shown.
@@ -69,7 +76,7 @@ class BoardLibrary {
 
   async insertTemplate(id: string): Promise<void> {
     const { items } = await decodeBoard(await platform.library.loadTemplate(id))
-    editor.placeAtCenter(items)
+    this.editor.placeAtCenter(items)
   }
 
   async renameTemplate(id: string, name: string): Promise<void> {
@@ -94,22 +101,22 @@ class BoardLibrary {
   // ---------------------------------------------------------------- autosave
 
   private boardData(): BoardData {
-    return { items: [...editor.scene.getItems()], background: useUI.getState().background, camera: editor.camera }
+    return { items: [...this.editor.scene.getItems()], background: prefsStore.getState().background, camera: this.editor.camera }
   }
 
   private hasChanges(): boolean {
-    return editor.scene.version !== this.saved.version || this.metaVersion !== this.saved.meta
+    return this.editor.scene.version !== this.saved.version || this.metaVersion !== this.saved.meta
   }
 
   private cameraChanged(): boolean {
-    const a = editor.camera
+    const a = this.editor.camera
     const b = this.saved.camera
     return a.x !== b.x || a.y !== b.y || a.zoom !== b.zoom
   }
 
   private markChanged(): void {
-    if (!this.ready || !useUI.getState().board || !this.hasChanges()) return
-    if (useUI.getState().saveStatus !== 'saving') useUI.setState({ saveStatus: 'pending' })
+    if (!this.ready || !useApp.getState().board || !this.hasChanges()) return
+    if (useApp.getState().saveStatus !== 'saving') useApp.setState({ saveStatus: 'pending' })
     this.scheduleSave()
   }
 
@@ -126,25 +133,25 @@ class BoardLibrary {
   async flush(final = false): Promise<void> {
     // Text and formulas still being typed are part of the board.
     if (final) {
-      editor.commitText()
-      editor.commitFormula(false)
+      this.editor.commitText()
+      this.editor.commitFormula(false)
     }
     if (this.saveTimer) clearTimeout(this.saveTimer)
     this.saveTimer = null
     while (this.saving) await this.saving
-    const board = useUI.getState().board
+    const board = useApp.getState().board
     if (!board || !this.ready) return
-    const thumbStale = editor.scene.version !== this.thumbVersion || this.metaVersion !== this.saved.meta
+    const thumbStale = this.editor.scene.version !== this.thumbVersion || this.metaVersion !== this.saved.meta
     const needed = this.hasChanges() || (final && (this.cameraChanged() || thumbStale))
     if (!needed) {
-      if (useUI.getState().saveStatus === 'pending') useUI.setState({ saveStatus: 'saved' })
+      if (useApp.getState().saveStatus === 'pending') useApp.setState({ saveStatus: 'saved' })
       return
     }
-    const version = editor.scene.version
+    const version = this.editor.scene.version
     const meta = this.metaVersion
-    const camera = editor.camera
+    const camera = this.editor.camera
     const data = this.boardData()
-    useUI.setState({ saveStatus: 'saving' })
+    useApp.setState({ saveStatus: 'saving' })
     this.saving = (async () => {
       try {
         const bytes = await encodeBoard(data)
@@ -156,12 +163,12 @@ class BoardLibrary {
           this.thumbVersion = version
           this.lastThumbAt = Date.now()
         }
-        if (useUI.getState().board?.id === board.id) {
-          useUI.setState({ saveStatus: r.ok ? 'saved' : 'error' })
+        if (useApp.getState().board?.id === board.id) {
+          useApp.setState({ saveStatus: r.ok ? 'saved' : 'error' })
         }
       } catch (err) {
         console.error('Autosave failed', err)
-        useUI.setState({ saveStatus: 'error' })
+        useApp.setState({ saveStatus: 'error' })
       }
     })()
     await this.saving
@@ -171,18 +178,18 @@ class BoardLibrary {
   }
 
   private updateTitle(): void {
-    const { board, view } = useUI.getState()
-    const name = view === 'home' || !board ? editor.t('home.title') : board.title
+    const { board, view } = useApp.getState()
+    const name = view === 'home' || !board ? this.editor.t('home.title') : board.title
     platform.setTitle(`${name} · Inkboard`)
   }
 
   /** Remember the running version; if it changed since last launch, show "Updated to X". */
   private async noticeUpdate(): Promise<void> {
     const version = await platform.update.version()
-    useUI.setState({ appVersion: version })
+    useApp.setState({ appVersion: version })
     try {
       const prev = localStorage.getItem('inkboard-last-version')
-      if (prev && prev !== version && version !== 'dev') useUI.setState({ justUpdatedTo: version })
+      if (prev && prev !== version && version !== 'dev') useApp.setState({ justUpdatedTo: version })
       localStorage.setItem('inkboard-last-version', version)
     } catch {
       // storage unavailable: just skip the notice
@@ -192,7 +199,7 @@ class BoardLibrary {
   // ---------------------------------------------------------------- boards
 
   async refreshLibrary(): Promise<void> {
-    useUI.setState({ library: await platform.library.list() })
+    useApp.setState({ library: await platform.library.list() })
   }
 
   /** Called once on startup: open the board the app was launched with, or the last one. */
@@ -206,7 +213,7 @@ class BoardLibrary {
     platform.onFlushRequest(() => this.flush(true))
     platform.onBeforeClose(() => this.flush(true))
     await this.refreshLibrary()
-    const lib = useUI.getState().library
+    const lib = useApp.getState().library
     const live = lib.boards.filter((b) => !b.deletedAt)
     const pending = await platform.library.takePendingOpen()
     if (pending) await this.refreshLibrary()
@@ -220,10 +227,10 @@ class BoardLibrary {
   /** Open a board from the library. Returns false if it couldn't be loaded. */
   async openBoard(id: string): Promise<boolean> {
     await this.flush(true)
-    let entry = useUI.getState().library.boards.find((b) => b.id === id)
+    let entry = useApp.getState().library.boards.find((b) => b.id === id)
     if (!entry) {
       await this.refreshLibrary()
-      entry = useUI.getState().library.boards.find((b) => b.id === id)
+      entry = useApp.getState().library.boards.find((b) => b.id === id)
       if (!entry) return false
     }
     let data: BoardData
@@ -231,15 +238,15 @@ class BoardLibrary {
       data = await decodeBoard(await platform.library.load(id))
     } catch (err) {
       console.error('Could not open board', err)
-      window.alert(`${editor.t('file.openError')}\n${entry.title}`)
+      window.alert(`${this.editor.t('file.openError')}\n${entry.title}`)
       return false
     }
     this.ready = false
-    editor.loadData(data)
-    this.saved = { version: editor.scene.version, meta: this.metaVersion, camera: editor.camera }
-    this.thumbVersion = editor.scene.version
+    this.editor.loadData(data)
+    this.saved = { version: this.editor.scene.version, meta: this.metaVersion, camera: this.editor.camera }
+    this.thumbVersion = this.editor.scene.version
     this.lastThumbAt = 0
-    useUI.setState({
+    useApp.setState({
       board: { id: entry.id, title: entry.title, kind: entry.kind, filePath: entry.filePath },
       view: 'board',
       saveStatus: 'saved'
@@ -252,7 +259,7 @@ class BoardLibrary {
 
   /** "Board of 11 Nov 2026, 18:30" in the UI language. */
   private newBoardTitle(): string {
-    const lang = useUI.getState().lang
+    const lang = prefsStore.getState().lang
     const when = new Date().toLocaleString(lang === 'uk' ? 'uk-UA' : 'en-GB', {
       day: 'numeric',
       month: 'short',
@@ -267,17 +274,17 @@ class BoardLibrary {
     await this.flush(true)
     // Show the empty board immediately; anything drawn while the library entry is being
     // created counts as an unsaved change of the new board (nothing gets lost).
-    const empty: BoardData = { items: [], background: useUI.getState().background, camera: { ...DEFAULT_CAMERA } }
+    const empty: BoardData = { items: [], background: prefsStore.getState().background, camera: { ...DEFAULT_CAMERA } }
     this.ready = false
-    useUI.setState({ board: null, view: 'board' })
-    editor.loadData(empty)
-    const loadedVersion = editor.scene.version
+    useApp.setState({ board: null, view: 'board' })
+    this.editor.loadData(empty)
+    const loadedVersion = this.editor.scene.version
     const loadedMeta = this.metaVersion
     const entry = await platform.library.create(this.newBoardTitle(), await encodeBoard(empty))
     this.saved = { version: loadedVersion, meta: loadedMeta, camera: empty.camera }
     this.thumbVersion = loadedVersion
     this.lastThumbAt = 0
-    useUI.setState({ board: { id: entry.id, title: entry.title, kind: entry.kind }, saveStatus: 'saved' })
+    useApp.setState({ board: { id: entry.id, title: entry.title, kind: entry.kind }, saveStatus: 'saved' })
     this.ready = true
     if (this.hasChanges()) this.markChanged()
     await platform.library.setLastOpened(entry.id)
@@ -285,45 +292,45 @@ class BoardLibrary {
   }
 
   async goHome(): Promise<void> {
-    editor.clearSelection()
+    this.editor.clearSelection()
     await this.flush(true)
     await this.refreshLibrary()
-    useUI.setState({ view: 'home' })
+    useApp.setState({ view: 'home' })
   }
 
   async renameBoard(id: string, title: string): Promise<void> {
     const entry = await platform.library.rename(id, title)
-    const b = useUI.getState().board
-    if (b?.id === id) useUI.setState({ board: { ...b, title: entry.title, filePath: entry.filePath } })
+    const b = useApp.getState().board
+    if (b?.id === id) useApp.setState({ board: { ...b, title: entry.title, filePath: entry.filePath } })
     await this.refreshLibrary()
   }
 
   async deleteBoard(id: string): Promise<void> {
-    const wasOpen = useUI.getState().board?.id === id
+    const wasOpen = useApp.getState().board?.id === id
     if (wasOpen) await this.flush(true)
     await platform.library.remove(id)
-    if (wasOpen) useUI.setState({ board: null })
+    if (wasOpen) useApp.setState({ board: null })
     await this.refreshLibrary()
   }
 
   /** Ctrl+S: save immediately to the library database. */
   async save(): Promise<void> {
-    if (!useUI.getState().board) return
+    if (!useApp.getState().board) return
     await this.flush(true)
   }
 
   /** Export the open board (or a board by id from the home screen) to a standalone .inkboard file. */
   async saveAsFile(boardId?: string): Promise<void> {
-    const open = useUI.getState().board
+    const open = useApp.getState().board
     const targetId = boardId ?? open?.id
     if (!targetId) return
     if (open && targetId === open.id) {
       await this.flush(true)
       const entry = await platform.library.saveAsFile(open.id, await encodeBoard(this.boardData()), open.title)
       if (!entry) return
-      useUI.setState({ board: { id: entry.id, title: entry.title, kind: entry.kind, filePath: entry.filePath } })
+      useApp.setState({ board: { id: entry.id, title: entry.title, kind: entry.kind, filePath: entry.filePath } })
     } else {
-      const target = useUI.getState().library.boards.find((b) => b.id === targetId)
+      const target = useApp.getState().library.boards.find((b) => b.id === targetId)
       if (!target) return
       const bytes = await platform.library.load(targetId)
       await platform.library.saveAsFile(targetId, bytes, target.title)
@@ -342,10 +349,10 @@ class BoardLibrary {
 
   /** Export the selection if there is one, otherwise the whole board. */
   async exportBoard(kind: 'png' | 'pdf'): Promise<void> {
-    const sel = editor.selectedItems()
-    const items = sel.length ? sel : [...editor.scene.getItems()]
-    const bg = useUI.getState().background
-    const title = useUI.getState().board?.title ?? 'Inkboard'
+    const sel = this.editor.selectedItems()
+    const items = sel.length ? sel : [...this.editor.scene.getItems()]
+    const bg = prefsStore.getState().background
+    const title = useApp.getState().board?.title ?? 'Inkboard'
     try {
       if (kind === 'png') {
         const png = await renderPng(items, bg)
@@ -356,7 +363,7 @@ class BoardLibrary {
       }
     } catch (err) {
       console.error('Export failed', err)
-      window.alert(editor.t('export.error'))
+      window.alert(this.editor.t('export.error'))
     }
   }
 
@@ -384,4 +391,5 @@ class BoardLibrary {
   }
 }
 
-export const boardLibrary = new BoardLibrary()
+/** The desktop app's composition root: one editor for the board on screen, and the library around it. */
+export const boardLibrary = new BoardLibrary(createEditor())

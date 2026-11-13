@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { editor } from '../editor'
 import { useT, type MessageKey } from '../i18n'
-import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useUI, type InkSlot } from '../store'
+import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, type InkSlot, usePrefs, prefsStore } from '../store'
 import { TEXT_SIZES } from '../engine/text'
 import { SHORTCUTS } from '../shortcuts'
 import { DEFAULT_TOOLBAR, isToolbarDivider, toolbarToolId, type ToolbarToolId, type ToolbarItemId } from '../toolbarLayout'
@@ -14,6 +13,8 @@ import { GraphMenu, ShapesMenu } from './InsertMenus'
 import { LineStyleControls, SizeSlider } from './LineStyle'
 import { Popover } from './Popover'
 import { ToolbarCustomizer } from './ToolbarCustomizer'
+import { useShallow } from 'zustand/react/shallow'
+import { useEditor, useSession } from '../editorContext'
 
 type Open = { kind: 'pen'; index: number } | { kind: 'highlighter' } | { kind: 'text' } | { kind: 'eraser' } | null
 
@@ -36,14 +37,14 @@ const instrumentShortcuts = new Map<string, string>(SHORTCUTS.filter(({ id }) =>
 /** Eraser popover: whole strokes or only what it touches, and its size. */
 function EraserOptions() {
   const t = useT()
-  const mode = useUI((s) => s.eraserMode)
-  const radius = useUI((s) => s.eraserRadius)
+  const mode = usePrefs((s) => s.eraserMode)
+  const radius = usePrefs((s) => s.eraserRadius)
   return (
     <>
       <div className="popover-title">{t('eraser.mode')}</div>
       <div className="lang-options">
         {(['stroke', 'point'] as const).map((m) => (
-          <button key={m} className={`lang-option ${mode === m ? 'active' : ''}`} onClick={() => useUI.setState({ eraserMode: m })}>
+          <button key={m} className={`lang-option ${mode === m ? 'active' : ''}`} onClick={() => prefsStore.setState({ eraserMode: m })}>
             {t(m === 'stroke' ? 'eraser.stroke' : 'eraser.point')}
           </button>
         ))}
@@ -56,7 +57,7 @@ function EraserOptions() {
           max={80}
           value={radius}
           aria-label={t('eraser.size')}
-          onChange={(e) => useUI.setState({ eraserRadius: Number(e.target.value) })}
+          onChange={(e) => prefsStore.setState({ eraserRadius: Number(e.target.value) })}
         />
         <span className="size-value">{radius}</span>
       </div>
@@ -67,10 +68,11 @@ function EraserOptions() {
 
 /** Colour and size of new text (text tool popover). */
 function TextOptions() {
+  const editor = useEditor()
   const t = useT()
-  const style = useUI((s) => s.textStyle)
+  const style = usePrefs((s) => s.textStyle)
   const set = (patch: Partial<typeof style>): void => {
-    useUI.setState((s) => ({ textStyle: { ...s.textStyle, ...patch } }))
+    prefsStore.setState((s) => ({ textStyle: { ...s.textStyle, ...patch } }))
     // Also restyle the text being typed right now.
     editor.formatEditingText(patch)
   }
@@ -140,8 +142,16 @@ function InkOptions({
 }
 
 export function Toolbar({ extraTools, menu, settings }: { extraTools?: ReactNode; menu?: ReactNode; settings: ReactNode }) {
-  const { tool, activePen, pens, highlighter, canUndo, canRedo, formulaEdit, ruler, setSquare, protractor, compass, toolbarLayout } = useUI()
-  const { selectPen, setTool, updatePen, updateHighlighter } = useUI.getState()
+  const editor = useEditor()
+  const { tool, activePen, canUndo, canRedo, formulaEdit, ruler, setSquare, protractor, compass } = useSession(
+    useShallow((s) => ({
+      tool: s.tool, activePen: s.activePen, canUndo: s.canUndo, canRedo: s.canRedo, formulaEdit: s.formulaEdit,
+      ruler: s.ruler, setSquare: s.setSquare, protractor: s.protractor, compass: s.compass
+    }))
+  )
+  const { pens, highlighter, toolbarLayout } = usePrefs(useShallow((s) => ({ pens: s.pens, highlighter: s.highlighter, toolbarLayout: s.toolbarLayout })))
+  const { selectPen, setTool } = editor.session.getState()
+  const { updatePen, updateHighlighter } = prefsStore.getState()
   const [open, setOpen] = useState<Open>(null)
   const [customizing, setCustomizing] = useState(false)
   const close = useCallback(() => setOpen(null), [])
@@ -526,7 +536,7 @@ export function Toolbar({ extraTools, menu, settings }: { extraTools?: ReactNode
             onPointerDown={startDrag}
             onReset={() => setDraft(null)}
             onSave={() => {
-              useUI.setState({ toolbarLayout: draft })
+              prefsStore.setState({ toolbarLayout: draft })
               finish()
             }}
             onClose={finish}

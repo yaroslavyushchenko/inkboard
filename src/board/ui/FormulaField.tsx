@@ -3,9 +3,10 @@ import {
   backspace, insertFraction, moveEnd, moveHome, moveLeft, moveRight, typeChar, type Cursor, type FormulaState
 } from '@inkboard/math/formula'
 import { caretAt, caretOf, caretVertical, typesetRows } from '../engine/formulatype'
-import { useUI, type MathTarget } from '../store'
+import { type MathTarget, prefsStore } from '../store'
 import { divSign } from './mathKeys'
 import { MathSvg } from './MathSvg'
+import { useEditor } from '../editorContext'
 
 /** Latin letter of a physical key, so formulas can be typed while a Cyrillic layout is on. */
 const latinOf = (code: string): string | null => (/^Key[A-Z]$/.test(code) ? code.slice(3).toLowerCase() : null)
@@ -49,6 +50,7 @@ export function FormulaField({
   /** Changes when the field starts on another formula: focus again, forget the undo steps. */
   fieldKey?: string | number
 }) {
+  const editor = useEditor()
   const ref = useRef<HTMLDivElement>(null)
   const [focused, setFocused] = useState(false)
   const lay = useMemo(() => typesetRows(value.rows, size, true), [value.rows, size])
@@ -87,9 +89,9 @@ export function FormulaField({
     redo.current = []
     if (autoFocus) ref.current?.focus()
     // Already focused (the effect ran before, or the browser kept the focus): no focus event comes.
-    if (document.activeElement === ref.current) useUI.setState({ mathTarget: target.current })
+    if (document.activeElement === ref.current) editor.session.setState({ mathTarget: target.current })
     return () => {
-      if (useUI.getState().mathTarget === target.current) useUI.setState({ mathTarget: null })
+      if (editor.session.getState().mathTarget === target.current) editor.session.setState({ mathTarget: null })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fieldKey])
@@ -109,11 +111,11 @@ export function FormulaField({
       tabIndex={0}
       onFocus={() => {
         setFocused(true)
-        useUI.setState({ mathTarget: target.current })
+        editor.session.setState({ mathTarget: target.current })
       }}
       onBlur={() => {
         setFocused(false)
-        if (useUI.getState().mathTarget === target.current) useUI.setState({ mathTarget: null })
+        if (editor.session.getState().mathTarget === target.current) editor.session.setState({ mathTarget: null })
         onBlur?.()
       }}
       onPointerDown={(e) => {
@@ -183,7 +185,7 @@ export function FormulaField({
         // `/` is plain division, as on a calculator; Alt+/ makes a fraction of what stands before it.
         if (e.code === 'Slash' && e.altKey) return go(insertFraction(st))
         if (e.key.length !== 1 || e.altKey) return
-        if (e.key === '/') return go(typeChar(st, divSign(useUI.getState().lang)))
+        if (e.key === '/') return go(typeChar(st, divSign(prefsStore.getState().lang)))
         // A Cyrillic layout types Cyrillic letters: take the Latin letter of the same key instead.
         const ch = /\p{Script=Cyrillic}/u.test(e.key) ? latinOf(e.code) : e.key
         if (ch) go(typeChar(st, ch))

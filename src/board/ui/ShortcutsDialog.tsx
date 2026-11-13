@@ -1,6 +1,6 @@
 import { useT, type MessageKey } from '../i18n'
 import { CLIPBOARD_KEYS, HOLD_KEYS, SHORTCUTS, isBoardFileShortcut, type ShortcutGroup } from '../shortcuts'
-import { useUI } from '../store'
+import { useEditor, useSession } from '../editorContext'
 
 const GROUPS: { id: ShortcutGroup; title: MessageKey }[] = [
   { id: 'tools', title: 'shortcuts.tools' },
@@ -10,11 +10,12 @@ const GROUPS: { id: ShortcutGroup; title: MessageKey }[] = [
 
 /** All keyboard shortcuts (read from shortcuts.ts) + how to put them on Wacom ExpressKeys. */
 export function ShortcutsDialog({ fileActions }: { fileActions: boolean }) {
+  const editor = useEditor()
   const t = useT()
-  const open = useUI((s) => s.shortcutsOpen)
+  const open = useSession((s) => s.shortcutsOpen)
   if (!open) return null
   const close = (): void => {
-    useUI.setState({ shortcutsOpen: false })
+    editor.session.setState({ shortcutsOpen: false })
   }
   const rows = (g: ShortcutGroup): { display: string; label: string }[] => [
     ...SHORTCUTS.filter((s) => s.group === g && !s.alias && (fileActions || !isBoardFileShortcut(s.id))).map((s) => {

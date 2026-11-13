@@ -1,16 +1,18 @@
-import { create } from 'zustand'
+/**
+ * User preferences: pens, colours, language, theme, toolbar layout and the like. They are shared by
+ * every open board and survive restarts. What belongs to one open board (tool, selection, camera,
+ * instruments) lives in that board's session store (session.ts).
+ */
+import { useStore } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
-import type { LibraryState } from '../shared/library'
+import { createStore } from 'zustand/vanilla'
 import type { GraphPreset } from './engine/graph'
 import type { ShapeKind } from '@inkboard/core/shapes'
-import type { Protractor } from './engine/protractor'
-import type { Compass } from './engine/compass'
-import type { Straightedge } from './engine/straightedge'
 import { validateRows, type Cursor, type FormulaState, type Row } from '@inkboard/math/formula'
 import { cleanInstrumentPrefs, DEFAULT_INSTRUMENTS, type InstrumentPrefs } from './engine/instruments'
 import { cleanToolbarLayout, type ToolbarItemId } from './toolbarLayout'
 import type { FullRun } from './engine/text'
-import type { BackgroundKind, Camera, GraphParams, LineCap, LineDash } from '@inkboard/core/types'
+import type { BackgroundKind, LineCap, LineDash } from '@inkboard/core/types'
 import { detectLanguage, type Lang } from './i18n'
 
 export type Tool = 'select' | 'brushSelect' | 'move' | 'pen' | 'highlighter' | 'eraser' | 'pan' | 'shape' | 'text' | 'laser'
@@ -118,31 +120,19 @@ export const HIGHLIGHTER_COLORS = ['#ffe066', '#8ce99a', '#74c0fc', '#f783ac', '
 export const PEN_SIZES = [1.5, 3, 5, 8, 12]
 export const HIGHLIGHTER_SIZES = [12, 18, 26, 36]
 
-interface UIState {
-  tool: Tool
-  /** Shape drawn by the shape tool. */
-  shape: ShapeKind
+export interface Prefs {
   penButtons: PenButtons
   setPenButton: (which: keyof PenButtons, action: PenAction) => void
   /** Colour and font size of new text. */
   textStyle: { color: string; size: number }
-  textEdit: TextEdit | null
   /** Colour and font size of new formulas. */
   formulaStyle: { color: string; size: number }
-  formulaEdit: FormulaEdit | null
-  /** The focused formula field; the math keypad is shown while there is one. */
-  mathTarget: MathTarget | null
   /** Formulas put on boards lately, newest first (the keypad's history). */
   formulaHistory: Row[]
   /** Chosen base (number of sides) for pyramids and prisms. */
   shapeBases: Partial<Record<ShapeKind, number>>
   /** The user's own coordinate-plane/line presets. */
   graphPresets: GraphPreset[]
-  /** Coordinate settings dialog: insert a new graph or edit the selected one. */
-  graphDialog: { mode: 'insert' | 'edit'; id?: string; params: GraphParams } | null
-  /** Function panel docked beside the selected coordinate plane (`session` groups its edits into one undo step). */
-  fnPanel: { id: string; session: number } | null
-  activePen: number
   pens: InkSlot[]
   highlighter: InkSlot
   /** Brush-select circle radius in screen px (mouse wheel changes it). */
@@ -155,44 +145,15 @@ interface UIState {
   shapeSnap: boolean
   /** How long to hold (ms). */
   shapeSnapDelay: number
+  /** Background of the open board, remembered as the one for new boards. */
   background: BackgroundKind
   lang: Lang
   theme: ThemePref
-  /** Mirrors editor.camera so React chrome (zoom label, selection toolbar) can follow it. */
-  camera: Camera
-  zoom: number
-  canUndo: boolean
-  canRedo: boolean
-  /** Bumped on every board change so chrome that reads items (selection bar) re-renders. */
-  sceneVersion: number
-  selectedIds: string[]
-  /** Which screen is shown: the board or the home screen with all boards. */
-  view: 'board' | 'home'
-  /** The open board. */
-  board: { id: string; title: string; kind: 'draft' | 'file'; filePath?: string } | null
-  saveStatus: 'saved' | 'pending' | 'saving' | 'error'
-  library: LibraryState
-  shortcutsOpen: boolean
-  /** Set for one launch after the app was updated (shows "Updated to X"). */
-  justUpdatedTo: string | null
-  appVersion: string
-  /** On-board ruler, or null when hidden. */
-  ruler: Straightedge | null
-  /** On-board set square (45° or 30°/60°), or null when hidden. */
-  setSquare: Straightedge | null
-  /** On-board protractor, or null when hidden. */
-  protractor: Protractor | null
-  /** On-board compass, or null when hidden. */
-  compass: Compass | null
   /** Protractor angle snapping. */
   instruments: InstrumentPrefs
-  /** Settings card docked beside the protractor. */
-  protractorPanel: boolean
   /** Instrument tips the user closed ("protractor", "compass"); they don't show again. */
   hiddenTips: string[]
   toolbarLayout: ToolbarItemId[] | null
-  setTool: (tool: Tool) => void
-  selectPen: (index: number) => void
   updatePen: (index: number, patch: Partial<InkSlot>) => void
   updateHighlighter: (patch: Partial<InkSlot>) => void
   setBackground: (bg: BackgroundKind) => void
@@ -200,25 +161,17 @@ interface UIState {
   setTheme: (theme: ThemePref) => void
 }
 
-export const useUI = create<UIState>()(
+export const prefsStore = createStore<Prefs>()(
   persist(
     (set) => ({
-      tool: 'pen',
-      shape: 'rectangle',
       shapeBases: {},
       selectRadius: 24,
       penButtons: DEFAULT_PEN_BUTTONS,
       setPenButton: (which, action) => set((s) => ({ penButtons: { ...s.penButtons, [which]: action } })),
       textStyle: { color: '#1e1e1e', size: 24 },
       formulaStyle: { color: '#1e1e1e', size: 32 },
-      formulaEdit: null,
-      mathTarget: null,
       formulaHistory: [],
-      textEdit: null,
       graphPresets: [],
-      graphDialog: null,
-      fnPanel: null,
-      activePen: 0,
       pens: [
         { color: '#1e1e1e', size: 3 },
         { color: '#e03131', size: 3 },
@@ -233,29 +186,9 @@ export const useUI = create<UIState>()(
       background: 'dots',
       lang: detectLanguage(),
       theme: 'system',
-      camera: { x: 0, y: 0, zoom: 1 },
-      zoom: 1,
-      canUndo: false,
-      canRedo: false,
-      sceneVersion: 0,
-      selectedIds: [],
-      view: 'board',
-      board: null,
-      saveStatus: 'saved',
-      library: { boards: [], tags: [], templates: [], lastOpenedId: null, backupDir: null },
-      shortcutsOpen: false,
-      ruler: null,
-      setSquare: null,
-      protractor: null,
-      compass: null,
       instruments: DEFAULT_INSTRUMENTS,
-      protractorPanel: false,
       hiddenTips: [],
       toolbarLayout: null,
-      justUpdatedTo: null,
-      appVersion: '',
-      setTool: (tool) => set({ tool }),
-      selectPen: (index) => set({ tool: 'pen', activePen: index }),
       updatePen: (index, patch) =>
         set((s) => ({ pens: s.pens.map((p, i) => (i === index ? { ...p, ...patch } : p)) })),
       updateHighlighter: (patch) => set((s) => ({ highlighter: { ...s.highlighter, ...patch } })),
@@ -269,7 +202,7 @@ export const useUI = create<UIState>()(
       storage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
       version: 1,
       merge: (saved, current) => {
-        const p = (saved ?? {}) as Partial<UIState>
+        const p = (saved ?? {}) as Partial<Prefs>
         return {
           ...current,
           ...p,
@@ -319,7 +252,12 @@ export const useUI = create<UIState>()(
   )
 )
 
+/** React binding for the preferences. */
+export function usePrefs<T>(select: (s: Prefs) => T): T {
+  return useStore(prefsStore, select)
+}
+
 export function enablePreferenceStorage(): void {
-  useUI.persist.setOptions({ storage: createJSONStorage(() => localStorage) })
-  void useUI.persist.rehydrate()
+  prefsStore.persist.setOptions({ storage: createJSONStorage(() => localStorage) })
+  void prefsStore.persist.rehydrate()
 }

@@ -43,6 +43,20 @@ Still in `src/board/engine` until their own steps: rendering (`renderer.ts`, `in
 `surface.ts`, `export.ts`), text layout, formula typesetting, graphs and the drawing instruments.
 They mix pure logic with Canvas calls, so they move together with the Painter step.
 
+## State
+
+Three stores, each with one owner:
+
+| Store | Where | What | Lifetime |
+|---|---|---|---|
+| Preferences | `src/board/store.ts` (`prefsStore`, `usePrefs`) | pens, colours, language, theme, toolbar layout | shared by all boards, saved between launches |
+| Session | `src/board/session.ts` (`editor.session`, `useSession`) | tool, selection, camera, instruments, text or formula being edited | one per open board |
+| App | `src/renderer/src/appState.ts` (`useApp`) | screen, open board, save status, library, updates | the desktop app only |
+
+There is no global editor. The app makes one with `createEditor()` and passes it to
+`<BoardWorkspace editor={...}>`, which provides it to the board UI (`useEditor()`). The board
+never reads the app store: the app tells it whether it is on screen through `session.active`.
+
 ## Rules the build checks
 
 `npm run typecheck` fails when a rule is broken:
@@ -53,6 +67,27 @@ They mix pure logic with Canvas calls, so they move together with the Painter st
 2. **Declared dependencies only.** `scripts/check-boundaries.mjs` checks that a package imports only
    its own files and the packages listed in its `package.json`, that packages have no cycles, that
    app code imports packages by name and that the site imports no app code.
+
+## Storage
+
+The board library lives in different databases on different platforms, behind the same
+interfaces (repositories), so the editor and the UI never know which one is used:
+
+| Platform | Library (boards, thumbnails, tags, templates) | `.inkboard` files |
+|---|---|---|
+| Desktop | SQLite (`node:sqlite`) in the Electron main process, reached over IPC | native open and save dialogs |
+| Web | IndexedDB in the page, images as Blobs, `navigator.storage.persist()` | File System Access API, or download and upload |
+| Tests | in memory | in memory |
+
+- **Repositories, not an ORM.** IndexedDB is not SQL, and no ORM covers both well. Each platform
+  implements the repository interfaces directly; a cloud sync adapter would be one more.
+- **Files are a separate port.** Opening, saving, "show in folder" and "open with" are about the
+  file system, not the library database, so they don't belong in the library interface
+  (`LibraryApi` in `src/shared/platform.ts` still mixes the two; the web step splits it).
+- **One set of contract tests** runs against every adapter (SQLite, IndexedDB through
+  `fake-indexeddb`, memory), so all of them behave the same.
+- Saving stays power-cut safe on every platform: `writeDurable` and SQLite transactions on the
+  desktop, IndexedDB transactions in the browser.
 
 ## Patterns, and where they are used
 
@@ -74,8 +109,8 @@ Only where there are really two or more ways to do something:
 ## Steps
 
 1. Done: workspace packages for math, core and shape recognition, with the checks above.
-2. `createEditor()` instead of the global `editor`; split the UI store into preferences, board
-   session and app state.
+2. Done: `createEditor()` instead of the global `editor`; the UI store split into preferences,
+   board session and app state.
 3. Move the tool logic out of `src/board/ui/Board.tsx` into tool controllers in the editor.
 4. Painter: one drawing interface for Canvas 2D and SVG export; rendering moves into a package.
 5. Features as modules with a registry, starting with shape recognition.

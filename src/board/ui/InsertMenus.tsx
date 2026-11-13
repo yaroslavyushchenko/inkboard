@@ -1,13 +1,13 @@
 import { useCallback, useState, type ReactNode } from 'react'
-import { editor } from '../editor'
 import { BUILTIN_GRAPHS, graphBBox, graphSvg, type GraphPreset } from '../engine/graph'
 import { lineSvgPath } from '../engine/ink'
 import { MAX_BASE, MIN_BASE, SHAPE_BASES, SHAPES_2D, SHAPES_3D, shapeParts, type ShapeKind } from '@inkboard/core/shapes'
 import type { GraphItem, GraphParams } from '@inkboard/core/types'
 import { useT, type MessageKey } from '../i18n'
-import { useUI } from '../store'
+import { usePrefs, prefsStore } from '../store'
 import { AxesIcon, ChevronDownIcon, PolygonIcon, ShapesIcon } from './icons'
 import { Popover } from './Popover'
+import { useEditor, useSession } from '../editorContext'
 
 /** Toolbar button that opens a popover below the toolbar. */
 export function MenuButton({
@@ -112,11 +112,12 @@ export function BaseRow({ kind, value, onChange }: { kind: ShapeKind; value: num
 }
 
 export function ShapesMenu() {
+  const editor = useEditor()
   const t = useT()
   const [open, setOpen] = useState(false)
-  const tool = useUI((s) => s.tool)
-  const shape = useUI((s) => s.shape)
-  const bases = useUI((s) => s.shapeBases)
+  const tool = useSession((s) => s.tool)
+  const shape = useSession((s) => s.shape)
+  const bases = usePrefs((s) => s.shapeBases)
   const baseOf = (k: ShapeKind): number | undefined => (SHAPE_BASES[k] ? (bases[k] ?? SHAPE_BASES[k]!.def) : undefined)
   return (
     <MenuButton icon={<ShapesIcon />} title={t('shapes.title')} active={tool === 'shape'} open={open} setOpen={setOpen}>
@@ -129,7 +130,7 @@ export function ShapesMenu() {
               className={`shape-btn ${tool === 'shape' && shape === k ? 'active' : ''}`}
               title={t(`shape.${k}` as MessageKey)}
               onClick={() => {
-                useUI.setState({ tool: 'shape', shape: k })
+                editor.session.setState({ tool: 'shape', shape: k })
                 // Solids with a choice of base keep the menu open so the base can be picked.
                 if (!SHAPE_BASES[k]) setOpen(false)
               }}
@@ -143,7 +144,7 @@ export function ShapesMenu() {
         <BaseRow
           kind={shape}
           value={baseOf(shape)!}
-          onChange={(n) => useUI.setState((s) => ({ shapeBases: { ...s.shapeBases, [shape]: n } }))}
+          onChange={(n) => prefsStore.setState((s) => ({ shapeBases: { ...s.shapeBases, [shape]: n } }))}
         />
       )}
       <p className="settings-hint">{t('shapes.hint')}</p>
@@ -188,9 +189,10 @@ function GraphCard({ preset, label, onInsert, onDelete }: { preset: GraphPreset;
 }
 
 export function GraphMenu() {
+  const editor = useEditor()
   const t = useT()
   const [open, setOpen] = useState(false)
-  const mine = useUI((s) => s.graphPresets)
+  const mine = usePrefs((s) => s.graphPresets)
   const insert = (params: GraphParams): void => {
     editor.insertGraph(params)
     setOpen(false)
@@ -213,7 +215,7 @@ export function GraphMenu() {
                 preset={p}
                 label={p.name}
                 onInsert={() => insert(p.params)}
-                onDelete={() => useUI.setState((s) => ({ graphPresets: s.graphPresets.filter((x) => x.id !== p.id) }))}
+                onDelete={() => prefsStore.setState((s) => ({ graphPresets: s.graphPresets.filter((x) => x.id !== p.id) }))}
               />
             ))}
           </div>
@@ -224,7 +226,7 @@ export function GraphMenu() {
         className="menu-item"
         onClick={() => {
           setOpen(false)
-          useUI.setState({ graphDialog: { mode: 'insert', params: BUILTIN_GRAPHS[3].params } })
+          editor.session.setState({ graphDialog: { mode: 'insert', params: BUILTIN_GRAPHS[3].params } })
         }}
       >
         <span>{t('graph.custom')}</span>
@@ -235,7 +237,7 @@ export function GraphMenu() {
           setOpen(false)
           // Insert a plane right away and open the formula panel beside it.
           const id = editor.insertGraph(BUILTIN_GRAPHS[3].params)
-          useUI.setState({ fnPanel: { id, session: Date.now() } })
+          editor.session.setState({ fnPanel: { id, session: Date.now() } })
         }}
       >
         <span>{t('graph.functionGraph')}</span>

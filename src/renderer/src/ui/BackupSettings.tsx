@@ -1,11 +1,11 @@
 import { useT } from '../../../board/i18n'
-import { useUI } from '../../../board/store'
 import { boardLibrary } from '../boardLibrary'
 import { platform } from '../platform'
+import { useApp } from '../appState'
 
 export function BackupSettings() {
   const t = useT()
-  const backupDir = useUI((s) => s.library.backupDir)
+  const backupDir = useApp((s) => s.library.backupDir)
   if (!platform.capabilities.backup) return null
   return (
     <>

@@ -4,9 +4,10 @@ import { TAG_COLORS, type BoardEntry, type Tag } from '../../../shared/library'
 import { boardLibrary } from '../boardLibrary'
 import { relativeTime, useT } from '../../../board/i18n'
 import { platform } from '../platform'
-import { useUI } from '../../../board/store'
+import { usePrefs } from '../../../board/store'
 import { ArrowLeftIcon, CheckIcon, DotsIcon, FolderIcon, HomeIcon, PinIcon, PlusIcon, SearchIcon } from '../../../board/ui/icons'
 import { Popover } from '../../../board/ui/Popover'
+import { useApp } from '../appState'
 
 const lib = platform.library
 const refresh = (): Promise<void> => boardLibrary.refreshLibrary()
@@ -101,7 +102,7 @@ function ManageTags({ tags, onClose }: { tags: Tag[]; onClose: () => void }) {
 
 function BoardCard({ entry, tags }: { entry: BoardEntry; tags: Tag[] }) {
   const t = useT()
-  const lang = useUI((s) => s.lang)
+  const lang = usePrefs((s) => s.lang)
   const [menu, setMenu] = useState<'actions' | 'tags' | null>(null)
   const [renaming, setRenaming] = useState(false)
   const [title, setTitle] = useState(entry.title)
@@ -253,8 +254,8 @@ function BoardCard({ entry, tags }: { entry: BoardEntry; tags: Tag[] }) {
 /** "All boards" screen: thumbnails, search, tags, pinned, recently deleted. */
 export function HomeScreen() {
   const t = useT()
-  const { boards, tags } = useUI((s) => s.library)
-  const current = useUI((s) => s.board)
+  const { boards, tags } = useApp((s) => s.library)
+  const current = useApp((s) => s.board)
   const [query, setQuery] = useState('')
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [manage, setManage] = useState(false)
@@ -292,7 +293,7 @@ export function HomeScreen() {
       <header className="home-header">
         <div className="home-brand">
           {canGoBack && (
-            <button className="icon-btn" title={t('home.back')} onClick={() => useUI.setState({ view: 'board' })}>
+            <button className="icon-btn" title={t('home.back')} onClick={() => useApp.setState({ view: 'board' })}>
               <ArrowLeftIcon />
             </button>
           )}

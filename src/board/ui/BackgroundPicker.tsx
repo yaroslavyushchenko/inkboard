@@ -4,7 +4,8 @@ import { bgPattern, CHALKBOARD_COLOR, isChalk, withPattern, withSurface } from '
 import type { PaperPattern } from '@inkboard/core/types'
 import { useFeature } from '../features'
 import { LANGUAGES, useT, type Lang, type MessageKey } from '../i18n'
-import { useUI } from '../store'
+import { prefsStore, usePrefs } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { PaperIcon } from './icons'
 import { PenSettings } from './PenSettings'
 import { BoardSettings } from './BoardSettings'
@@ -69,7 +70,8 @@ function Preview({ kind, chalk }: { kind: PaperPattern; chalk: boolean }) {
 export function BackgroundPicker({
   storageSettings, about, fixedLanguage, surfaceFollowsTheme
 }: { storageSettings?: ReactNode; about?: ReactNode; fixedLanguage?: boolean; surfaceFollowsTheme: boolean }) {
-  const { background, lang, setBackground, setLang } = useUI()
+  const { background, lang } = usePrefs(useShallow((s) => ({ background: s.background, lang: s.lang })))
+  const { setBackground, setLang } = prefsStore.getState()
   const chalkFlag = useFeature('chalkboard')
   const chalk = isChalk(background)
   const pattern = bgPattern(background)

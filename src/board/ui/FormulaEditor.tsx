@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { editor } from '../editor'
 import type { FormulaState, Row } from '@inkboard/math/formula'
 import { numericResult } from '../engine/formulaexpr'
 import { caretOf, typesetRows } from '../engine/formulatype'
 import { inkColor, withInkSurface } from '../engine/surface'
 import { useT } from '../i18n'
-import { useUI } from '../store'
+import { usePrefs } from '../store'
 import { FormulaField } from './FormulaField'
 import { MathSvg } from './MathSvg'
+import { useEditor, useSession } from '../editorContext'
 
 const PAD = 8
 
@@ -17,12 +17,13 @@ const PAD = 8
  * (so the class can work it out first); once shown, the value can be added to the formula.
  */
 export function FormulaEditor() {
+  const editor = useEditor()
   const t = useT()
-  const fe = useUI((s) => s.formulaEdit)
-  const cam = useUI((s) => s.camera)
-  const background = useUI((s) => s.background)
-  const view = useUI((s) => s.view)
-  const lang = useUI((s) => s.lang)
+  const fe = useSession((s) => s.formulaEdit)
+  const cam = useSession((s) => s.camera)
+  const background = usePrefs((s) => s.background)
+  const active = useSession((s) => s.active)
+  const lang = usePrefs((s) => s.lang)
   const size = fe ? fe.size * cam.zoom : 0
   const rows: Row | null = fe?.rows ?? null
   const lay = useMemo(() => (rows ? typesetRows(rows, size, true) : null), [rows, size])
@@ -47,12 +48,12 @@ export function FormulaEditor() {
     const over = caretX > window.innerWidth - edge ? caretX - (window.innerWidth - edge) : caretX < edge ? caretX - edge : 0
     if (over) editor.setCamera({ ...editor.camera, x: editor.camera.x + over / editor.camera.zoom })
   }, [caretX])
-  if (!fe || !lay || view !== 'board') return null
+  if (!fe || !lay || !active) return null
 
   const value: FormulaState = { rows: fe.rows, cur: fe.cur }
   const set = (st: FormulaState): void => {
-    const cur = useUI.getState().formulaEdit
-    if (cur) useUI.setState({ formulaEdit: { ...cur, rows: st.rows, cur: st.cur } })
+    const cur = editor.session.getState().formulaEdit
+    if (cur) editor.session.setState({ formulaEdit: { ...cur, rows: st.rows, cur: st.cur } })
   }
   const accept = (): boolean => {
     if (!result) return false

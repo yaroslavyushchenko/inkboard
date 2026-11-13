@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useT, type MessageKey } from '../i18n'
-import { useUI, type PenAction, type PenButtons } from '../store'
+import { type PenAction, type PenButtons, usePrefs } from '../store'
 import { KeyboardIcon } from './icons'
+import { useEditor } from '../editorContext'
 
 const ACTIONS: PenAction[] = ['eraser', 'select', 'tool']
 const BUTTONS: { key: keyof PenButtons; label: MessageKey }[] = [
@@ -12,9 +13,10 @@ const BUTTONS: { key: keyof PenButtons; label: MessageKey }[] = [
 
 /** Settings section: what each pen button does, plus a live tester. */
 export function PenSettings() {
+  const editor = useEditor()
   const t = useT()
-  const penButtons = useUI((s) => s.penButtons)
-  const setPenButton = useUI((s) => s.setPenButton)
+  const penButtons = usePrefs((s) => s.penButtons)
+  const setPenButton = usePrefs((s) => s.setPenButton)
   const [detected, setDetected] = useState<string | null>(null)
   const describe = (e: React.PointerEvent): string => {
     if (e.pointerType !== 'pen') return t('pen.notPen', { type: e.pointerType })
@@ -50,7 +52,7 @@ export function PenSettings() {
       >
         {detected ? t('pen.detected', { what: detected }) : t('pen.testHere')}
       </div>
-      <button className="text-btn outline shortcuts-btn" onClick={() => useUI.setState({ shortcutsOpen: true })}>
+      <button className="text-btn outline shortcuts-btn" onClick={() => editor.session.setState({ shortcutsOpen: true })}>
         <KeyboardIcon width={18} height={18} /> {t('shortcuts.open')}
       </button>
     </>

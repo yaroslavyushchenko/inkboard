@@ -1,10 +1,10 @@
-import { editor } from '../editor'
 import { useT } from '../i18n'
-import { useUI } from '../store'
 import { MinusIcon, PlusIcon } from './icons'
+import { useEditor, useSession } from '../editorContext'
 
 export function ZoomControls() {
-  const zoom = useUI((s) => s.zoom)
+  const editor = useEditor()
+  const zoom = useSession((s) => s.zoom)
   const t = useT()
   return (
     <div className="panel zoom-controls">

@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
-import { editor } from '../editor'
 import { sanitizeGraph } from '../engine/graph'
 import type { GraphParams } from '@inkboard/core/types'
 import { useT } from '../i18n'
-import { useUI } from '../store'
+import { prefsStore } from '../store'
+import { useEditor, useSession } from '../editorContext'
 
 const UNIT_CHOICES = [24, 36, 48, 72]
 
 /** Configure a coordinate line / plane: insert a new one, edit the selected one, or save a preset. */
 export function GraphDialog() {
+  const editor = useEditor()
   const t = useT()
-  const dialog = useUI((s) => s.graphDialog)
+  const dialog = useSession((s) => s.graphDialog)
   const [p, setP] = useState<GraphParams | null>(null)
   const [presetName, setPresetName] = useState('')
   useEffect(() => {
@@ -20,7 +21,7 @@ export function GraphDialog() {
   if (!dialog || !p) return null
 
   const close = (): void => {
-    useUI.setState({ graphDialog: null })
+    editor.session.setState({ graphDialog: null })
   }
   const num = (key: keyof GraphParams) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setP({ ...p, [key]: e.target.value === '' ? 0 : Number(e.target.value) })
@@ -35,7 +36,7 @@ export function GraphDialog() {
     // A preset is the coordinate layout only, never the functions plotted on the plane it came from.
     const { fns: _fns, hideFormulas: _hide, ...layout } = sanitizeGraph(p)
     const preset = { id: `${Date.now().toString(36)}`, name: presetName.trim(), params: layout }
-    useUI.setState((s) => ({ graphPresets: [...s.graphPresets, preset] }))
+    prefsStore.setState((s) => ({ graphPresets: [...s.graphPresets, preset] }))
     setPresetName('')
   }
   const isPlane = p.kind === 'plane' || p.kind === 'space'

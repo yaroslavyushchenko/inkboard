@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { editor } from '../editor'
 import { isBlank, type FormulaState, type Row } from '@inkboard/math/formula'
 import { fnHead, FN_NAMES, FN_VARS, isEquation, nodeToRows, parseRows, plotHead, renameVar } from '../engine/formulaexpr'
 import { FN_COLORS, liveFns, MAX_FNS, type FnRow } from '../engine/graph'
 import { parseExpr } from '@inkboard/math/mathexpr'
 import type { GraphItem, PlotFn } from '@inkboard/core/types'
 import { useT, type MessageKey } from '../i18n'
-import { useUI } from '../store'
+import { usePrefs } from '../store'
 import { dockBeside } from './dock'
 import { FormulaField } from './FormulaField'
 import { Popover } from './Popover'
+import { useEditor, useSession } from '../editorContext'
 
 const PANEL_W = 320
 
@@ -40,7 +40,7 @@ const headText = (name: string, arg: string): string => (name === 'y' && arg ===
 function LimitInput({ value, onChange, title }: { value: number | undefined; onChange: (v: number | undefined) => void; title: string }) {
   const [text, setText] = useState(value === undefined ? '' : String(value))
   const [editing, setEditing] = useState(false)
-  const comma = useUI((s) => s.lang) === 'uk'
+  const comma = usePrefs((s) => s.lang) === 'uk'
   const shown = editing ? text : value === undefined ? '' : String(value).replace('-', '−').replace('.', comma ? ',' : '.')
   return (
     <input
@@ -109,12 +109,13 @@ const focusRow = (key: number): void => document.querySelector<HTMLElement>(`[da
  * keyboard works as before (`x^2`, `1/x`, `sqrt`).
  */
 export function FunctionPanel() {
+  const editor = useEditor()
   const t = useT()
-  const panel = useUI((s) => s.fnPanel)
-  const view = useUI((s) => s.view)
+  const panel = useSession((s) => s.fnPanel)
+  const active = useSession((s) => s.active)
   // Follow the plane when the board is panned / zoomed or the plane moves.
-  useUI((s) => s.camera)
-  const sceneVersion = useUI((s) => s.sceneVersion)
+  useSession((s) => s.camera)
+  const sceneVersion = useSession((s) => s.sceneVersion)
   const [rows, setRows] = useState<FnRow[]>([])
   const [hide, setHide] = useState(false)
   const [focusKey, setFocusKey] = useState<number | null>(null)
@@ -148,7 +149,7 @@ export function FunctionPanel() {
     if (ref.current) setHeight(ref.current.offsetHeight)
   })
 
-  if (!panel || !g || view !== 'board') return null
+  if (!panel || !g || !active) return null
 
   const write = (nextRows: FnRow[], nextHide: boolean): void => {
     const live = liveFns(nextRows)
@@ -166,7 +167,7 @@ export function FunctionPanel() {
     write([...rows, r], hide)
   }
   const close = (): void => {
-    useUI.setState({ fnPanel: null })
+    editor.session.setState({ fnPanel: null })
   }
 
   const { left, top } = dockBeside(g.bbox, editor.camera, PANEL_W, height)
