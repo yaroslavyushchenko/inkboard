@@ -1,6 +1,6 @@
 import { drawBackground } from './background'
-import { viewportBBox } from './camera'
-import { bboxIntersects } from './geometry'
+import { viewportBBox } from '@inkboard/core/camera'
+import { bboxIntersects } from '@inkboard/core/geometry'
 import { getImage } from './images'
 import { drawFormula } from './formulatype'
 import { drawGraph } from './graph'
@@ -11,7 +11,7 @@ import { drawStraightedge, type Straightedge, type StraightState } from './strai
 import { inkColor, isChalk, withInkSurface } from './surface'
 import { buildInkPath, drawCaps, drawStroke, fillInk, linePath, strokeLine, type InkStyle } from './ink'
 import { xformBBox, type Xform } from './transform'
-import type { BackgroundKind, BBox, Camera, Item, LineCap, LineDash, Point } from './types'
+import type { BackgroundKind, BBox, Camera, Item, LineCap, LineDash, Point } from '@inkboard/core/types'
 
 export interface LiveStroke extends InkStyle {
   color: string

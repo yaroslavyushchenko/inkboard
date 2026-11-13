@@ -1,10 +1,10 @@
 // Plotting formulas from the board: other variables (t, a, φ), function names, ranges. Run: npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { EMPTY_FORMULA, typeChar, type Atom, type FormulaState, type Row } from '../src/board/engine/formula.ts'
+import { EMPTY_FORMULA, typeChar, type Atom, type FormulaState, type Row } from '@inkboard/math/formula'
 import { fnHead, labelRows, parseRows, plotFormula, plotHead, renameVar, rowsToText } from '../src/board/engine/formulaexpr.ts'
 import { axisNames, graphPrims } from '../src/board/engine/graph.ts'
-import type { GraphItem } from '../src/board/engine/types.ts'
+import type { GraphItem } from '@inkboard/core/types'
 
 const rows = (s: string, st: FormulaState = EMPTY_FORMULA): Row => [...s].reduce(typeChar, st).rows
 const c = (s: string): Atom => ({ t: 'c', s })

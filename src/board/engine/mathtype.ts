@@ -1,4 +1,4 @@
-import type { MathNode } from './mathparse'
+import type { MathNode } from '@inkboard/math/mathparse'
 
 /**
  * A tiny math typesetter: lays out a parsed formula (engine/mathexpr.ts) the way it is written in a

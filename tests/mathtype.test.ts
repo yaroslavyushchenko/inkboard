@@ -2,9 +2,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { graphPrims, graphSvg, placeLabels, sanitizeGraph, type Label } from '../src/board/engine/graph.ts'
-import { parseExpr } from '../src/board/engine/mathexpr.ts'
+import { parseExpr } from '@inkboard/math/mathexpr'
 import { typesetFormula, type MathBox } from '../src/board/engine/mathtype.ts'
-import type { GraphItem, PlotFn } from '../src/board/engine/types.ts'
+import type { GraphItem, PlotFn } from '@inkboard/core/types'
 
 function set(src: string, size = 20): MathBox {
   const r = parseExpr(src)
@@ -89,7 +89,7 @@ test('labels at the same spot are pushed apart', () => {
 
 test('live rows keep drawing the last valid formula while one is half-typed', async () => {
   const { liveFns } = await import('../src/board/engine/graph.ts')
-  const { EMPTY_FORMULA, typeChar } = await import('../src/board/engine/formula.ts')
+  const { EMPTY_FORMULA, typeChar } = await import('@inkboard/math/formula')
   const typed = (s: string) => [...s].reduce(typeChar, EMPTY_FORMULA)
   const sq = typed('x^2 ')
   let r = liveFns([{ key: 1, st: sq, color: '#e03131', shown: null }])

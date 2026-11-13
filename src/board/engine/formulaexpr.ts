@@ -3,11 +3,11 @@
  * out the number it stands for, and the two conversions that connect it with formulas typed as text
  * (old boards, older versions of the app).
  */
-import type { Atom, Row } from './formula'
-import { slots, validateRows, withSlots } from './formula'
-import { parseRow, type LexInfo } from './formulalex'
-import { evaluate, parseExpr, parseWith, usesX, usesY, type MathNode, type ParseResult } from './mathexpr'
-import type { PlotFn } from './types'
+import type { Atom, Row } from '@inkboard/math/formula'
+import { slots, validateRows, withSlots } from '@inkboard/math/formula'
+import { parseRow, type LexInfo } from '@inkboard/math/formulalex'
+import { evaluate, parseExpr, parseWith, usesX, usesY, type MathNode, type ParseResult } from '@inkboard/math/mathexpr'
+import type { PlotFn } from '@inkboard/core/types'
 
 const c = (s: string): Atom => ({ t: 'c', s })
 const isC = (a: Atom | undefined, s: string): boolean => !!a && a.t === 'c' && a.s === s

@@ -1,6 +1,6 @@
 import { getStroke, type StrokeOptions } from 'perfect-freehand'
 import { highlightBlend, inkColor, inkPaper } from './surface'
-import type { LineCap, LineDash, Point, StrokeItem } from './types'
+import type { LineCap, LineDash, Point, StrokeItem } from '@inkboard/core/types'
 
 export const HIGHLIGHTER_ALPHA = 0.38
 

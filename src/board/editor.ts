@@ -1,23 +1,23 @@
-import { clampZoom, screenToWorld, zoomAt } from './engine/camera'
+import { clampZoom, screenToWorld, zoomAt } from '@inkboard/core/camera'
 import { BUILTIN_GRAPHS, FN_COLORS, fitRanges, graphBBox, MAX_FNS, sanitizeGraph } from './engine/graph'
 import { plotFormula, plotHead, rowsToText } from './engine/formulaexpr'
-import { bboxOfPoints, newId } from './engine/geometry'
+import { bboxOfPoints, newId } from '@inkboard/core/geometry'
 import { loadImage, readFileAsDataURL } from './engine/images'
-import { Scene } from './engine/scene'
+import { Scene } from '@inkboard/core/scene'
 import {
   deserializeBoard,
   serializeBoard,
   type BoardData,
   type BoardFile
 } from './engine/serialize'
-import { editableShape, regenerateShape } from './engine/shapeItems'
+import { editableShape, regenerateShape } from '@inkboard/core/shapeItems'
 import { applyXform, unionBBox, type Xform } from './engine/transform'
 import { COMPASS_CELL } from './engine/compass'
 import { CM } from './engine/straightedge'
 import { formatAll, formatRange, fullRuns, textBBox, textFields, trimRunsEnd } from './engine/text'
-import { isBlank } from './engine/formula'
+import { isBlank } from '@inkboard/math/formula'
 import { formulaBBox, formulaBox } from './engine/formulatype'
-import type { BBox, Camera, FormulaItem, GraphItem, GraphParams, PlotFn, ImageItem, Item, LineCap, LineDash, ShapeSpec, StrokeItem, TextFormat, TextItem } from './engine/types'
+import type { BBox, Camera, FormulaItem, GraphItem, GraphParams, PlotFn, ImageItem, Item, LineCap, LineDash, ShapeSpec, StrokeItem, TextFormat, TextItem } from '@inkboard/core/types'
 import { translate, type MessageKey } from './i18n'
 import { FORMULA_HISTORY, useUI } from './store'
 

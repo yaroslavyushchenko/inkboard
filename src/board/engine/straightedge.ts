@@ -1,6 +1,6 @@
 import { COMPASS_CELL } from './compass'
 import { rgba } from './protractor'
-import type { Camera, Point } from './types'
+import type { Camera, Point } from '@inkboard/core/types'
 
 /**
  * Straight-edged drawing aids: the ruler and the set squares (45° and 30°/60°). Like the protractor

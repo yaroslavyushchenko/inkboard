@@ -19,7 +19,10 @@ npm run typecheck && npm test && npm run build   # run before every commit
 ```
 
 - Electron + React + TypeScript. The board is a custom Canvas 2D engine in
-  `src/board/engine`; React only draws the panels. The main process (`src/main`) handles the
+  `src/board/engine`; React only draws the panels. Pure parts (the document model, math, shape
+  recognition) are workspace packages in `packages/` with no DOM and no UI: see
+  [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the layers and the rules `npm run typecheck`
+  enforces. The main process (`src/main`) handles the
   board library, files and updates.
 - The landing page lives in `site/`. `npm run build:site` builds it into `dist/site` and
   prerenders one static HTML page per language, so search engines see the whole text.

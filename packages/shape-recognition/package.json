@@ -1,0 +1,17 @@
+{
+  "name": "@inkboard/shape-recognition",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Hold-to-snap: turns a rough stroke into the clean shape it resembles. No DOM, no UI.",
+  "license": "FSL-1.1-MIT",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@inkboard/core": "*"
+  }
+}

@@ -1,4 +1,4 @@
-import type { BackgroundKind, PaperPattern } from './types'
+import type { BackgroundKind, PaperPattern } from '@inkboard/core/types'
 
 /**
  * Board surfaces: white paper (the classic look) and a dark green lecture chalkboard

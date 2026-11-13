@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { panBy, screenToWorld, zoomAt } from '../engine/camera'
-import { bboxIntersects, bboxOfPoints, circleHitsPolyline, newId } from '../engine/geometry'
+import { panBy, screenToWorld, zoomAt } from '@inkboard/core/camera'
+import { bboxIntersects, bboxOfPoints, circleHitsPolyline, newId } from '@inkboard/core/geometry'
 import { setImageLoadListener } from '../engine/images'
 import {
   BoardRenderer,
@@ -13,10 +13,10 @@ import {
   type LiveStroke
 } from '../engine/renderer'
 import { arcStroke, baseStroke, degText, hitProtractor, rayStroke, scaleAngle, snapDeg, toLocal, toWorld, type ProtractorHit, type ProtractorState } from '../engine/protractor'
-import { buildShapeItems, editableShape, regenerateShape, shapeMembers } from '../engine/shapeItems'
-import { DEFAULT_SHAPE_SIZE, isLinear, SHAPE_BASES, shapeBox, shapeParts, snapAngle, type ShapeKind } from '../engine/shapes'
+import { buildShapeItems, editableShape, regenerateShape, shapeMembers } from '@inkboard/core/shapeItems'
+import { DEFAULT_SHAPE_SIZE, isLinear, SHAPE_BASES, shapeBox, shapeParts, snapAngle, type ShapeKind } from '@inkboard/core/shapes'
 import { hitTest, itemsInLasso } from '../engine/transform'
-import type { BBox, Item, Point, ShapeSpec, StrokeItem, TextItem } from '../engine/types'
+import type { BBox, Item, Point, ShapeSpec, StrokeItem, TextItem } from '@inkboard/core/types'
 import { editor } from '../editor'
 import { isBoardFileShortcut, matchShortcut, type BoardFileShortcut, type ShortcutId } from '../shortcuts'
 import { useUI, type InkSlot, type PenAction, type Tool } from '../store'
@@ -36,8 +36,8 @@ import {
   type StraightState
 } from '../engine/straightedge'
 import { textBBox } from '../engine/text'
-import { splitStroke } from '../engine/erase'
-import { holdShape, recognizeShape, type Snapped } from '../engine/snapshape'
+import { splitStroke } from '@inkboard/core/erase'
+import { holdShape, recognizeShape, type Snapped } from '@inkboard/shape-recognition/snapshape'
 import { WheelSource } from '../engine/wheel'
 
 type StraightSlot = 'ruler' | 'setSquare'

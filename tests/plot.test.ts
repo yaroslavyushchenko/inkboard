@@ -2,8 +2,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { graphSvg, plotCurve, sanitizeGraph } from '../src/board/engine/graph.ts'
-import { parseExpr } from '../src/board/engine/mathexpr.ts'
-import type { GraphItem } from '../src/board/engine/types.ts'
+import { parseExpr } from '@inkboard/math/mathexpr'
+import type { GraphItem } from '@inkboard/core/types'
 
 const STEP = 2 / 24
 

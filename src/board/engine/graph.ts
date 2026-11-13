@@ -1,10 +1,10 @@
 import { inkColor, inkPaper } from './surface'
-import { isBlank, type FormulaState, type Row } from './formula'
+import { isBlank, type FormulaState, type Row } from '@inkboard/math/formula'
 import { fnHead, isFnLetter, labelRows, parsePlot, parseRows, readPlotRows, rowsToText } from './formulaexpr'
 import { typesetRows } from './formulatype'
-import { MAX_EXPR_LENGTH, type MathFn } from './mathexpr'
+import { MAX_EXPR_LENGTH, type MathFn } from '@inkboard/math/mathexpr'
 import { MATH_FONT, typesetFormula } from './mathtype'
-import type { BBox, GraphItem, GraphParams, PlotFn } from './types'
+import type { BBox, GraphItem, GraphParams, PlotFn } from '@inkboard/core/types'
 
 /** At most this many functions on one plane. */
 export const MAX_FNS = 8

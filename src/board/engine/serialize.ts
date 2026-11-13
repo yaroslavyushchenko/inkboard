@@ -1,12 +1,12 @@
-import { validateRows, type Row } from './formula'
+import { validateRows, type Row } from '@inkboard/math/formula'
 import { isEquation } from './formulaexpr'
 import { formulaBBox } from './formulatype'
 import { graphBBox, sanitizeGraph } from './graph'
-import { isShapeKind, MAX_BASE, MIN_BASE } from './shapes'
+import { isShapeKind, MAX_BASE, MIN_BASE } from '@inkboard/core/shapes'
 import { bgPattern, isBackgroundKind, isChalk, SCHOOL_PATTERNS } from './surface'
 import { textBBox } from './text'
-import type { TextRun } from './types'
-import type { BackgroundKind, Camera, FormulaItem, GraphItem, GraphParams, Item, LineCap, LineDash, Point, ShapeSpec, TextItem } from './types'
+import type { TextRun } from '@inkboard/core/types'
+import type { BackgroundKind, Camera, FormulaItem, GraphItem, GraphParams, Item, LineCap, LineDash, Point, ShapeSpec, TextItem } from '@inkboard/core/types'
 
 /**
  * `.inkboard` board document format: plain UTF-8 JSON (legacy gzip-compressed files are still accepted on read).

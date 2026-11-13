@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { editor } from '../editor'
-import type { FormulaState, Row } from '../engine/formula'
+import type { FormulaState, Row } from '@inkboard/math/formula'
 import { numericResult } from '../engine/formulaexpr'
 import { caretOf, typesetRows } from '../engine/formulatype'
 import { inkColor, withInkSurface } from '../engine/surface'

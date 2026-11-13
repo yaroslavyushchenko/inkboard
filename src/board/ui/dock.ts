@@ -1,4 +1,4 @@
-import type { BBox, Camera } from '../engine/types'
+import type { BBox, Camera } from '@inkboard/core/types'
 
 const MARGIN = 16
 /** Keep clear of the top toolbar. */

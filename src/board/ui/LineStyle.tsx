@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { LineCap, LineDash } from '../engine/types'
+import type { LineCap, LineDash } from '@inkboard/core/types'
 import { useT, type MessageKey } from '../i18n'
 
 export interface LineStyleValue {

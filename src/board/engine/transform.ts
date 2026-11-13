@@ -1,8 +1,8 @@
-import { circleHitsPolyline } from './geometry'
+import { circleHitsPolyline } from '@inkboard/core/geometry'
 import { formulaBBox } from './formulatype'
 import { graphBBox } from './graph'
 import { scaleRuns, textBBox } from './text'
-import type { BBox, Item } from './types'
+import type { BBox, Item } from '@inkboard/core/types'
 
 /** Uniform scale `s` about anchor (ax, ay), then translate by (dx, dy): p' = a + (p - a) * s + d */
 export interface Xform {

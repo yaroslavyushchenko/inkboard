@@ -3,7 +3,7 @@
  * is itself a small formula, drawn by the same typesetter as the board, so a key with empty slots
  * looks exactly like what it inserts.
  */
-import type { Atom, Row } from '../engine/formula'
+import type { Atom, Row } from '@inkboard/math/formula'
 import type { Lang } from '../i18n'
 
 export type KeyAction =

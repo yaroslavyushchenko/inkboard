@@ -5,13 +5,13 @@ import { inkColor } from './surface'
  * board canvas, PNG and SVG all draw it alike. For the editor the layout also reports where the
  * caret can stand and where the empty slots are.
  */
-import type { Atom, Cursor, Row } from './formula'
-import { hasBase } from './formula'
+import type { Atom, Cursor, Row } from '@inkboard/math/formula'
+import { hasBase } from '@inkboard/math/formula'
 import {
   dropOf, empty, fence, frac, MATH_FONT, measureMath, put, radical, raiseOf, row, rule, SCRIPT, scripts, text,
   type Ctx, type MathBox, type MathMark, type Measure
 } from './mathtype'
-import type { BBox } from './types'
+import type { BBox } from '@inkboard/core/types'
 
 export interface FormulaLayout {
   box: MathBox

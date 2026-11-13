@@ -1,5 +1,5 @@
 import { inkColor } from './surface'
-import type { BBox, TextFormat, TextItem, TextRun } from './types'
+import type { BBox, TextFormat, TextItem, TextRun } from '@inkboard/core/types'
 
 /**
  * Text on the board: lines (Enter = new line) of differently formatted runs (colour, size, bold,

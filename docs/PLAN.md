@@ -29,8 +29,8 @@ Local-only for now; no online features yet.
 | Pressure ink | perfect-freehand (MIT) | nice variable-width ink outlines |
 | Packaging | electron-builder | .exe installer (NSIS), AppImage / .deb |
 
-The board is not rendered through React: the engine lives in `src/board/engine`, React only does
-the chrome. Two canvas layers: the bottom one holds paper + committed items, the top one holds the stroke
+The board is not rendered through React: the engine lives in `src/board/engine` and `packages/`
+(see `docs/ARCHITECTURE.md`), React only does the chrome. Two canvas layers: the bottom one holds paper + committed items, the top one holds the stroke
 in progress and the pen cursor (so drawing never forces a full board redraw).
 
 ## Stages

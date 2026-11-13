@@ -1,7 +1,7 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { BACKGROUND_STYLE, CHALK_PATTERN_COLOR, MAJOR_COLOR } from '../engine/background'
 import { bgPattern, CHALKBOARD_COLOR, isChalk, withPattern, withSurface } from '../engine/surface'
-import type { PaperPattern } from '../engine/types'
+import type { PaperPattern } from '@inkboard/core/types'
 import { useFeature } from '../features'
 import { LANGUAGES, useT, type Lang, type MessageKey } from '../i18n'
 import { useUI } from '../store'

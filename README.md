@@ -149,7 +149,8 @@ The roadmap is in [docs/PLAN.md](docs/PLAN.md).
 ## Development
 
 Built with Electron, React and TypeScript; the board is a custom Canvas 2D engine
-(`src/board/engine`). Requires Node.js (LTS or newer).
+(`src/board/engine` and the packages in `packages/`, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)).
+Requires Node.js (LTS or newer).
 
 ```bash
 npm install

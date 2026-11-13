@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { editor } from '../editor'
 import { sanitizeGraph } from '../engine/graph'
-import type { GraphParams } from '../engine/types'
+import type { GraphParams } from '@inkboard/core/types'
 import { useT } from '../i18n'
 import { useUI } from '../store'
 

@@ -1,4 +1,4 @@
-import type { Camera, Point } from './types'
+import type { Camera, Point } from '@inkboard/core/types'
 
 /**
  * On-board compass (a drawing aid, not board content), in world coordinates like the protractor.

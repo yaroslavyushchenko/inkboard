@@ -8,7 +8,7 @@ import { drawItems } from './renderer'
 import { bgPattern, highlightBlend, isChalk, inkColor, surfaceColor, withInkSurface } from './surface'
 import { textSvg } from './text'
 import { unionBBox } from './transform'
-import type { BackgroundKind, BBox, Camera, Item } from './types'
+import type { BackgroundKind, BBox, Camera, Item } from '@inkboard/core/types'
 
 /** Make sure every image is decoded before drawing off-screen (otherwise it would be skipped). */
 async function ensureImages(items: readonly Item[]): Promise<void> {

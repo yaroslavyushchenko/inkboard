@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import { gzipSync } from 'node:zlib'
 import { test } from 'node:test'
 import { decodeBoard, deserializeBoard, encodeBoard, FORMAT_VERSION, serializeBoard, type BoardFile } from '../src/board/engine/serialize.ts'
-import { EMPTY_FORMULA, typeChar } from '../src/board/engine/formula.ts'
+import { EMPTY_FORMULA, typeChar } from '@inkboard/math/formula'
 import { rowsToText } from '../src/board/engine/formulaexpr.ts'
-import type { FormulaItem, GraphItem } from '../src/board/engine/types.ts'
+import type { FormulaItem, GraphItem } from '@inkboard/core/types'
 
 const plane = {
   type: 'graph' as const, id: 'g1', z: 1, ox: 240, oy: 240, color: '#1e1e1e',

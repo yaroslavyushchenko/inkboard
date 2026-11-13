@@ -1,11 +1,11 @@
 // Equations in x and y drawn as curves (x² + y² = 4), and fitting a plane to its graphs. Run: npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { EMPTY_FORMULA, typeChar, type Row } from '../src/board/engine/formula.ts'
+import { EMPTY_FORMULA, typeChar, type Row } from '@inkboard/math/formula'
 import { fnHead, isEquation, labelRows, numericResult, parseRows, plotFormula, readPlotRows, rowsToText } from '../src/board/engine/formulaexpr.ts'
 import { fitRanges, graphPrims, plotImplicit } from '../src/board/engine/graph.ts'
 import { serializeBoard } from '../src/board/engine/serialize.ts'
-import type { GraphItem, PlotFn } from '../src/board/engine/types.ts'
+import type { GraphItem, PlotFn } from '@inkboard/core/types'
 
 const rows = (s: string): Row => [...s].reduce(typeChar, EMPTY_FORMULA).rows
 const plane = (fns: PlotFn[], r = 10): GraphItem => ({

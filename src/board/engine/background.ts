@@ -1,6 +1,6 @@
 import { drawSmudges } from './chalkTexture'
 import { bgPattern, isChalk, surfaceColor } from './surface'
-import type { BackgroundKind, Camera } from './types'
+import type { BackgroundKind, Camera } from '@inkboard/core/types'
 
 export { PAPER_COLOR } from './surface'
 
