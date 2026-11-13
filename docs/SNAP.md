@@ -60,7 +60,7 @@ also published as a snap.
    electron-builder can not put these fields into the snap, so they live only on the store page:
    - **Screenshots**: upload `docs/images/hero.png`, `docs/images/home.png` and
      `docs/images/text-format.png` (up to 5 images).
-   - **License**: `GPL-3.0-or-later`.
+   - **License**: `FSL-1.1-MIT`.
    - **Website**: `https://github.com/yaroslavyushchenko/inkboard`
    - **Source code**: `https://github.com/yaroslavyushchenko/inkboard`
    - **Contact / issues**: `https://github.com/yaroslavyushchenko/inkboard/issues`

@@ -1,6 +1,6 @@
 # Inkboard: notes for AI assistants
 
-Free, open-source (GPL-3.0-or-later) infinite whiteboard for pen tablets; Electron + React + TS,
+Free, source-available (FSL-1.1-MIT) infinite whiteboard for pen tablets; Electron + React + TS,
 custom Canvas 2D engine in `src/board/engine`. Roadmap: `docs/PLAN.md`.
 
 ## Don't break what exists

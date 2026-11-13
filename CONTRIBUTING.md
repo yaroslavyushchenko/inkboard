@@ -41,4 +41,5 @@ and open a pull request, or just describe the change in an issue.
 ## License
 
 By contributing you agree that your work is released under the
-[GPL-3.0-or-later](LICENSE) license, like the rest of Inkboard.
+[FSL-1.1-MIT](LICENSE) license, like the rest of Inkboard, and that the project owner may also
+release it under other licenses in future versions.

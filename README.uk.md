@@ -9,7 +9,7 @@
 
 [![Остання версія](https://img.shields.io/github/v/release/yaroslavyushchenko/inkboard?label=версія&color=4f6bed)](https://github.com/yaroslavyushchenko/inkboard/releases/latest)
 [![Завантаження](https://img.shields.io/github/downloads/yaroslavyushchenko/inkboard/total?label=завантажень&color=2f9e44)](https://github.com/yaroslavyushchenko/inkboard/releases)
-[![Ліцензія: GPL v3+](https://img.shields.io/github/license/yaroslavyushchenko/inkboard?label=ліцензія&color=blue)](LICENSE)
+[![Ліцензія: FSL-1.1-MIT](https://img.shields.io/badge/ліцензія-FSL--1.1--MIT-blue)](LICENSE)
 
 [![Завантажити для Windows](https://img.shields.io/badge/Завантажити-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/yaroslavyushchenko/inkboard/releases/latest)
 [![Завантажити для macOS](https://img.shields.io/badge/Завантажити-macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/yaroslavyushchenko/inkboard/releases/latest)
@@ -80,4 +80,9 @@ Inkboard такий самий простий (відкрив і пишеш), а
 
 ## Ліцензія
 
-Inkboard є вільним програмним забезпеченням: [GPL-3.0-or-later](LICENSE).
+Inkboard безкоштовний, а його вихідний код відкритий для всіх за ліцензією
+[Functional Source License 1.1, MIT Future License](LICENSE) (FSL-1.1-MIT). Програму можна
+використовувати, вивчати, змінювати й поширювати для будь-яких цілей, крім створення конкурентного
+продукту чи сервісу, а кожен випуск через два роки після виходу стає доступним і за ліцензією MIT.
+
+Версії до 0.9.2 включно випущені під GPL-3.0-or-later і лишаються під цією ліцензією.

@@ -11,7 +11,7 @@ Infinite board, pressure-sensitive vector ink, a protractor and a compass, shape
 [![Downloads](https://img.shields.io/github/downloads/yaroslavyushchenko/inkboard/total?color=2f9e44)](https://github.com/yaroslavyushchenko/inkboard/releases)
 [![CI](https://github.com/yaroslavyushchenko/inkboard/actions/workflows/ci.yml/badge.svg)](https://github.com/yaroslavyushchenko/inkboard/actions/workflows/ci.yml)
 [![Release build](https://github.com/yaroslavyushchenko/inkboard/actions/workflows/release.yml/badge.svg)](https://github.com/yaroslavyushchenko/inkboard/actions/workflows/release.yml)
-[![License: GPL v3+](https://img.shields.io/github/license/yaroslavyushchenko/inkboard?color=blue)](LICENSE)
+[![License: FSL-1.1-MIT](https://img.shields.io/badge/license-FSL--1.1--MIT-blue)](LICENSE)
 ![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 ![Languages](https://img.shields.io/badge/UI-English%20%7C%20Українська-ffd43b)
 
@@ -176,4 +176,9 @@ Releases are built by GitHub Actions: push a tag like `v0.1.0` and the
 
 ## License
 
-Inkboard is free software: [GPL-3.0-or-later](LICENSE).
+Inkboard is free to use and its source code is public, under the
+[Functional Source License 1.1, MIT Future License](LICENSE) (FSL-1.1-MIT). You may use, study,
+change and share it for any purpose except offering a competing product or service, and every
+release also becomes available under the MIT license two years after it comes out.
+
+Versions up to and including 0.9.2 were released under GPL-3.0-or-later and stay under that license.

@@ -20,6 +20,9 @@ All notable changes to Inkboard. Downloads for every version are on the
 - Settings → Board → Mouse wheel: scroll or zoom. A touchpad keeps two-finger scrolling and pinch zoom.
 
 ### Changed
+- New license: Inkboard is now source-available under FSL-1.1-MIT (free to use, study and change for
+  anything except a competing product; every release turns MIT after two years). Versions up to 0.9.2
+  stay under GPL-3.0-or-later.
 - White is no longer in the pen palette (it clashed with the chalkboard's chalk-white ink). Pens saved as
   white switch to black, and white ink, text and formulas already on boards and templates load as black
   (on the chalkboard black is shown as chalk white, so it looks the same there).

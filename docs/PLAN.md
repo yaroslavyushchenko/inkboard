@@ -1,6 +1,6 @@
 # Inkboard project plan
 
-Working name: **Inkboard** (easy to rename). Goal: a free, open-source (GPL-3.0-or-later) replacement for
+Working name: **Inkboard** (easy to rename). Goal: a free, source-available (FSL-1.1-MIT) replacement for
 the discontinued Microsoft Whiteboard: an infinite canvas for stylus drawing that feels as close to it as
 possible. Primary user: a school teacher with a pen tablet (Windows) who writes assignments for students.
 

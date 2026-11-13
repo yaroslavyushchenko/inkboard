@@ -116,9 +116,6 @@ html[lang="en"] .lang .knob { transform: translateX(46px); }
 .platforms span { margin-right: 4px; }
 .os-note { font-size: 14.5px; color: var(--muted); max-width: 32em; margin: 0; }
 .os-note b { color: var(--text); font-weight: 600; }
-.free-note { position: absolute; left: 100%; top: -6px; width: 170px; text-align: left; color: var(--faint); font-size: 25px; line-height: 1; transform: rotate(-6deg); margin-left: 18px; }
-.free-note svg { display: block; width: 58px; height: 34px; margin: 4px 0 0 -6px; }
-.free-note path { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .8s 1.4s var(--ease) forwards; }
 
 .stage { margin: 64px auto 0; max-width: 1120px; scroll-margin-top: 80px; }
 .window {
@@ -293,7 +290,6 @@ footer a { color: var(--muted); }
 
 /* Language-specific screenshots. */
 
-@media (max-width: 1100px) { .free-note { display: none; } }
 @media (max-width: 960px) {
   .bento { grid-template-columns: 1fr 1fr; }
   .stats { grid-template-columns: 1fr 1fr; }
@@ -331,6 +327,6 @@ footer a { color: var(--muted); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .rv { opacity: 1; transform: none; }
-  .draw, .scribble path, .free-note path { stroke-dashoffset: 0; }
+  .draw, .scribble path { stroke-dashoffset: 0; }
   html { scroll-behavior: auto; }
 }
