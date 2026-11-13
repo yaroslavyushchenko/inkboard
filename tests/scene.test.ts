@@ -1,8 +1,8 @@
 // Undo history of live edits (engine/scene.ts). Run: npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { Scene } from '../src/renderer/src/engine/scene.ts'
-import type { Item } from '../src/renderer/src/engine/types.ts'
+import { Scene } from '../src/board/engine/scene.ts'
+import type { Item } from '../src/board/engine/types.ts'
 
 const text = (id: string, s: string): Item => ({ type: 'text', id, z: 1, x: 0, y: 0, text: s, size: 20, color: '#000', bbox: { minX: 0, minY: 0, maxX: 1, maxY: 1 } })
 

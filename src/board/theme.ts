@@ -1,0 +1,27 @@
+import { useLayoutEffect } from 'react'
+import { withSurface } from './engine/surface'
+import { useFeature } from './features'
+import { useUI } from './store'
+
+/** Applies the interface theme and, when requested by the host, matches the board surface to it. */
+export function useAppTheme(surfaceFollowsTheme: boolean): void {
+  const enabled = useFeature('darkTheme')
+  const pref = useUI((s) => s.theme)
+  useLayoutEffect(() => {
+    const root = document.documentElement
+    const system = window.matchMedia('(prefers-color-scheme: dark)')
+    const apply = (): void => {
+      const dark = enabled && (pref === 'dark' || (pref === 'system' && system.matches))
+      if (dark) root.dataset.theme = 'dark'
+      else delete root.dataset.theme
+      if (surfaceFollowsTheme) {
+        const { background, setBackground } = useUI.getState()
+        setBackground(withSurface(background, dark))
+      }
+    }
+    apply()
+    if (!enabled || pref !== 'system') return
+    system.addEventListener('change', apply)
+    return () => system.removeEventListener('change', apply)
+  }, [enabled, pref, surfaceFollowsTheme])
+}

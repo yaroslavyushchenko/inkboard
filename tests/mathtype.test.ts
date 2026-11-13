@@ -1,10 +1,10 @@
 // Typesetting of formulas next to the curves (engine/mathtype.ts, labels in engine/graph.ts). Run: npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { graphPrims, graphSvg, placeLabels, sanitizeGraph, type Label } from '../src/renderer/src/engine/graph.ts'
-import { parseExpr } from '../src/renderer/src/engine/mathexpr.ts'
-import { typesetFormula, type MathBox } from '../src/renderer/src/engine/mathtype.ts'
-import type { GraphItem, PlotFn } from '../src/renderer/src/engine/types.ts'
+import { graphPrims, graphSvg, placeLabels, sanitizeGraph, type Label } from '../src/board/engine/graph.ts'
+import { parseExpr } from '../src/board/engine/mathexpr.ts'
+import { typesetFormula, type MathBox } from '../src/board/engine/mathtype.ts'
+import type { GraphItem, PlotFn } from '../src/board/engine/types.ts'
 
 function set(src: string, size = 20): MathBox {
   const r = parseExpr(src)
@@ -88,8 +88,8 @@ test('labels at the same spot are pushed apart', () => {
 })
 
 test('live rows keep drawing the last valid formula while one is half-typed', async () => {
-  const { liveFns } = await import('../src/renderer/src/engine/graph.ts')
-  const { EMPTY_FORMULA, typeChar } = await import('../src/renderer/src/engine/formula.ts')
+  const { liveFns } = await import('../src/board/engine/graph.ts')
+  const { EMPTY_FORMULA, typeChar } = await import('../src/board/engine/formula.ts')
   const typed = (s: string) => [...s].reduce(typeChar, EMPTY_FORMULA)
   const sq = typed('x^2 ')
   let r = liveFns([{ key: 1, st: sq, color: '#e03131', shown: null }])

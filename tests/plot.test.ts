@@ -1,9 +1,9 @@
 // Sampling and clipping of plotted functions (engine/graph.ts). Run: npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { graphSvg, plotCurve, sanitizeGraph } from '../src/renderer/src/engine/graph.ts'
-import { parseExpr } from '../src/renderer/src/engine/mathexpr.ts'
-import type { GraphItem } from '../src/renderer/src/engine/types.ts'
+import { graphSvg, plotCurve, sanitizeGraph } from '../src/board/engine/graph.ts'
+import { parseExpr } from '../src/board/engine/mathexpr.ts'
+import type { GraphItem } from '../src/board/engine/types.ts'
 
 const STEP = 2 / 24
 

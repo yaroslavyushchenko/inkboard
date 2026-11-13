@@ -1,8 +1,8 @@
 // On-board protractor helpers and instrument preferences. Run: npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cleanInstrumentPrefs, DEFAULT_INSTRUMENTS } from '../src/renderer/src/engine/instruments.ts'
-import { degText, hitProtractor, scaleAngle, snapDeg, toWorld, type Protractor } from '../src/renderer/src/engine/protractor.ts'
+import { cleanInstrumentPrefs, DEFAULT_INSTRUMENTS } from '../src/board/engine/instruments.ts'
+import { degText, hitProtractor, scaleAngle, snapDeg, toWorld, type Protractor } from '../src/board/engine/protractor.ts'
 
 const P: Protractor = { x: 0, y: 0, r: 200, rot: 0 }
 /** World point at scale angle `deg`, distance `d` from the centre. */

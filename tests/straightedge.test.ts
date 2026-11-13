@@ -15,7 +15,7 @@ import {
   snapStraightedgeToGrid,
   toWorld,
   type Straightedge
-} from '../src/renderer/src/engine/straightedge.ts'
+} from '../src/board/engine/straightedge.ts'
 
 const RULER: Straightedge = { kind: 'ruler', x: 0, y: 0, rot: 0, size: 10 * CM }
 const SQ45: Straightedge = { kind: 'square45', x: 0, y: 0, rot: 0, size: 10 * CM }

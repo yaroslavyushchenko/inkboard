@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useUI } from '../store'
-import { editor } from '../editor'
-import { useT } from '../i18n'
-import { platform, type UpdateState } from '../platform'
+import { useUI } from '../../../board/store'
+import { boardLibrary } from '../boardLibrary'
+import { useT } from '../../../board/i18n'
+import type { UpdateState } from '../../../shared/platform'
+import { platform } from '../platform'
 
 /** Bottom-left notice when a new version is downloading / ready / available. */
 export function UpdateBanner() {
@@ -50,7 +51,7 @@ export function UpdateBanner() {
         <button
           className="text-btn primary"
           onClick={async () => {
-            await editor.flush(true)
+            await boardLibrary.flush(true)
             await platform.update.install()
           }}
         >

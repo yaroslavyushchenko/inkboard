@@ -1,11 +1,11 @@
-# Publishes the landing page in site/ to GitHub Pages: https://yaroslavyushchenko.github.io/inkboard/
+# Publishes the React landing page and the shared board demo to GitHub Pages: https://yaroslavyushchenko.github.io/inkboard/
 # Download buttons read the latest release from the GitHub API, so a new release needs no redeploy.
 name: Pages
 
 on:
   push:
     branches: [main]
-    paths: ['site/**', '.github/workflows/pages.yml']
+    paths: ['site/**', 'src/board/**', 'src/shared/**', 'site.vite.config.mts', 'package.json', 'package-lock.json', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -25,9 +25,17 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - run: npm run build:site
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: site
+          path: dist/site
       - id: deployment
         uses: actions/deploy-pages@v5

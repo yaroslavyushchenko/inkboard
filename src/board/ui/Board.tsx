@@ -18,7 +18,7 @@ import { DEFAULT_SHAPE_SIZE, isLinear, SHAPE_BASES, shapeBox, shapeParts, snapAn
 import { hitTest, itemsInLasso } from '../engine/transform'
 import type { BBox, Item, Point, ShapeSpec, StrokeItem, TextItem } from '../engine/types'
 import { editor } from '../editor'
-import { matchShortcut, type ShortcutId } from '../shortcuts'
+import { isBoardFileShortcut, matchShortcut, type BoardFileShortcut, type ShortcutId } from '../shortcuts'
 import { useUI, type InkSlot, type PenAction, type Tool } from '../store'
 import { translate, type Lang, type MessageKey } from '../i18n'
 import { BACKGROUND_STYLE } from '../engine/background'
@@ -130,7 +130,9 @@ interface Hover {
 /** Ignore finger touches for this long after the pen was last seen (palm rejection). */
 const PALM_REJECT_MS = 800
 
-export function Board() {
+export type BoardFileActions = Record<BoardFileShortcut, () => unknown>
+
+export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
   const baseRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
 
@@ -1400,6 +1402,7 @@ export function Board() {
     }
 
     const onWheel = (e: WheelEvent): void => {
+      if (!fileActions && !document.hasFocus()) return
       e.preventDefault()
       const p = local(e)
       const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1
@@ -1446,15 +1449,16 @@ export function Board() {
       // All shortcuts come from shortcuts.ts and match the physical key, so they work on any layout.
       const sc = matchShortcut(e, ui.view === 'board' ? 'board' : 'app')
       if (!sc) return
+      if (isBoardFileShortcut(sc.id)) {
+        if (!fileActions) return
+        e.preventDefault()
+        void fileActions[sc.id]()
+        return
+      }
       e.preventDefault()
-      const actions: Record<ShortcutId, () => unknown> = {
+      const actions: Record<Exclude<ShortcutId, BoardFileShortcut>, () => unknown> = {
         undo: () => editor.undo(),
         redo: () => editor.redo(),
-        newBoard: () => editor.newBoard(),
-        openFile: () => editor.openFile(),
-        home: () => editor.goHome(),
-        save: () => editor.save(),
-        saveAs: () => editor.saveAsFile(),
         zoomIn: () => editor.zoomStep(1),
         zoomOut: () => editor.zoomStep(-1),
         zoomReset: () => editor.resetZoom(),
@@ -1599,7 +1603,7 @@ export function Board() {
       window.removeEventListener('dragover', onDragOver)
       window.removeEventListener('drop', onDrop)
     }
-  }, [])
+  }, [fileActions])
 
   return (
     <div className="board">

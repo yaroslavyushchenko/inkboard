@@ -3,6 +3,14 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
+## [0.9.1] (2026-11-13)
+
+### Added
+- A live whiteboard demo on the website, with a green chalkboard in dark mode.
+
+### Changed
+- The React website and the desktop app share the same board editor.
+
 ## [0.8.0] (2026-11-13)
 
 ### Added

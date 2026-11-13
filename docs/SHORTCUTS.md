@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-Single source of truth in code: [`src/renderer/src/shortcuts.ts`](../src/renderer/src/shortcuts.ts).
+Single source of truth in code: [`src/board/shortcuts.ts`](../src/board/shortcuts.ts).
 The in-app dialog (Settings → *Keyboard shortcuts & Wacom ExpressKeys*) is generated from it, and
 [`tests/shortcuts.test.ts`](../tests/shortcuts.test.ts) checks every line below (`npm test`).
 

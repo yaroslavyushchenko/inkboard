@@ -1,10 +1,10 @@
-import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { editor } from '../editor'
 import { useT } from '../i18n'
 import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, useUI, type InkSlot } from '../store'
 import { TEXT_SIZES } from '../engine/text'
 import { BrushSelectIcon, EraserIcon, FormulaIcon, HandIcon, ImageIcon, LassoIcon, MoveIcon, PenIcon, RedoIcon, TextIcon, UndoIcon } from './icons'
-import { GraphMenu, InstrumentsMenu, ShapesMenu, TemplatesMenu } from './InsertMenus'
+import { GraphMenu, InstrumentsMenu, ShapesMenu } from './InsertMenus'
 import { LineStyleControls, SizeSlider } from './LineStyle'
 import { Popover } from './Popover'
 
@@ -28,7 +28,7 @@ function toolbarPlace(bar: HTMLElement): CSSProperties {
   if (centred >= from && centred + w <= to) return {}
   if (from + w <= to) return { left: Math.min(Math.max(from, centred), to - w), transform: 'none' }
   const scale = Math.min(1, (W - GAP * 2) / w)
-  return { top: (menu?.bottom ?? GAP) + 8, transform: `translateX(-50%) scale(${scale})`, transformOrigin: 'top center' }
+  return { top: Math.max(menu?.bottom ?? GAP, right?.bottom ?? GAP) + 8, transform: `translateX(-50%) scale(${scale})`, transformOrigin: 'top center' }
 }
 
 /** Keep the toolbar off the other top bars as the window, the board title or the toolbar change size. */
@@ -137,7 +137,7 @@ function InkOptions({
   )
 }
 
-export function Toolbar() {
+export function Toolbar({ extraTools }: { extraTools?: ReactNode }) {
   const { tool, activePen, pens, highlighter, canUndo, canRedo, formulaEdit } = useUI()
   const formulaEditing = !!formulaEdit
   const { selectPen, setTool, updatePen, updateHighlighter } = useUI.getState()
@@ -257,7 +257,7 @@ export function Toolbar() {
         </button>
         <ShapesMenu />
         <GraphMenu />
-        <TemplatesMenu />
+        {extraTools}
         <button className="icon-btn" title={t('tool.image')} onClick={() => fileRef.current?.click()}>
           <ImageIcon />
         </button>

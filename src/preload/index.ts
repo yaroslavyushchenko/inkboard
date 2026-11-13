@@ -5,7 +5,7 @@ const invoke =
   (...args: unknown[]): Promise<unknown> =>
     ipcRenderer.invoke(channel, ...args)
 
-// Mirrors `PlatformApi` in src/renderer/src/platform.ts.
+// Mirrors `PlatformApi` in src/shared/platform.ts.
 contextBridge.exposeInMainWorld('inkboard', {
   platform: process.platform,
   // Read once, synchronously, so the first render already knows which features are on.

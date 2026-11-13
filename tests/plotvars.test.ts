@@ -1,10 +1,10 @@
 // Plotting formulas from the board: other variables (t, a, φ), function names, ranges. Run: npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { EMPTY_FORMULA, typeChar, type Atom, type FormulaState, type Row } from '../src/renderer/src/engine/formula.ts'
-import { fnHead, labelRows, parseRows, plotFormula, plotHead, renameVar, rowsToText } from '../src/renderer/src/engine/formulaexpr.ts'
-import { axisNames, graphPrims } from '../src/renderer/src/engine/graph.ts'
-import type { GraphItem } from '../src/renderer/src/engine/types.ts'
+import { EMPTY_FORMULA, typeChar, type Atom, type FormulaState, type Row } from '../src/board/engine/formula.ts'
+import { fnHead, labelRows, parseRows, plotFormula, plotHead, renameVar, rowsToText } from '../src/board/engine/formulaexpr.ts'
+import { axisNames, graphPrims } from '../src/board/engine/graph.ts'
+import type { GraphItem } from '../src/board/engine/types.ts'
 
 const rows = (s: string, st: FormulaState = EMPTY_FORMULA): Row => [...s].reduce(typeChar, st).rows
 const c = (s: string): Atom => ({ t: 'c', s })
@@ -101,11 +101,11 @@ test('a curve is drawn only where its value is in range, and that needs version 
   assert.ok(Math.min(...ys) >= 1 - 1e-6 && Math.max(...ys) <= 4 + 1e-6)
   // Two pieces: the parabola between 1 and 4 on both sides of the axis.
   assert.equal(graphPrims(g).paths.length, 2)
-  const { serializeBoard, deserializeBoard } = await import('../src/renderer/src/engine/serialize.ts')
+  const { serializeBoard, deserializeBoard } = await import('../src/board/engine/serialize.ts')
   const file = JSON.parse(JSON.stringify(serializeBoard({ items: [g], background: 'dots', camera: { x: 0, y: 0, zoom: 1 } })))
   assert.equal(file.version, 7)
   assert.deepEqual((deserializeBoard(file).items[0] as GraphItem).fns, g.fns)
   // Fitting keeps to the range of values.
-  const { fitRanges } = await import('../src/renderer/src/engine/graph.ts')
+  const { fitRanges } = await import('../src/board/engine/graph.ts')
   assert.deepEqual(fitRanges(g), { xMin: -3, xMax: 3, yMin: -1, yMax: 5 })
 })

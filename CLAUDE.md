@@ -1,10 +1,10 @@
 # Inkboard: notes for AI assistants
 
 Free, open-source (GPL-3.0-or-later) infinite whiteboard for pen tablets; Electron + React + TS,
-custom Canvas 2D engine in `src/renderer/src/engine`. Roadmap: `docs/PLAN.md`.
+custom Canvas 2D engine in `src/board/engine`. Roadmap: `docs/PLAN.md`.
 
 ## Don't break what exists
-- **Keyboard shortcuts**: all of them live in `src/renderer/src/shortcuts.ts` (matched by physical key
+- **Keyboard shortcuts**: all of them live in `src/board/shortcuts.ts` (matched by physical key
   `KeyboardEvent.code`, never `e.key`, so non-Latin layouts work). Don't change or remove one without
   asking the user. Adding one = update `shortcuts.ts`, `docs/SHORTCUTS.md`, `tests/shortcuts.test.ts`
   and both translations in `i18n.ts`.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 import { editor } from '../editor'
 import { BUILTIN_GRAPHS, graphBBox, graphSvg, type GraphPreset } from '../engine/graph'
 import { lineSvgPath } from '../engine/ink'
@@ -6,11 +6,11 @@ import { MAX_BASE, MIN_BASE, SHAPE_BASES, SHAPES_2D, SHAPES_3D, shapeParts, type
 import type { GraphItem, GraphParams } from '../engine/types'
 import { useT, type MessageKey } from '../i18n'
 import { useUI } from '../store'
-import { AxesIcon, ChevronDownIcon, CompassIcon, InstrumentsIcon, PolygonIcon, ProtractorIcon, RulerIcon, SetSquare45Icon, SetSquare60Icon, ShapesIcon, StampIcon } from './icons'
+import { AxesIcon, ChevronDownIcon, CompassIcon, InstrumentsIcon, PolygonIcon, ProtractorIcon, RulerIcon, SetSquare45Icon, SetSquare60Icon, ShapesIcon } from './icons'
 import { Popover } from './Popover'
 
 /** Toolbar button that opens a popover below the toolbar. */
-function MenuButton({
+export function MenuButton({
   icon,
   title,
   active,
@@ -239,92 +239,6 @@ export function GraphMenu() {
       >
         <span>{t('graph.functionGraph')}</span>
       </button>
-    </MenuButton>
-  )
-}
-
-export function TemplateThumb({ id, v }: { id: string; v?: number }) {
-  const [url, setUrl] = useState<string | null>(null)
-  useEffect(() => {
-    let alive = true
-    void editor.templateThumbUrl(id).then((u) => alive && setUrl(u))
-    return () => {
-      alive = false
-    }
-  }, [id, v])
-  return <div className="card-thumb">{url ? <img src={url} alt="" draggable={false} /> : <div className="card-thumb-empty" />}</div>
-}
-
-export function TemplatesMenu() {
-  const t = useT()
-  const [open, setOpen] = useState(false)
-  const templates = useUI((s) => s.library.templates)
-  const hasSelection = useUI((s) => s.selectedIds.length > 0)
-  const [name, setName] = useState('')
-  const [editing, setEditing] = useState<string | null>(null)
-  return (
-    <MenuButton icon={<StampIcon />} title={t('tpl.title')} open={open} setOpen={setOpen}>
-      <div className="popover-title">{t('tpl.title')}</div>
-      {hasSelection && (
-        <form
-          className="tag-new"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (!name.trim()) return
-            void editor.saveSelectionAsTemplate(name).then(() => setName(''))
-          }}
-        >
-          <input value={name} placeholder={t('tpl.namePlaceholder')} onChange={(e) => setName(e.target.value)} />
-          <button type="submit" className="text-btn outline" disabled={!name.trim()}>
-            {t('tpl.saveSelection')}
-          </button>
-        </form>
-      )}
-      {templates.length === 0 ? (
-        <p className="settings-hint">{t('tpl.empty')}</p>
-      ) : (
-        <div className="template-grid">
-          {templates.map((tp) => (
-            <div key={tp.id} className="template-card">
-              <button
-                className="template-open"
-                title={t('tpl.insert')}
-                onClick={() => {
-                  setOpen(false)
-                  void editor.insertTemplate(tp.id)
-                }}
-              >
-                <TemplateThumb id={tp.id} v={tp.updatedAt} />
-              </button>
-              {editing === tp.id ? (
-                <input
-                  className="card-title-input"
-                  autoFocus
-                  defaultValue={tp.name}
-                  onBlur={(e) => {
-                    setEditing(null)
-                    void editor.renameTemplate(tp.id, e.target.value)
-                  }}
-                  onKeyDown={(e) => {
-                    if ((e.code === 'Enter' || e.code === 'NumpadEnter')) (e.target as HTMLInputElement).blur()
-                    if (e.code === 'Escape') setEditing(null)
-                  }}
-                />
-              ) : (
-                <div className="template-name">
-                  <span title={tp.name} onDoubleClick={() => setEditing(tp.id)}>
-                    {tp.name}
-                  </span>
-                  <button className="text-btn danger" title={t('tpl.delete')} onClick={() => void editor.deleteTemplate(tp.id)}>
-                    ×
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      {templates.length > 0 && <p className="settings-hint">{t('tpl.hint')}</p>}
     </MenuButton>
   )
 }

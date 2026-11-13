@@ -1,16 +1,13 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 import { BACKGROUND_STYLE, CHALK_PATTERN_COLOR } from '../engine/background'
 import { bgPattern, CHALKBOARD_COLOR, isChalk, withPattern, withSurface } from '../engine/surface'
 import type { PaperPattern } from '../engine/types'
-import { editor } from '../editor'
 import { useFeature } from '../features'
 import { LANGUAGES, useT, type Lang, type MessageKey } from '../i18n'
-import { platform } from '../platform'
 import { useUI } from '../store'
 import { PaperIcon } from './icons'
 import { PenSettings } from './PenSettings'
 import { ExperimentalSettings, ThemeSettings } from './ExperimentalSettings'
-import { AboutSection } from './UpdateBanner'
 import { Popover } from './Popover'
 
 const OPTIONS: { kind: PaperPattern; label: MessageKey }[] = [
@@ -40,9 +37,10 @@ function Preview({ kind, chalk }: { kind: PaperPattern; chalk: boolean }) {
 }
 
 /** Top-right board settings: paper background and UI language. */
-export function BackgroundPicker() {
+export function BackgroundPicker({
+  storageSettings, about, fixedLanguage, surfaceFollowsTheme
+}: { storageSettings?: ReactNode; about?: ReactNode; fixedLanguage?: boolean; surfaceFollowsTheme: boolean }) {
   const { background, lang, setBackground, setLang } = useUI()
-  const backupDir = useUI((s) => s.library.backupDir)
   const chalkFlag = useFeature('chalkboard')
   const chalk = isChalk(background)
   const pattern = bgPattern(background)
@@ -58,7 +56,7 @@ export function BackgroundPicker() {
         <Popover onClose={close} className="bg-popover">
           <div className="popover-title">{t('settings.background')}</div>
           {/* Shown while the flag is on, or to switch a chalkboard back to paper after it was turned off. */}
-          {(chalkFlag || chalk) && (
+          {!surfaceFollowsTheme && (chalkFlag || chalk) && (
             <div className="lang-options surface-options">
               {[false, true].map((c) => (
                 <button key={String(c)} className={`lang-option ${chalk === c ? 'active' : ''}`} onClick={() => setBackground(withSurface(background, c))}>
@@ -79,37 +77,23 @@ export function BackgroundPicker() {
               </button>
             ))}
           </div>
-          <div className="popover-title section">{t('settings.language')}</div>
-          <div className="lang-options">
-            {(Object.keys(LANGUAGES) as Lang[]).map((l) => (
-              <button key={l} className={`lang-option ${lang === l ? 'active' : ''}`} onClick={() => setLang(l)}>
-                {LANGUAGES[l]}
-              </button>
-            ))}
-          </div>
-          {platform.capabilities.backup && (
+          {!fixedLanguage && (
             <>
-              <div className="popover-title section">{t('settings.backup')}</div>
-              <p className="settings-hint">{t('settings.backupHint')}</p>
-              <div className="backup-row">
-                <span className="backup-path" title={backupDir ?? undefined}>
-                  {backupDir ?? t('settings.backupOff')}
-                </span>
-                <button className="text-btn outline" onClick={() => void editor.chooseBackupDir()}>
-                  {t(backupDir ? 'settings.backupChange' : 'settings.backupChoose')}
-                </button>
-                {backupDir && (
-                  <button className="text-btn" onClick={() => void editor.disableBackup()}>
-                    {t('settings.backupDisable')}
+              <div className="popover-title section">{t('settings.language')}</div>
+              <div className="lang-options">
+                {(Object.keys(LANGUAGES) as Lang[]).map((l) => (
+                  <button key={l} className={`lang-option ${lang === l ? 'active' : ''}`} onClick={() => setLang(l)}>
+                    {LANGUAGES[l]}
                   </button>
-                )}
+                ))}
               </div>
             </>
           )}
+          {storageSettings}
           <ThemeSettings />
           <PenSettings />
-          <ExperimentalSettings />
-          <AboutSection />
+          {!surfaceFollowsTheme && <ExperimentalSettings />}
+          {about}
         </Popover>
       )}
     </div>

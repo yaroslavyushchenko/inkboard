@@ -1,59 +1,39 @@
 import { useEffect } from 'react'
-import { editor } from './editor'
-import { useUI } from './store'
-import { useAppTheme } from './theme'
-import { BackgroundPicker } from './ui/BackgroundPicker'
-import { FormulaEditor } from './ui/FormulaEditor'
-import { FunctionPanel } from './ui/FunctionPanel'
-import { MathKeypad } from './ui/MathKeypad'
-import { InstrumentPanel } from './ui/InstrumentPanel'
-import { GraphDialog } from './ui/GraphDialog'
-import { Board } from './ui/Board'
+import { BoardWorkspace } from '../../board/BoardWorkspace'
+import { useUI } from '../../board/store'
+import type { BoardFileActions } from '../../board/ui/Board'
+import { boardLibrary } from './boardLibrary'
+import { BackupSettings } from './ui/BackupSettings'
 import { HomeScreen } from './ui/HomeScreen'
 import { MainMenu } from './ui/MainMenu'
-import { SelectionToolbar } from './ui/SelectionToolbar'
-import { ShortcutsDialog } from './ui/ShortcutsDialog'
-import { TextEditor } from './ui/TextEditor'
-import { Toolbar } from './ui/Toolbar'
-import { UpdateBanner } from './ui/UpdateBanner'
-import { InstrumentTip } from './ui/InstrumentTip'
-import { ZoomControls } from './ui/ZoomControls'
+import { SaveSelectionTemplate } from './ui/SaveSelectionTemplate'
+import { TemplatesMenu } from './ui/TemplatesMenu'
+import { AboutSection, UpdateBanner } from './ui/UpdateBanner'
+
+const fileActions: BoardFileActions = {
+  newBoard: () => boardLibrary.newBoard(),
+  openFile: () => boardLibrary.openFile(),
+  home: () => boardLibrary.goHome(),
+  save: () => boardLibrary.save(),
+  saveAs: () => boardLibrary.saveAsFile()
+}
 
 export function App() {
   const view = useUI((s) => s.view)
-  useAppTheme()
   useEffect(() => {
-    void editor.start()
-  }, [])
-  useEffect(() => {
-    // Buttons and sliders shouldn't keep keyboard focus after a click: a focused button would be
-    // "pressed" again by Space (hold-to-pan) or Enter, and the focus ring lingers on the toolbar.
-    const drop = (e: PointerEvent): void => {
-      const el = (e.target as HTMLElement | null)?.closest?.('button, input[type="range"], input[type="checkbox"]')
-      if (el instanceof HTMLElement) setTimeout(() => document.activeElement === el && el.blur(), 0)
-    }
-    window.addEventListener('pointerup', drop, true)
-    return () => window.removeEventListener('pointerup', drop, true)
+    void boardLibrary.start()
   }, [])
   return (
-    <div className="app">
-      {/* The board stays mounted under the home screen so switching back is instant. */}
-      <Board />
-      <TextEditor />
-      <FormulaEditor />
-      <SelectionToolbar />
-      <MainMenu />
-      <Toolbar />
-      <BackgroundPicker />
-      <ZoomControls />
-      <GraphDialog />
-      <FunctionPanel />
-      <InstrumentPanel />
-      <MathKeypad />
+    <BoardWorkspace
+      fileActions={fileActions}
+      menu={<MainMenu />}
+      extraTools={<TemplatesMenu />}
+      selectionActions={(side) => <SaveSelectionTemplate side={side} />}
+      storageSettings={<BackupSettings />}
+      about={<AboutSection />}
+    >
       <UpdateBanner />
-      <InstrumentTip />
-      <ShortcutsDialog />
       {view === 'home' && <HomeScreen />}
-    </div>
+    </BoardWorkspace>
   )
 }

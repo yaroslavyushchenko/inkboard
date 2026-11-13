@@ -2,7 +2,14 @@
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
-## What's new in 0.9.0
+## What's new in 0.9.1
+
+- [Try Inkboard in your browser](https://yaroslavyushchenko.github.io/inkboard/#demo). The live demo uses
+  the same editor as the desktop app, with drawing tools, formulas and graphs.
+- The demo pairs dark mode with a green chalkboard and light mode with white paper. Demo edits reset
+  when you reload the page.
+
+## Also in 0.9.0
 
 - **Dark theme:** choose System, Light or Dark in Settings. Theme selection is available by default.
   The interface follows your system appearance unless you choose a theme yourself.

@@ -27,7 +27,7 @@ them on. No rebuild is needed to switch them.
 ## Adding or removing a flag
 
 1. Add an entry to `FEATURES` in `src/shared/features.ts` (id, default, description).
-2. Add `feature.<id>` and `feature.<id>.hint` texts (English and Ukrainian) in `src/renderer/src/i18n.ts`.
+2. Add `feature.<id>` and `feature.<id>.hint` texts (English and Ukrainian) in `src/board/i18n.ts`.
 3. Read it in the renderer with `useFeature('<id>')` (React) or `isFeatureOn('<id>')` (anywhere else).
    Keep checks out of per-frame code: read the flag where the UI is built, not inside the render loop.
 

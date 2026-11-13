@@ -12,8 +12,7 @@
     "esModuleInterop": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "types": ["node"],
-    "paths": { "@/*": ["./src/renderer/src/*"] }
+    "types": ["node"]
   },
-  "include": ["src", "electron.vite.config.ts"]
+  "include": ["src", "site", "electron.vite.config.ts", "site.vite.config.mts"]
 }

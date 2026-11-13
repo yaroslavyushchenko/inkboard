@@ -5,10 +5,10 @@ import { test } from 'node:test'
 import {
   backspace, EMPTY_FORMULA, insert, insertFraction, moveLeft, moveRight, rowAt, typeChar, validateRows,
   type Atom, type FormulaState, type Row
-} from '../src/renderer/src/engine/formula.ts'
-import { nodeToRows, nodeToText, numericResult, parseRows, readPlotRows, rowsToText } from '../src/renderer/src/engine/formulaexpr.ts'
-import { caretAt, caretOf, caretVertical, formulaBBox, formulaSvg, typesetRows } from '../src/renderer/src/engine/formulatype.ts'
-import { parseExpr } from '../src/renderer/src/engine/mathexpr.ts'
+} from '../src/board/engine/formula.ts'
+import { nodeToRows, nodeToText, numericResult, parseRows, readPlotRows, rowsToText } from '../src/board/engine/formulaexpr.ts'
+import { caretAt, caretOf, caretVertical, formulaBBox, formulaSvg, typesetRows } from '../src/board/engine/formulatype.ts'
+import { parseExpr } from '../src/board/engine/mathexpr.ts'
 
 const type = (s: string, st: FormulaState = EMPTY_FORMULA): FormulaState => [...s].reduce(typeChar, st)
 const rows = (s: string): Row => type(s).rows

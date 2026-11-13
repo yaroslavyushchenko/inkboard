@@ -43,6 +43,12 @@ export type ShortcutId =
   | 'protractor'
   | 'compass'
 
+const BOARD_FILE_SHORTCUTS = ['home', 'newBoard', 'openFile', 'save', 'saveAs'] as const
+export type BoardFileShortcut = (typeof BOARD_FILE_SHORTCUTS)[number]
+
+export const isBoardFileShortcut = (id: ShortcutId): id is BoardFileShortcut =>
+  BOARD_FILE_SHORTCUTS.some((fileId) => fileId === id)
+
 export type ShortcutGroup = 'tools' | 'editing' | 'view'
 
 export interface Shortcut {

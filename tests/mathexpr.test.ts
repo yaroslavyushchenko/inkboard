@@ -1,7 +1,7 @@
 // Function formula parser (engine/mathexpr.ts). Run: npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { parseExpr, power } from '../src/renderer/src/engine/mathexpr.ts'
+import { parseExpr, power } from '../src/board/engine/mathexpr.ts'
 
 /** Value of formula `src` at x. */
 function at(src: string, x: number): number {

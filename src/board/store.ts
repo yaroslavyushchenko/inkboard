@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import type { LibraryState } from '../../shared/library'
+import { createJSONStorage, persist } from 'zustand/middleware'
+import type { LibraryState } from '../shared/library'
 import type { GraphPreset } from './engine/graph'
 import type { ShapeKind } from './engine/shapes'
 import type { Protractor } from './engine/protractor'
@@ -241,6 +241,7 @@ export const useUI = create<UIState>()(
     {
       // Only user preferences survive restarts; the board itself is restored from the autosave file.
       name: 'inkboard-settings',
+      storage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
       version: 1,
       merge: (saved, current) => {
         const p = (saved ?? {}) as Partial<UIState>
@@ -274,3 +275,8 @@ export const useUI = create<UIState>()(
     }
   )
 )
+
+export function enablePreferenceStorage(): void {
+  useUI.persist.setOptions({ storage: createJSONStorage(() => localStorage) })
+  void useUI.persist.rehydrate()
+}

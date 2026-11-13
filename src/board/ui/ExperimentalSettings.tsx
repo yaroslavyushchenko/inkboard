@@ -1,4 +1,4 @@
-import { FEATURE_IDS } from '../../../shared/features'
+import { FEATURE_IDS } from '../../shared/features'
 import { useFeatures } from '../features'
 import { useT, type MessageKey } from '../i18n'
 import { useUI, type ThemePref } from '../store'

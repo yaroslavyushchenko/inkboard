@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import appIcon from '../../../../build/icon.png'
 import { TAG_COLORS, type BoardEntry, type Tag } from '../../../shared/library'
-import { editor } from '../editor'
-import { relativeTime, useT } from '../i18n'
+import { boardLibrary } from '../boardLibrary'
+import { relativeTime, useT } from '../../../board/i18n'
 import { platform } from '../platform'
-import { useUI } from '../store'
-import { ArrowLeftIcon, CheckIcon, DotsIcon, FolderIcon, HomeIcon, PinIcon, PlusIcon, SearchIcon } from './icons'
-import { Popover } from './Popover'
+import { useUI } from '../../../board/store'
+import { ArrowLeftIcon, CheckIcon, DotsIcon, FolderIcon, HomeIcon, PinIcon, PlusIcon, SearchIcon } from '../../../board/ui/icons'
+import { Popover } from '../../../board/ui/Popover'
 
 const lib = platform.library
-const refresh = (): Promise<void> => editor.refreshLibrary()
+const refresh = (): Promise<void> => boardLibrary.refreshLibrary()
 
 function Thumb({ entry }: { entry: BoardEntry }) {
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
     let alive = true
-    void editor.thumbUrl(entry).then((u) => alive && setUrl(u))
+    void boardLibrary.thumbUrl(entry).then((u) => alive && setUrl(u))
     return () => {
       alive = false
     }
@@ -112,11 +112,11 @@ function BoardCard({ entry, tags }: { entry: BoardEntry; tags: Tag[] }) {
     void fn().then(refresh)
   }
   const open = (): void => {
-    if (!deleted && !entry.missing && !renaming) void editor.openBoard(entry.id)
+    if (!deleted && !entry.missing && !renaming) void boardLibrary.openBoard(entry.id)
   }
   const commitRename = (): void => {
     setRenaming(false)
-    if (title.trim() && title.trim() !== entry.title) void editor.renameBoard(entry.id, title.trim())
+    if (title.trim() && title.trim() !== entry.title) void boardLibrary.renameBoard(entry.id, title.trim())
   }
   const folder = entry.filePath?.split(/[\\/]/).slice(-2, -1)[0]
   return (
@@ -223,7 +223,7 @@ function BoardCard({ entry, tags }: { entry: BoardEntry; tags: Tag[] }) {
                     <button className="menu-item" onClick={act(() => lib.duplicate(entry.id))}>
                       {t('card.duplicate')}
                     </button>
-                    <button className="menu-item" onClick={act(() => editor.saveAsFile(entry.id))}>
+                    <button className="menu-item" onClick={act(() => boardLibrary.saveAsFile(entry.id))}>
                       {t('card.saveAsFile')}
                     </button>
                   </>
@@ -237,7 +237,7 @@ function BoardCard({ entry, tags }: { entry: BoardEntry; tags: Tag[] }) {
                 <button
                   className="menu-item danger"
                   title={entry.kind === 'file' ? t('card.removeFromListHint') : undefined}
-                  onClick={act(() => editor.deleteBoard(entry.id))}
+                  onClick={act(() => boardLibrary.deleteBoard(entry.id))}
                 >
                   {t(entry.kind === 'file' ? 'card.removeFromList' : 'card.delete')}
                 </button>
@@ -302,10 +302,10 @@ export function HomeScreen() {
         <div className="home-title-row">
           <h1>{t('home.title')}</h1>
           <div className="home-actions">
-            <button className="text-btn outline" onClick={() => void editor.openFile()}>
+            <button className="text-btn outline" onClick={() => void boardLibrary.openFile()}>
               <FolderIcon width={18} height={18} /> {t('home.openFile')}
             </button>
-            <button className="text-btn primary" onClick={() => void editor.newBoard()}>
+            <button className="text-btn primary" onClick={() => void boardLibrary.newBoard()}>
               <PlusIcon width={18} height={18} /> {t('home.newBoard')}
             </button>
           </div>

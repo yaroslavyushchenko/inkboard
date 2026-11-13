@@ -16,7 +16,7 @@ import {
   withInkSurface,
   withPattern,
   withSurface
-} from '../src/renderer/src/engine/surface.ts'
+} from '../src/board/engine/surface.ts'
 
 const lum = (c: string): number => luminance([1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)))
 

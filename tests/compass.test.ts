@@ -1,7 +1,7 @@
 // On-board compass helpers (engine/compass.ts). Run: npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { COMPASS_CELL, hitCompass, pencilAt, radiusFromHandle, radiusTicks, snapSweep, type Compass } from '../src/renderer/src/engine/compass.ts'
+import { COMPASS_CELL, hitCompass, pencilAt, radiusFromHandle, radiusTicks, snapSweep, type Compass } from '../src/board/engine/compass.ts'
 
 const Q = Math.PI / 2
 const deg = (d: number): number => (d * Math.PI) / 180

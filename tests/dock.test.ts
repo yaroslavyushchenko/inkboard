@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 // dock.ts reads the DOM only inside functions these tests don't call.
-import { fitBox } from '../src/renderer/src/ui/dock.ts'
+import { fitBox } from '../src/board/ui/dock.ts'
 
 const area = { w: 1000, h: 700, top: 84 }
 const inside = (f: { left: number; top: number }, w: number, h: number): void => {

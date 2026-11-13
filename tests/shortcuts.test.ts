@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { matchShortcut, SHORTCUTS, type KeyLike } from '../src/renderer/src/shortcuts.ts'
+import { matchShortcut, SHORTCUTS, type KeyLike } from '../src/board/shortcuts.ts'
 
 const key = (code: string, mods: Partial<KeyLike> = {}): KeyLike => ({
   code,
@@ -62,7 +62,7 @@ test('works on any keyboard layout (matches the physical key, ignores the typed 
   // On a Ukrainian layout Ctrl+Z types "я", but the event still has code "KeyZ".
   const ukrainian = { ...ctrl('KeyZ'), key: 'я' } as KeyLike
   assert.equal(matchShortcut(ukrainian, 'board')?.id, 'undo')
-  const source = readFileSync(new URL('../src/renderer/src/shortcuts.ts', import.meta.url), 'utf8')
+  const source = readFileSync(new URL('../src/board/shortcuts.ts', import.meta.url), 'utf8')
   assert.ok(!/\be\.key\b/.test(source.replace(/\/\*[\s\S]*?\*\//g, '')), 'shortcuts.ts must not match on e.key')
 })
 
@@ -90,7 +90,7 @@ test('no two shortcuts share the same key combination', () => {
 
 test('every shortcut is documented and translated', () => {
   const docs = readFileSync(new URL('../docs/SHORTCUTS.md', import.meta.url), 'utf8')
-  const i18n = readFileSync(new URL('../src/renderer/src/i18n.ts', import.meta.url), 'utf8')
+  const i18n = readFileSync(new URL('../src/board/i18n.ts', import.meta.url), 'utf8')
   for (const s of SHORTCUTS) {
     assert.ok(docs.includes(s.display), `docs/SHORTCUTS.md is missing ${s.display}`)
     const occurrences = i18n.split(`'${s.label}'`).length - 1 + (i18n.split(`"${s.label}"`).length - 1)

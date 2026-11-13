@@ -1,5 +1,5 @@
 import { useT, type MessageKey } from '../i18n'
-import { CLIPBOARD_KEYS, HOLD_KEYS, SHORTCUTS, type ShortcutGroup } from '../shortcuts'
+import { CLIPBOARD_KEYS, HOLD_KEYS, SHORTCUTS, isBoardFileShortcut, type ShortcutGroup } from '../shortcuts'
 import { useUI } from '../store'
 
 const GROUPS: { id: ShortcutGroup; title: MessageKey }[] = [
@@ -9,7 +9,7 @@ const GROUPS: { id: ShortcutGroup; title: MessageKey }[] = [
 ]
 
 /** All keyboard shortcuts (read from shortcuts.ts) + how to put them on Wacom ExpressKeys. */
-export function ShortcutsDialog() {
+export function ShortcutsDialog({ fileActions }: { fileActions: boolean }) {
   const t = useT()
   const open = useUI((s) => s.shortcutsOpen)
   if (!open) return null
@@ -17,7 +17,7 @@ export function ShortcutsDialog() {
     useUI.setState({ shortcutsOpen: false })
   }
   const rows = (g: ShortcutGroup): { display: string; label: string }[] => [
-    ...SHORTCUTS.filter((s) => s.group === g && !s.alias).map((s) => {
+    ...SHORTCUTS.filter((s) => s.group === g && !s.alias && (fileActions || !isBoardFileShortcut(s.id))).map((s) => {
       // Show alternative bindings of the same action on one line (e.g. Ctrl+Y / Ctrl+Shift+Z).
       const alt = SHORTCUTS.filter((a) => a.alias && a.id === s.id && a.display !== s.display).map((a) => a.display)
       return { display: [s.display, ...alt].join(' / '), label: s.label }

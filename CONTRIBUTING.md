@@ -13,26 +13,29 @@ your tablet. Screenshots or a short screen recording help a lot.
 
 ```bash
 npm install
-npm run dev          # the app with hot reload
+npm run dev          # the desktop app with hot reload
+npm run dev:site     # the site and board demo at /inkboard/
 npm run typecheck && npm test && npm run build   # run before every commit
 ```
 
 - Electron + React + TypeScript. The board is a custom Canvas 2D engine in
-  `src/renderer/src/engine`; React only draws the panels. The main process (`src/main`) handles the
-  board library, files and updates.
+  `src/board/engine`; React only draws the panels. The main process (`src/main`) handles the
+  board library, files and updates. Both entry points use the React workspace in `src/board`.
+  The demo runs in its own frame and keeps edits in memory. Run `npm run build:site` to build
+  the GitHub Pages artifact in `dist/site`.
 - Board data stays **vector**. A change to the file format needs a `FORMAT_VERSION` bump in
   `engine/serialize.ts`, and older files must keep opening.
 - Saving must stay power-cut safe: write board and library files through `writeDurable`
   (`src/main/fsutil.ts`).
 - **Keyboard shortcuts** match the physical key (`KeyboardEvent.code`) so they work on any layout.
-  Adding one means updating `src/renderer/src/shortcuts.ts`, `docs/SHORTCUTS.md`,
+  Adding one means updating `src/board/shortcuts.ts`, `docs/SHORTCUTS.md`,
   `tests/shortcuts.test.ts` and both languages in `i18n.ts`.
 - The interface is in **English and Ukrainian**: every new string goes into both in
-  `src/renderer/src/i18n.ts`. Code, comments, docs and commit messages are in English.
+  `src/board/i18n.ts`. Code, comments, docs and commit messages are in English.
 
 ## Translations
 
-Better wording for the Ukrainian or English interface is welcome: edit `src/renderer/src/i18n.ts`
+Better wording for the Ukrainian or English interface is welcome: edit `src/board/i18n.ts`
 and open a pull request, or just describe the change in an issue.
 
 ## License

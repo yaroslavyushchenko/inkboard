@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { editor } from '../editor'
-import { useT } from '../i18n'
+import { boardLibrary } from '../boardLibrary'
+import { useT } from '../../../board/i18n'
 import { platform } from '../platform'
-import { useUI } from '../store'
-import { AlertIcon, CheckIcon, HomeIcon, MenuIcon } from './icons'
-import { Popover } from './Popover'
+import { useUI } from '../../../board/store'
+import { AlertIcon, CheckIcon, HomeIcon, MenuIcon } from '../../../board/ui/icons'
+import { Popover } from '../../../board/ui/Popover'
 
 /** Inline-editable board title. */
 function BoardTitle() {
@@ -19,7 +19,7 @@ function BoardTitle() {
   if (!board) return null
   const commit = (): void => {
     setEditing(false)
-    if (value.trim() && value.trim() !== board.title) void editor.renameBoard(board.id, value.trim())
+    if (value.trim() && value.trim() !== board.title) void boardLibrary.renameBoard(board.id, value.trim())
   }
   return editing ? (
     <input
@@ -83,7 +83,7 @@ export function MainMenu() {
   return (
     <div className="main-menu">
       <div className="panel main-menu-bar">
-        <button className="icon-btn" title={`${t('menu.home')} (Ctrl+H)`} onClick={() => void editor.goHome()}>
+        <button className="icon-btn" title={`${t('menu.home')} (Ctrl+H)`} onClick={() => void boardLibrary.goHome()}>
           <HomeIcon />
         </button>
         <button data-popover-anchor className="icon-btn" title={t('menu.title')} onClick={() => setOpen((o) => !o)}>
@@ -94,20 +94,20 @@ export function MainMenu() {
       </div>
       {open && (
         <Popover onClose={close} className="menu-popover">
-          <button className="menu-item" onClick={run(() => editor.newBoard())}>
+          <button className="menu-item" onClick={run(() => boardLibrary.newBoard())}>
             <span>{t('menu.newBoard')}</span>
             <kbd>Ctrl+N</kbd>
           </button>
-          <button className="menu-item" onClick={run(() => editor.goHome())}>
+          <button className="menu-item" onClick={run(() => boardLibrary.goHome())}>
             <span>{t('menu.home')}</span>
             <kbd>Ctrl+H</kbd>
           </button>
-          <button className="menu-item" onClick={run(() => editor.openFile())}>
+          <button className="menu-item" onClick={run(() => boardLibrary.openFile())}>
             <span>{t('menu.openFile')}</span>
             <kbd>Ctrl+O</kbd>
           </button>
           <div className="menu-sep" />
-          <button className="menu-item" onClick={run(() => editor.saveAsFile())}>
+          <button className="menu-item" onClick={run(() => boardLibrary.saveAsFile())}>
             <span>{t('menu.saveAsFile')}</span>
             <kbd>Ctrl+Shift+S</kbd>
           </button>
@@ -117,10 +117,10 @@ export function MainMenu() {
             </button>
           )}
           <div className="menu-sep" />
-          <button className="menu-item" onClick={run(() => editor.exportBoard('png'))}>
+          <button className="menu-item" onClick={run(() => boardLibrary.exportBoard('png'))}>
             <span>{t(hasSelection ? 'menu.exportSelPng' : 'menu.exportPng')}</span>
           </button>
-          <button className="menu-item" onClick={run(() => editor.exportBoard('pdf'))}>
+          <button className="menu-item" onClick={run(() => boardLibrary.exportBoard('pdf'))}>
             <span>{t(hasSelection ? 'menu.exportSelPdf' : 'menu.exportPdf')}</span>
           </button>
           <div className="menu-sep" />
