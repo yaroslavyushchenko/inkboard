@@ -1,11 +1,6 @@
 export type SiteLanguage = 'uk' | 'en'
 
 const en = {
-  "demo.title": "Try Inkboard",
-  "demo.hint": "Draw right here. Changes disappear when you reload the page.",
-  "demo.expand": "Full screen",
-  "demo.collapse": "Exit full screen",
-  'nav.demo': 'Demo',
   'nav.examples': 'Examples',
   'nav.features': 'Features',
   'nav.download': 'Download',
@@ -127,7 +122,6 @@ export const downloadNotes = {
 }
 
 const uk: Record<keyof typeof en, string> = {
-  "nav.demo": "Демо",
   "nav.examples": "Приклади",
   "nav.features": "Можливості",
   "nav.download": "Завантажити",
@@ -240,15 +234,21 @@ const uk: Record<keyof typeof en, string> = {
   "foot.code": "Вихідний код",
   "foot.issues": "Повідомити про помилку",
   "foot.releases": "Усі версії",
-  "demo.title": "Спробуйте Inkboard",
-  "demo.hint": "Малюйте прямо тут. Зміни зникнуть після оновлення сторінки.",
-  "demo.expand": "На весь екран",
-  "demo.collapse": "Вийти з повноекранного режиму",
 }
 
 export const messages = { en, uk }
 
 export const pageInfo = {
-  uk: { title: 'Inkboard: безкоштовна дошка для графічного планшета', win: 'для Windows', mac: 'для macOS', linux: 'для Linux', latest: 'Остання версія', released: 'від', examples: 'Приклади', os: 'Система' },
-  en: { title: 'Inkboard: free whiteboard for pen tablets', win: 'for Windows', mac: 'for macOS', linux: 'for Linux', latest: 'Latest version', released: 'released', examples: 'Examples', os: 'System' }
+  uk: {
+    title: 'Inkboard: безкоштовна дошка для графічного планшета',
+    description: 'Безкоштовна нескінченна дошка для графічного планшета: для пояснень, лекцій і конспектів. Перо з натиском, транспортир і циркуль, формули й графіки за ними, об’ємні фігури, текст. Зберігає все саме, навіть коли зникає світло. Windows, macOS, Linux.',
+    heroAlt: 'Inkboard: дошка «Геометрія» з транспортиром, шестикутною пірамідою і колом, накресленим циркулем на координатній площині',
+    win: 'для Windows', mac: 'для macOS', linux: 'для Linux', latest: 'Остання версія', released: 'від', examples: 'Приклади', os: 'Система'
+  },
+  en: {
+    title: 'Inkboard: free whiteboard for pen tablets',
+    description: 'A free infinite whiteboard for pen tablets: pressure-sensitive ink, protractor and compass, formulas and their graphs, 3D solids and text. Saves everything by itself, even when the power goes out. Windows, macOS, Linux.',
+    heroAlt: 'Inkboard: the board “Geometry” with a protractor, a hexagonal pyramid and a circle drawn with the compass on a coordinate plane',
+    win: 'for Windows', mac: 'for macOS', linux: 'for Linux', latest: 'Latest version', released: 'released', examples: 'Examples', os: 'System'
+  }
 }

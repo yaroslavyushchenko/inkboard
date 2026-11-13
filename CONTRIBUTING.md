@@ -14,15 +14,15 @@ your tablet. Screenshots or a short screen recording help a lot.
 ```bash
 npm install
 npm run dev          # the desktop app with hot reload
-npm run dev:site     # the site and board demo at /inkboard/
+npm run dev:site     # the landing page at /inkboard/ (English) and /inkboard/uk/
 npm run typecheck && npm test && npm run build   # run before every commit
 ```
 
 - Electron + React + TypeScript. The board is a custom Canvas 2D engine in
   `src/board/engine`; React only draws the panels. The main process (`src/main`) handles the
-  board library, files and updates. Both entry points use the React workspace in `src/board`.
-  The demo runs in its own frame and keeps edits in memory. Run `npm run build:site` to build
-  the GitHub Pages artifact in `dist/site`.
+  board library, files and updates.
+- The landing page lives in `site/`. `npm run build:site` builds it into `dist/site` and
+  prerenders one static HTML page per language, so search engines see the whole text.
 - Board data stays **vector**. A change to the file format needs a `FORMAT_VERSION` bump in
   `engine/serialize.ts`, and older files must keep opening.
 - Saving must stay power-cut safe: write board and library files through `writeDurable`

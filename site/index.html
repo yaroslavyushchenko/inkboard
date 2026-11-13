@@ -1,30 +1,26 @@
 <!doctype html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Inkboard: безкоштовна дошка для графічного планшета</title>
-<meta name="description" content="Безкоштовна нескінченна дошка для графічного планшета: для пояснень, лекцій і конспектів. Перо з натиском, транспортир і циркуль, формули й графіки за ними, об’ємні фігури, текст. Зберігає все саме, навіть коли зникає світло. Windows, macOS, Linux.">
-<meta property="og:title" content="Inkboard: free whiteboard for pen tablets">
-<meta property="og:description" content="Infinite canvas, pressure-sensitive ink, protractor and compass, formulas and their graphs, 3D solids and text. Free, with public source code, for Windows, macOS and Linux.">
-<meta property="og:image" content="https://yaroslavyushchenko.github.io/inkboard/img/social-preview.png">
+<!-- Title, description, links to the other language and the language redirect come from src/server.tsx. -->
+<!--ssr-head-->
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta property="og:image:alt" content="Inkboard, a free infinite whiteboard for pen tablets">
-<meta property="og:url" content="https://yaroslavyushchenko.github.io/inkboard/">
 <meta property="og:site_name" content="Inkboard">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://yaroslavyushchenko.github.io/inkboard/img/social-preview.png">
 <meta name="theme-color" content="#fbfaf6" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
-<link rel="icon" type="image/png" href="img/icon.png">
+<link rel="icon" type="image/png" href="%BASE_URL%img/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Manrope:wght@400..800&display=swap">
+<noscript><style>.rv { opacity: 1; transform: none; }</style></noscript>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root"><!--ssr-app--></div>
   <script type="module" src="./src/main.tsx"></script>
 </body>
 </html>

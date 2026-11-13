@@ -17,14 +17,25 @@ export function detectOs(): Os | null {
   return null
 }
 
-export function initialLanguage(): SiteLanguage {
+/**
+ * Every language has its own prerendered page: English at the site root, Ukrainian under uk/.
+ * The root page sends Ukrainian-speaking visitors to uk/ unless they picked English before
+ * (see the script in server.tsx), so search engines still see both pages as they are.
+ */
+export const LANGUAGES: readonly SiteLanguage[] = ['uk', 'en']
+export const LANGUAGE_KEY = 'inkboard-site-lang'
+export const pagePath = (lang: SiteLanguage) => import.meta.env.BASE_URL + (lang === 'uk' ? 'uk/' : '')
+
+export function languageOfPath(path: string): SiteLanguage {
+  return path.startsWith(import.meta.env.BASE_URL + 'uk') ? 'uk' : 'en'
+}
+
+export function rememberLanguage(lang: SiteLanguage) {
   try {
-    const stored = localStorage.getItem('inkboard-site-lang')
-    if (stored === 'uk' || stored === 'en') return stored
+    localStorage.setItem(LANGUAGE_KEY, lang)
   } catch {
-    // Fall back to the browser language.
+    // The link still works when storage is unavailable.
   }
-  return (navigator.languages || [navigator.language]).some((lang) => /^uk\b/i.test(lang)) ? 'uk' : 'en'
 }
 
 interface ReleaseAsset {

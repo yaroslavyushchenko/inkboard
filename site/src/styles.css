@@ -77,8 +77,9 @@ nav a:hover { color: var(--text); background: color-mix(in srgb, var(--text) 6%,
 nav a.nav-cta { color: var(--bg); background: var(--text); margin-left: 6px; }
 nav a.nav-cta:hover { background: var(--accent); color: #fff; }
 .lang { display: flex; margin-left: 8px; background: color-mix(in srgb, var(--text) 6%, transparent); border-radius: 999px; padding: 3px; position: relative; }
-.lang button { position: relative; z-index: 1; border: 0; background: none; color: var(--muted); font: 600 12.5px var(--body); width: 46px; height: 32px; border-radius: 999px; cursor: pointer; transition: color .25s; }
-.lang button[aria-pressed="true"] { color: var(--text); }
+.lang a { position: relative; z-index: 1; display: grid; place-items: center; padding: 0; color: var(--muted); font: 600 12.5px var(--body); width: 46px; height: 32px; border-radius: 999px; transition: color .25s; }
+.lang a:hover { background: none; color: var(--text); }
+.lang a[aria-current="page"] { color: var(--text); }
 .lang .knob { position: absolute; top: 3px; left: 3px; width: 46px; height: 32px; border-radius: 999px; background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.12); transition: transform .35s var(--ease); }
 html[lang="en"] .lang .knob { transform: translateX(46px); }
 
@@ -117,19 +118,13 @@ html[lang="en"] .lang .knob { transform: translateX(46px); }
 .os-note { font-size: 14.5px; color: var(--muted); max-width: 32em; margin: 0; }
 .os-note b { color: var(--text); font-weight: 600; }
 
-.stage { margin: 64px auto 0; max-width: 1120px; scroll-margin-top: 80px; }
+.stage { margin: 64px auto 0; max-width: 1120px; }
 .window {
   border-radius: 16px; overflow: hidden; background: var(--card); border: 1px solid var(--frame);
   box-shadow: 0 40px 80px -30px rgba(20, 24, 40, .35), 0 0 0 6px color-mix(in srgb, var(--card) 70%, transparent);
 }
-.demo-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; text-align: left; }
-.demo-header p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
-.demo-header button { flex: none; white-space: nowrap; font: inherit; font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
-.demo-header button:hover { border-color: var(--accent); }
-.demo-frame { display: block; width: 100%; height: clamp(410px, 62vw, 640px); border: 0; border-top: 1px solid var(--frame); background: #fff; }
-.window:fullscreen { display: flex; flex-direction: column; border: 0; border-radius: 0; }
-.window:fullscreen .demo-frame { flex: 1; min-height: 0; }
-.demo-frame:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.window picture { display: block; }
+.window img { display: block; width: 100%; height: auto; }
 
 /* examples: on wide screens the page scroll walks through them (sticky stage) */
 .ex-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 28px; }
@@ -288,7 +283,6 @@ footer { padding: 32px 0 44px; color: var(--faint); font-size: 14.5px; border-to
 footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; }
 footer a { color: var(--muted); }
 
-/* Language-specific screenshots. */
 
 @media (max-width: 960px) {
   .bento { grid-template-columns: 1fr 1fr; }
@@ -308,6 +302,7 @@ footer a { color: var(--muted); }
   .btn small { flex-basis: 100%; text-align: center; }
   .stage { margin-top: 44px; }
   .window { border-radius: 12px; }
+  .window img { aspect-ratio: 4 / 3; object-fit: cover; object-position: 12% center; }
   .ex-head { margin-bottom: 22px; }
   .frame { aspect-ratio: 4 / 3; border-radius: 12px; }
   .frame img { object-position: 25% center; }

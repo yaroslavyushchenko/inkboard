@@ -20,6 +20,8 @@ All notable changes to Inkboard. Downloads for every version are on the
 - Settings → Board → Mouse wheel: scroll or zoom. A touchpad keeps two-finger scrolling and pinch zoom.
 
 ### Changed
+- The website shows a screenshot again instead of the live demo, and every language now has its
+  own static page (English at the root, Ukrainian at /uk/), so search engines can read it.
 - New license: Inkboard is now source-available under FSL-1.1-MIT (free to use, study and change for
   anything except a competing product; every release turns MIT after two years). Versions up to 0.9.2
   stay under GPL-3.0-or-later.

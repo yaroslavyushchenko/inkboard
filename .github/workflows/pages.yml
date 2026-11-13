@@ -1,11 +1,12 @@
-# Publishes the React landing page and the shared board demo to GitHub Pages: https://yaroslavyushchenko.github.io/inkboard/
+# Publishes the landing page, prerendered to static HTML for each language, to GitHub Pages:
+# https://yaroslavyushchenko.github.io/inkboard/ (English) and .../inkboard/uk/ (Ukrainian).
 # Download buttons read the latest release from the GitHub API, so a new release needs no redeploy.
 name: Pages
 
 on:
   push:
     branches: [main]
-    paths: ['site/**', 'src/board/**', 'src/shared/**', 'site.vite.config.mts', 'package.json', 'package-lock.json', '.github/workflows/pages.yml']
+    paths: ['site/**', 'scripts/prerender-site.mjs', 'site.vite.config.mts', 'package.json', 'package-lock.json', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:

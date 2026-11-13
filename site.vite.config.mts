@@ -1,22 +1,14 @@
-import { resolve } from 'node:path'
-import { defineConfig, searchForWorkspaceRoot } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// The landing page. `npm run build:site` builds it here, then scripts/prerender-site.mjs renders
+// every language into static HTML (dist/site/index.html and dist/site/uk/index.html).
 export default defineConfig({
   root: 'site',
   base: '/inkboard/',
   plugins: [react()],
-  server: {
-    fs: { allow: [searchForWorkspaceRoot('.')] }
-  },
   build: {
     outDir: '../dist/site',
-    emptyOutDir: true,
-    rollupOptions: {
-      input: {
-        site: resolve('site/index.html'),
-        demo: resolve('site/demo/index.html')
-      }
-    }
+    emptyOutDir: true
   }
 })
