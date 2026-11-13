@@ -40,6 +40,9 @@ and open a pull request, or just describe the change in an issue.
 
 ## License
 
-By contributing you agree that your work is released under the
-[FSL-1.1-MIT](LICENSE) license, like the rest of Inkboard, and that the project owner may also
-release it under other licenses in future versions.
+Inkboard is released under the [FSL-1.1-MIT](LICENSE) license. Before your first pull request is
+merged, please sign the [Contributor License Agreement](CLA.md): a bot comments on the pull request
+and you reply with the sentence it asks for. You only do this once.
+
+The CLA lets the project owner release your contribution under any license in future versions
+(for example in app stores, where some licenses don't work). You keep the copyright in your work.
