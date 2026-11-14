@@ -3,6 +3,19 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
+## [0.10.1] (2026-11-14)
+
+### Changed
+- Drawing instruments share one toolbar dropdown; a saved layout with separate instrument buttons gets the dropdown in their place.
+- Toolbar buttons show their shortcut key.
+- Long hint texts removed from popovers, menus and settings.
+
+### Added
+- Mouse Back / Forward buttons undo / redo.
+
+### Fixed
+- The board stayed white after the system switched to the dark theme until the window was redrawn.
+
 ## [0.10.0] (2026-11-14)
 
 ### Added

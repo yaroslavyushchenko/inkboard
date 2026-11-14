@@ -2,7 +2,15 @@
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
-## What's new in 0.10.0
+## What's new in 0.10.1
+
+- The ruler, set squares, protractor and compass share one dropdown on the toolbar, with their keys shown.
+- Toolbar buttons show the key that picks the tool.
+- The mouse Back and Forward buttons undo and redo.
+- Shorter, cleaner menus and settings: long hint texts are gone.
+- The board redraws right away when the system switches between light and dark.
+
+## Also in 0.10.0
 
 - **Inkboard in your browser:** [open the app](https://yaroslavyushchenko.github.io/inkboard/app/) with
   nothing to install. Boards are kept in the browser; you can save and open `.inkboard` files, export PNG,
