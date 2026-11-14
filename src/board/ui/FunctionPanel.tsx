@@ -271,7 +271,6 @@ export function FunctionPanel() {
           </button>
         )}
       </div>
-      <p className="settings-hint">{t('graph.fnHint')}</p>
       <label className="fn-check">
         <input type="checkbox" checked={!hide} onChange={(e) => write(rows, !e.target.checked)} />
         <span>{t('graph.showFormulas')}</span>

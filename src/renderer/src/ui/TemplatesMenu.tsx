@@ -87,7 +87,6 @@ export function TemplatesMenu() {
           ))}
         </div>
       )}
-      {templates.length > 0 && <p className="settings-hint">{t('tpl.hint')}</p>}
     </MenuButton>
   )
 }

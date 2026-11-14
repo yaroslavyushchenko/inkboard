@@ -23,14 +23,12 @@ export function BoardSettings() {
           </button>
         ))}
       </div>
-      <p className="settings-hint">{t('settings.wheelHint')}</p>
       {canSnap && (
       <div className="feature-list">
         <label className="feature-row">
           <input type="checkbox" checked={snap} onChange={(e) => prefsStore.setState({ shapeSnap: e.target.checked })} />
           <span>
             <span className="feature-name">{t('settings.shapeSnap')}</span>
-            <span className="feature-hint">{t('settings.shapeSnapHint')}</span>
           </span>
         </label>
       </div>

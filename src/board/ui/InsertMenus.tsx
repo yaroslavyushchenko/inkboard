@@ -148,7 +148,6 @@ export function ShapesMenu() {
           onChange={(n) => prefsStore.setState((s) => ({ shapeBases: { ...s.shapeBases, [shape]: n } }))}
         />
       )}
-      <p className="settings-hint">{t('shapes.hint')}</p>
     </MenuButton>
   )
 }

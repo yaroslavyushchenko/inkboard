@@ -1497,6 +1497,13 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
     overlay.addEventListener('wheel', onWheel, { passive: false })
     overlay.addEventListener('contextmenu', preventMenu)
     window.addEventListener('keydown', onKeyDown)
+    // A hidden window gets no animation frames: redraw when it is shown again, so a change made
+    // meanwhile (the system switching to the dark theme turns the board into a chalkboard) shows up.
+    const onShown = (): void => {
+      if (document.visibilityState === 'visible') invalidate(true)
+    }
+    window.addEventListener('focus', onShown)
+    document.addEventListener('visibilitychange', onShown)
     for (const type of ['mousedown', 'mouseup', 'auxclick'] as const) window.addEventListener(type, onSideButton)
     window.addEventListener('keyup', onKeyUp)
     window.addEventListener('blur', onBlur)
@@ -1525,6 +1532,8 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       overlay.removeEventListener('wheel', onWheel)
       overlay.removeEventListener('contextmenu', preventMenu)
       window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('focus', onShown)
+      document.removeEventListener('visibilitychange', onShown)
       for (const type of ['mousedown', 'mouseup', 'auxclick'] as const) window.removeEventListener(type, onSideButton)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)

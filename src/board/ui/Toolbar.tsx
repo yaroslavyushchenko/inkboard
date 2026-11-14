@@ -62,7 +62,6 @@ function EraserOptions() {
         />
         <span className="size-value">{radius}</span>
       </div>
-      <p className="settings-hint line-hint">{t('eraser.hint')}</p>
     </>
   )
 }
@@ -70,7 +69,6 @@ function EraserOptions() {
 /** Colour and size of new text (text tool popover). */
 function TextOptions() {
   const editor = useEditor()
-  const t = useT()
   const style = usePrefs((s) => s.textStyle)
   const set = (patch: Partial<typeof style>): void => {
     prefsStore.setState((s) => ({ textStyle: { ...s.textStyle, ...patch } }))
@@ -92,7 +90,6 @@ function TextOptions() {
         ))}
       </div>
       <SizeSlider value={style.size} max={160} onChange={(size) => set({ size })} live />
-      <p className="settings-hint line-hint">{t('text.hint')}</p>
     </>
   )
 }
@@ -108,7 +105,6 @@ function InkOptions({
   sizes: number[]
   onChange: (patch: Partial<InkSlot>) => void
 }) {
-  const t = useT()
   const maxSize = Math.max(...sizes)
   return (
     <>
@@ -137,7 +133,6 @@ function InkOptions({
       </div>
       <SizeSlider value={slot.size} max={maxSize * 3} onChange={(size) => onChange({ size })} live />
       <LineStyleControls value={slot} onChange={onChange} showCaps />
-      <p className="settings-hint line-hint">{t('line.endsHint')}</p>
     </>
   )
 }
