@@ -411,7 +411,7 @@ export function Site({ lang }: { lang: SiteLanguage }) {
               <div className="web-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9s1.3-6.4 3.8-9z"/></svg></div>
               <div className="web-text">
                 <h3>{t('web.title')}</h3>
-                <p>{t('web.text')}</p>
+                <ul>{(['web.p1', 'web.p2', 'web.p3', 'web.p4'] as const).map((k) => <li key={k}>{t(k)}</li>)}</ul>
               </div>
               <a className="btn ghost" href={asset('app/')}>{t('web.open')}</a>
             </div>

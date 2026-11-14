@@ -282,7 +282,8 @@ figcaption p { margin: 0; color: var(--text); opacity: .85; font-size: clamp(18p
 .web-icon svg { width: 26px; height: 26px; }
 .web-text { flex: 1; min-width: 0; }
 .web-text h3 { font: 600 20px var(--body); letter-spacing: -.02em; margin: 0; }
-.web-text p { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
+.web-text ul { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; color: var(--muted); font-size: 15px; }
+.web-text li::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 10px; vertical-align: 2px; }
 .web-card .btn { flex: none; min-height: 50px; }
 .ver { text-align: center; margin: 28px 0 0; color: var(--faint); font-size: 14.5px; }
 
