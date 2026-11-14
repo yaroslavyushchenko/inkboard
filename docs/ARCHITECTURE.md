@@ -72,6 +72,30 @@ There is no global editor. The app makes one with `createEditor()` and passes it
 `<BoardWorkspace editor={...}>`, which provides it to the board UI (`useEditor()`). The board
 never reads the app store: the app tells it whether it is on screen through `session.active`.
 
+## Feature modules
+
+What Inkboard can do comes in modules (`src/board/modules`), registered when the app creates an
+editor: `createEditor({ modules: builtinModules })`. The board's core reaches them only through the
+registry (`src/board/registry.ts`, `editor.features`):
+
+| Module | Brings |
+|---|---|
+| `ink` | stroke items (pen, highlighter, lines, shapes) |
+| `images` | image items |
+| `text` | text items |
+| `graphs` | graph items (number lines, planes, 3D axes) and their plots |
+| `formulas` | formula items, and the answer worked out while a formula is typed |
+| `shape-recognition` | hold-to-snap: a stroke held still becomes the clean shape it resembles |
+
+- The renderer, thumbnails and every export draw items with `editor.features.draw / svg`; none of
+  them switch on the item type any more.
+- The pen asks `features.strokeRecognizer` and the formula editor `features.formulaEvaluator`;
+  without the module the behaviour (and its setting) is simply not there.
+- A module that owns an item type is needed to show such items, so keep item modules in and switch
+  a feature off in its UI (a feature flag) instead.
+- Still to move into modules: each module's UI (keypad, graph dialog, insert menus), its tools,
+  shortcuts and texts, and per-type logic in `transform.ts` and `serialize.ts`.
+
 ## Tools
 
 Each tool is a controller in `src/board/tools/` (`types.ts` has the interfaces). The board component
@@ -145,5 +169,6 @@ Only where there are really two or more ways to do something:
    platform, IndexedDB storage, file pickers, print to PDF, and a service worker for offline use.
 5. In progress: display lists for drawing on screen and in exports (graphs and formulas done; ink,
    text and images next), then the renderer moves into a package.
-6. Features as modules with a registry, starting with shape recognition.
+6. In progress: features as modules with a registry (drawing, shape recognition and formula answers
+   done; UI, tools, shortcuts, transforms and file format next).
 7. The remaining tools out of `Board.tsx`.

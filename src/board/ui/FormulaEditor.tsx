@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormulaState, Row } from '@inkboard/math/formula'
-import { numericResult } from '../engine/formulaexpr'
 import { caretOf, typesetRows } from '../engine/formulatype'
 import { inkColor, withInkSurface } from '../engine/surface'
 import { useT } from '../i18n'
@@ -27,7 +26,9 @@ export function FormulaEditor() {
   const size = fe ? fe.size * cam.zoom : 0
   const rows: Row | null = fe?.rows ?? null
   const lay = useMemo(() => (rows ? typesetRows(rows, size, true) : null), [rows, size])
-  const result = useMemo(() => (rows ? numericResult(rows, lang === 'uk') : null), [rows, lang])
+  // The answer comes from the formulas module's evaluator; without one the formula is shown alone.
+  const evaluator = editor.features.formulaEvaluator
+  const result = useMemo(() => (rows && evaluator ? evaluator.result(rows, lang === 'uk') : null), [rows, lang, evaluator])
   const shown = useMemo(
     () => (result ? typesetRows([{ t: 'c', s: result.approx ? '≈' : '=' }, ...result.atoms], Math.max(14, Math.min(size, 28)), false) : null),
     [result, size]

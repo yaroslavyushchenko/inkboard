@@ -1,17 +1,14 @@
 import { drawBackground } from './background'
 import { viewportBBox } from '@inkboard/core/camera'
 import { bboxIntersects } from '@inkboard/core/geometry'
-import { getImage } from './images'
-import { drawFormula } from './formulatype'
-import { drawGraph } from './graph'
-import { drawText } from './text'
 import { drawCompass, type Compass, type CompassState } from './compass'
 import { drawAngleLabel, drawProtractor, type Protractor, type ProtractorState } from './protractor'
 import { drawStraightedge, type Straightedge, type StraightState } from './straightedge'
 import { inkColor, isChalk, withInkSurface } from './surface'
-import { buildInkPath, drawCaps, drawStroke, fillInk, linePath, strokeLine, type InkStyle } from './ink'
+import { buildInkPath, drawCaps, fillInk, linePath, strokeLine, type InkStyle } from './ink'
 import { xformBBox, type Xform } from './transform'
 import type { BackgroundKind, BBox, Camera, Item, LineCap, LineDash, Point } from '@inkboard/core/types'
+import type { FeatureRegistry } from '../registry'
 
 export interface LiveStroke extends InkStyle {
   color: string
@@ -88,7 +85,9 @@ export class BoardRenderer {
 
   constructor(
     private baseCanvas: HTMLCanvasElement,
-    private overlayCanvas: HTMLCanvasElement
+    private overlayCanvas: HTMLCanvasElement,
+    /** How each item type is drawn (the editor's feature modules). */
+    private kinds: FeatureRegistry
   ) {
     this.base = baseCanvas.getContext('2d', { alpha: false })!
     // desynchronized = low-latency canvas, important for pen input.
@@ -122,13 +121,13 @@ export class BoardRenderer {
     ctx.imageSmoothingQuality = 'high'
     const view = viewportBBox(cam, this.width, this.height)
     if (!selected?.size) {
-      withInkSurface(bg, () => drawItems(ctx, items, view, preview))
+      withInkSurface(bg, () => drawItems(ctx, items, view, preview, this.kinds))
       return
     }
     // The selection is drawn on top, tinted and lifted off the board with a soft shadow, so it's
     // clear what is picked up. Only the screen changes: the items keep their colours.
     const picked = items.filter((i) => selected.has(i.id))
-    withInkSurface(bg, () => drawItems(ctx, items.filter((i) => !selected.has(i.id)), view, preview))
+    withInkSurface(bg, () => drawItems(ctx, items.filter((i) => !selected.has(i.id)), view, preview, this.kinds))
     const layer = (this.liftCanvas ??= document.createElement('canvas'))
     if (layer.width !== this.baseCanvas.width || layer.height !== this.baseCanvas.height) {
       layer.width = this.baseCanvas.width
@@ -140,7 +139,7 @@ export class BoardRenderer {
     this.applyCamera(l, cam)
     l.imageSmoothingEnabled = true
     l.imageSmoothingQuality = 'high'
-    withInkSurface(bg, () => drawItems(l, picked, view, preview))
+    withInkSurface(bg, () => drawItems(l, picked, view, preview, this.kinds))
     l.setTransform(1, 0, 0, 1, 0, 0)
     l.globalCompositeOperation = 'source-atop'
     l.fillStyle = SELECT_TINT
@@ -392,7 +391,8 @@ export function drawItems(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   items: readonly Item[],
   view: BBox,
-  preview: Preview | null = null
+  preview: Preview | null,
+  kinds: FeatureRegistry
 ): void {
   const c = ctx as CanvasRenderingContext2D
   for (const item of items) {
@@ -404,18 +404,7 @@ export function drawItems(
       c.scale(moving.s, moving.s)
       c.translate(-moving.ax, -moving.ay)
     }
-    if (item.type === 'stroke') {
-      drawStroke(c, item)
-    } else if (item.type === 'graph') {
-      drawGraph(c, item)
-    } else if (item.type === 'text') {
-      drawText(c, item)
-    } else if (item.type === 'formula') {
-      drawFormula(c, item)
-    } else {
-      const img = getImage(item.src)
-      if (img.complete && img.naturalWidth > 0) c.drawImage(img, item.x, item.y, item.w, item.h)
-    }
+    kinds.draw(c, item)
     if (moving) c.restore()
   }
 }

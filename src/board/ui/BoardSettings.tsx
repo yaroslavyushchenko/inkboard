@@ -1,9 +1,12 @@
+import { useEditor } from '../editorContext'
 import { useT } from '../i18n'
 import { SNAP_DELAY, type WheelMode, usePrefs, prefsStore } from '../store'
 
 /** Settings: what the mouse wheel does, and hold-to-snap shapes. */
 export function BoardSettings() {
   const t = useT()
+  // Hold-to-snap comes from the shape recognition module; without it there is nothing to set.
+  const canSnap = !!useEditor().features.strokeRecognizer
   const wheel = usePrefs((s) => s.wheelMode)
   const snap = usePrefs((s) => s.shapeSnap)
   const delay = usePrefs((s) => s.shapeSnapDelay)
@@ -21,6 +24,7 @@ export function BoardSettings() {
         ))}
       </div>
       <p className="settings-hint">{t('settings.wheelHint')}</p>
+      {canSnap && (
       <div className="feature-list">
         <label className="feature-row">
           <input type="checkbox" checked={snap} onChange={(e) => prefsStore.setState({ shapeSnap: e.target.checked })} />
@@ -30,7 +34,8 @@ export function BoardSettings() {
           </span>
         </label>
       </div>
-      {snap && (
+      )}
+      {canSnap && snap && (
         <div className="line-row size-row">
           <span className="line-label">{t('settings.shapeSnapDelay')}</span>
           <input

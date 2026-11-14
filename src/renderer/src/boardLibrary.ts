@@ -1,5 +1,6 @@
 import type { BoardEntry, TemplateEntry } from '../../shared/library'
 import { createEditor, DEFAULT_CAMERA, type Editor } from '../../board/editor'
+import { builtinModules } from '../../board/modules'
 import { renderPng, renderSvg, renderThumbnail } from '../../board/engine/export'
 import { decodeBoard, encodeBoard, type BoardData } from '../../board/engine/serialize'
 import { translate } from '../../board/i18n'
@@ -52,7 +53,7 @@ class BoardLibrary {
     if (!items.length) return null
     const bg = prefsStore.getState().background
     const bytes = await encodeBoard({ items, background: bg, camera: this.editor.camera })
-    const thumb = await renderThumbnail(items, bg)
+    const thumb = await renderThumbnail(items, bg, this.editor.features)
     const entry = await platform.library.saveTemplate(name, bytes, thumb)
     await this.refreshLibrary()
     return entry
@@ -64,7 +65,7 @@ class BoardLibrary {
     if (!items.length) return false
     const bg = prefsStore.getState().background
     const bytes = await encodeBoard({ items, background: bg, camera: this.editor.camera })
-    const thumb = await renderThumbnail(items, bg)
+    const thumb = await renderThumbnail(items, bg, this.editor.features)
     const entry = await platform.library.replaceTemplate(id, bytes, thumb)
     // Drop the cached preview so the new one is shown.
     const old = this.templateUrls.get(id)
@@ -156,7 +157,7 @@ class BoardLibrary {
       try {
         const bytes = await encodeBoard(data)
         const wantThumb = thumbStale && (final || Date.now() - this.lastThumbAt > THUMB_INTERVAL_MS)
-        const thumb = wantThumb ? await renderThumbnail(data.items, data.background) : null
+        const thumb = wantThumb ? await renderThumbnail(data.items, data.background, this.editor.features) : null
         const r = await platform.library.save(board.id, bytes, thumb)
         this.saved = { version, meta, camera }
         if (thumb) {
@@ -355,10 +356,10 @@ class BoardLibrary {
     const title = useApp.getState().board?.title ?? 'Inkboard'
     try {
       if (kind === 'png') {
-        const png = await renderPng(items, bg)
+        const png = await renderPng(items, bg, this.editor.features)
         await platform.exportFile('png', png.bytes, title, png.width, png.height)
       } else {
-        const { svg, width, height } = renderSvg(items, bg)
+        const { svg, width, height } = renderSvg(items, bg, this.editor.features)
         await platform.exportFile('pdf', svg, title, width, height)
       }
     } catch (err) {
@@ -392,4 +393,4 @@ class BoardLibrary {
 }
 
 /** The desktop app's composition root: one editor for the board on screen, and the library around it. */
-export const boardLibrary = new BoardLibrary(createEditor())
+export const boardLibrary = new BoardLibrary(createEditor({ modules: builtinModules }))

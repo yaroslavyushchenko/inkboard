@@ -19,6 +19,7 @@ import { isBlank } from '@inkboard/math/formula'
 import { formulaBBox, formulaBox } from './engine/formulatype'
 import type { BBox, Camera, FormulaItem, GraphItem, GraphParams, PlotFn, ImageItem, Item, LineCap, LineDash, ShapeSpec, StrokeItem, TextFormat, TextItem } from '@inkboard/core/types'
 import { translate, type MessageKey } from './i18n'
+import { FeatureRegistry, type FeatureModule } from './registry'
 import { createSessionStore, type Session } from './session'
 import { FORMULA_HISTORY, prefsStore } from './store'
 
@@ -39,6 +40,8 @@ export class Editor {
   readonly scene = new Scene()
   /** This board's tool, selection, camera, instruments and edits; React reads it through useSession. */
   readonly session = createSessionStore()
+  /** The feature modules this board was made with: item types, shape recognition, formula answers. */
+  readonly features: FeatureRegistry
   camera: Camera = { ...DEFAULT_CAMERA }
   viewport = { width: 0, height: 0 }
   /** Live move/scale of the selection, drawn without touching the scene until committed. */
@@ -47,7 +50,8 @@ export class Editor {
   private invalidate: (base?: boolean) => void = () => {}
   private readonly unsubscribe: (() => void)[] = []
 
-  constructor() {
+  constructor(modules: readonly FeatureModule[]) {
+    this.features = new FeatureRegistry(modules)
     this.scene.subscribe(() => {
       // Drop selected ids that no longer exist (e.g. after undo).
       const sel = this.session.getState().selectedIds
@@ -792,8 +796,8 @@ export class Editor {
  * A new editor for one board. The app creates it (one per open board) and hands it to the board UI
  * with <EditorProvider>; nothing else creates editors or keeps a global one.
  */
-export function createEditor(): Editor {
-  const editor = new Editor()
+export function createEditor({ modules }: { modules: readonly FeatureModule[] }): Editor {
+  const editor = new Editor(modules)
   // Dev builds only: lets UI tests in the browser inspect the latest board's state.
   if (import.meta.env.DEV) {
     const w = window as unknown as { __inkboard: Editor; __inkboardPrefs: typeof prefsStore }

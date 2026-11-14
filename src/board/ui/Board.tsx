@@ -18,6 +18,7 @@ import { DEFAULT_SHAPE_SIZE, isLinear, SHAPE_BASES, shapeBox, shapeParts, snapAn
 import { hitTest, itemsInLasso } from '../engine/transform'
 import type { BBox, Item, Point, ShapeSpec, StrokeItem, TextItem } from '@inkboard/core/types'
 import { useEditor } from '../editorContext'
+import type { RecognizedShape } from '../registry'
 import type { Session } from '../session'
 import { isBoardFileShortcut, matchShortcut, type BoardFileShortcut, type ShortcutId } from '../shortcuts'
 import { prefsStore, type InkSlot, type PenAction, type Prefs, type Tool } from '../store'
@@ -37,7 +38,6 @@ import {
   type StraightState
 } from '../engine/straightedge'
 import { textBBox } from '../engine/text'
-import { holdShape, recognizeShape, type Snapped } from '@inkboard/shape-recognition/snapshape'
 import { beginBrushSelect } from '../tools/brushSelect'
 import { beginErase } from '../tools/eraser'
 import { beginLaser, LASER_FADE_MS, LaserTrail } from '../tools/laser'
@@ -73,7 +73,7 @@ type Gesture =
        * Hold-to-snap: the pen stood still and the stroke became a clean shape. Dragging on (pen still
        * down) turns and scales it around `pivot` so that `from` follows the pen.
        */
-      held?: { base: Snapped; current: Snapped; from: [number, number]; to: [number, number]; shift: boolean; touch: boolean }
+      held?: { base: RecognizedShape; current: RecognizedShape; from: [number, number]; to: [number, number]; shift: boolean; touch: boolean }
     }
   | { kind: 'protMove'; pointerId: number; ox: number; oy: number }
   | { kind: 'protRotate'; pointerId: number }
@@ -155,7 +155,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
   useEffect(() => {
     const baseCanvas = baseRef.current!
     const overlay = overlayRef.current!
-    const renderer = new BoardRenderer(baseCanvas, overlay)
+    const renderer = new BoardRenderer(baseCanvas, overlay, editor.features)
     const scene = editor.scene
     const session = editor.session
     /** A snapshot of the preferences and this board's session together, for reading in event handlers. */
@@ -634,11 +634,11 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       clearTimeout(holdTimer)
       holdAt = { x: sx, y: sy }
       const ui = readUI()
-      if (!ui.shapeSnap) return
+      if (!ui.shapeSnap || !editor.features.strokeRecognizer) return
       holdTimer = window.setTimeout(() => {
         const g = gesture
         if (g?.kind !== 'ink' || g.snap || g.held || g.live.geom) return
-        const shape = recognizeShape(g.live.points, 12 / editor.camera.zoom)
+        const shape = editor.features.strokeRecognizer?.recognize(g.live.points, 12 / editor.camera.zoom)
         if (!shape) return
         const at = holdAt ? screenToWorld(editor.camera, holdAt.x, holdAt.y) : { x: shape.points[0][0], y: shape.points[0][1] }
         g.held = { base: shape, current: shape, from: [at.x, at.y], to: [at.x, at.y], shift: false, touch: held2.size > 0 }
@@ -652,7 +652,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
     const reshapeHeld = (g: Gesture & { kind: 'ink' }): void => {
       const h = g.held
       if (!h) return
-      h.current = holdShape(h.base, h.from, h.to, h.shift || h.touch)
+      h.current = editor.features.strokeRecognizer?.reshape(h.base, h.from, h.to, h.shift || h.touch) ?? h.current
       g.live = { ...g.live, points: h.current.points }
       invalidate(false)
     }
