@@ -222,7 +222,6 @@ export function Site({ lang }: { lang: SiteLanguage }) {
                     </picture>
                   </div>
                   <figcaption>
-                    <span className="ex-num" aria-hidden="true">{String(index + 1).padStart(2, '0')}<small>/{String(examples.length).padStart(2, '0')}</small></span>
                     <h3>{t(title)}</h3>
                     <p>{t(caption)}</p>
                   </figcaption>

@@ -155,10 +155,8 @@ figcaption { opacity: 0; transform: translateY(14px); transition: opacity .5s va
 .track figure.cur .frame, .track figure.cur figcaption { opacity: 1; transform: none; }
 .track figure.cur figcaption { transition-delay: .08s; }
 figcaption .step { font: 600 13px var(--body); color: var(--faint); letter-spacing: .06em; margin: 0 0 12px; }
-figcaption h3 { font: 700 30px/1.15 var(--display); letter-spacing: -.025em; margin-bottom: 12px; }
-figcaption p { margin: 0; color: var(--text); opacity: .78; font-size: 17.5px; line-height: 1.5; }
-.ex-num { display: block; font: 800 76px/1 var(--display); letter-spacing: -.05em; color: var(--accent); margin-bottom: 20px; }
-.ex-num small { font-size: 18px; font-weight: 600; letter-spacing: 0; color: var(--faint); margin-left: 6px; }
+figcaption h3 { font: 700 clamp(30px, 3vw, 42px)/1.1 var(--display); letter-spacing: -.03em; margin-bottom: 16px; }
+figcaption p { margin: 0; color: var(--text); opacity: .85; font-size: clamp(18px, 1.6vw, 22px); line-height: 1.45; }
 /* Narrow or short windows: a plain list, one example after another. */
 @media (max-width: 960px), (max-height: 600px) {
   #examples { padding-bottom: 112px; }
@@ -168,8 +166,7 @@ figcaption p { margin: 0; color: var(--text); opacity: .78; font-size: 17.5px; l
   .track { gap: 56px; }
   .track figure { grid-area: auto; grid-template-columns: 1fr; gap: 18px; visibility: visible; }
   .frame, figcaption { opacity: 1; transform: none; }
-  .ex-num { font-size: 44px; margin-bottom: 10px; }
-}
+  }
 
 /* bento */
 .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 48px; }
