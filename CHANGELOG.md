@@ -3,7 +3,7 @@
 All notable changes to Inkboard. Downloads for every version are on the
 [Releases page](https://github.com/yaroslavyushchenko/inkboard/releases).
 
-## Unreleased
+## [0.10.0] (2026-11-14)
 
 ### Added
 - Inkboard in the browser at https://yaroslavyushchenko.github.io/inkboard/app/: the same app, with

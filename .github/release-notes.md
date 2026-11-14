@@ -2,7 +2,28 @@
 
 ![Inkboard](https://raw.githubusercontent.com/yaroslavyushchenko/inkboard/main/docs/images/hero.png)
 
-## What's new in 0.9.2
+## What's new in 0.10.0
+
+- **Inkboard in your browser:** [open the app](https://yaroslavyushchenko.github.io/inkboard/app/) with
+  nothing to install. Boards are kept in the browser; you can save and open `.inkboard` files, export PNG,
+  and print to PDF. It keeps working offline after the first visit.
+- **Hold-to-snap shapes:** keep the pen still at the end of a stroke to turn a rough circle, oval, arc,
+  rectangle, square or triangle into a clean one. Keep holding and drag to resize it; Shift or a finger
+  on the screen makes it perfect. On/off and hold time in Settings → Board.
+- **Point eraser** that cuts lines apart ("Only what it touches"), and an eraser size slider.
+- **Laser pointer (L)** with a fading red trail that is never saved.
+- **School paper:** math grid, handwriting rows and slanted copybook lines, on paper and chalkboard.
+- Selected items are tinted and lifted off the board with a soft shadow.
+- Bullet and numbered lists in text.
+- Settings → Board → Mouse wheel: scroll or zoom.
+- White is no longer in the pen palette; white ink already on boards loads as black (it still looks
+  white on the chalkboard).
+- New license: FSL-1.1-MIT (free to use, study and change for anything except a competing product;
+  every release turns MIT after two years). Versions up to 0.9.2 stay under GPL-3.0-or-later.
+
+Boards that use the school backgrounds are saved as format version 9 and need Inkboard 0.10.0 or newer.
+
+## Also in 0.9.2
 
 - Customize the toolbar by dragging tools into position or back into the palette.
 - Add multiple dividers to organize tools into groups. Your layout is saved between launches.
@@ -13,10 +34,7 @@
 
 ## Also in 0.9.1
 
-- [Try Inkboard in your browser](https://yaroslavyushchenko.github.io/inkboard/#demo). The live demo uses
-  the same editor as the desktop app, with drawing tools, formulas and graphs.
-- The demo pairs dark mode with a green chalkboard and light mode with white paper. Demo edits reset
-  when you reload the page.
+- A live demo on the website (replaced in 0.10.0 by the full app in the browser).
 
 ## Also in 0.9.0
 
