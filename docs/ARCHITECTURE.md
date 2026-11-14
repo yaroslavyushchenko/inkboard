@@ -38,10 +38,25 @@ Workspace packages live in `packages/` and are imported by name with a module pa
 | `@inkboard/math` | Formula trees and editing (the keypad model), lexer, parser, evaluator | nothing |
 | `@inkboard/core` | Item types, scene with undo and redo, camera, geometry, shape outlines, point erasing | math |
 | `@inkboard/shape-recognition` | Hold-to-snap: recognises circles, ovals, arcs, rectangles, squares and triangles in a stroke | core |
+| `@inkboard/render` | Display lists (what to draw, as data) and their SVG form | nothing |
+| `@inkboard/render-canvas` | Draws display lists on a Canvas 2D context; the only package with the DOM types | render |
 
-Still in `src/board/engine` until their own steps: rendering (`renderer.ts`, `ink.ts`, `background.ts`,
-`surface.ts`, `export.ts`), text layout, formula typesetting, graphs and the drawing instruments.
-They mix pure logic with Canvas calls, so they move together with the Painter step.
+Still in `src/board/engine`: the board renderer and exports (`renderer.ts`, `export.ts`), ink,
+text layout, formula typesetting, graphs, backgrounds and the drawing instruments. They move into
+packages as each one draws through a display list (below).
+
+## Drawing: display lists
+
+An item describes how it looks as a display list (`@inkboard/render/display`): lines, polylines,
+polygons, text and groups, with the item's own colours. Backends draw it: `@inkboard/render-canvas`
+on screen and in PNG exports, `toSvg` for SVG and PDF exports, Skia one day for React Native. One
+description, so the screen and the exports can't drift apart, and lists are cached per item object
+(items are replaced, never changed in place). Colours are mapped while drawing (`inkColors` in
+`engine/surface.ts`), so one list serves paper and the chalkboard.
+
+Drawn this way: graphs (`graphDisplay`) and formulas (`formulaDisplay`); `tests/display.test.ts`
+checks their SVG against what the earlier code wrote. Still with separate canvas and SVG code:
+ink strokes, text and images.
 
 ## State
 
@@ -75,7 +90,8 @@ and scale, line end handles, the drawing instruments, text, and touch pan and pi
 
 1. **No DOM and no Node in packages.** Every package is type-checked on its own with
    `packages/tsconfig.base.json`, which has only the ECMAScript library: `document`, `window`,
-   `HTMLCanvasElement` or `process` don't exist there.
+   `HTMLCanvasElement` or `process` don't exist there. The one exception is `render-canvas`, whose
+   tsconfig adds the DOM library because drawing on a canvas is its whole job.
 2. **Declared dependencies only.** `scripts/check-boundaries.mjs` checks that a package imports only
    its own files and the packages listed in its `package.json`, that packages have no cycles, that
    app code imports packages by name and that the site imports no app code.
@@ -127,6 +143,7 @@ Only where there are really two or more ways to do something:
    (eraser, brush select and laser are done).
 4. Done: the web app (`apps/web`, published at `/inkboard/app/`): the desktop app shell with the web
    platform, IndexedDB storage, file pickers, print to PDF, and a service worker for offline use.
-5. Painter: one drawing interface for Canvas 2D and SVG export; rendering moves into a package.
+5. In progress: display lists for drawing on screen and in exports (graphs and formulas done; ink,
+   text and images next), then the renderer moves into a package.
 6. Features as modules with a registry, starting with shape recognition.
 7. The remaining tools out of `Board.tsx`.

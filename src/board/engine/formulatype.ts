@@ -1,4 +1,6 @@
-import { inkColor } from './surface'
+import { paint } from '@inkboard/render-canvas/paint'
+import { toSvg, type GroupPrim, type Prim } from '@inkboard/render/display'
+import { inkColors } from './surface'
 /**
  * Typesetting of keypad formulas (engine/formula.ts): the tree becomes the same vector primitives
  * as the labels of plotted functions (engine/mathtype.ts: text pieces and stroked polylines), so the
@@ -358,51 +360,29 @@ export function formulaBBox(f: Placed): BBox {
   return { minX: f.x, minY: f.y, maxX: f.x + Math.max(b.w, f.size * 0.3), maxY: f.y + Math.max(b.asc + b.desc, f.size * 0.6) }
 }
 
-export function drawMathBox(ctx: CanvasRenderingContext2D, b: MathBox, x: number, baseline: number, color: string): void {
-  ctx.fillStyle = color
-  ctx.strokeStyle = color
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'alphabetic'
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-  for (const t of b.texts) {
-    ctx.font = `${t.italic ? 'italic ' : ''}${t.size}px ${MATH_FONT}`
-    ctx.fillText(t.s, x + t.x, baseline + t.y)
+/** A typeset formula as a display list (@inkboard/render): glyphs and the strokes of bars and roots. */
+export function mathBoxDisplay(b: MathBox, x: number, baseline: number, color: string): GroupPrim {
+  return {
+    kind: 'group',
+    fill: color,
+    cap: 'round',
+    join: 'round',
+    children: [
+      ...b.texts.map((t): Prim => ({ kind: 'text', s: t.s, x: x + t.x, y: baseline + t.y, size: t.size, family: MATH_FONT, ...(t.italic ? { italic: true } : {}) })),
+      ...b.lines.map((l): Prim => ({ kind: 'polyline', pts: l.pts.map(([px, py]) => [x + px, baseline + py]), width: l.w, color }))
+    ]
   }
-  for (const l of b.lines) {
-    ctx.beginPath()
-    ctx.moveTo(x + l.pts[0][0], baseline + l.pts[0][1])
-    for (let i = 1; i < l.pts.length; i++) ctx.lineTo(x + l.pts[i][0], baseline + l.pts[i][1])
-    ctx.lineWidth = l.w
-    ctx.stroke()
-  }
+}
+
+export function formulaDisplay(f: Placed & { color: string }): GroupPrim {
+  const b = formulaBox(f)
+  return mathBoxDisplay(b, f.x, f.y + b.asc, f.color)
 }
 
 export function drawFormula(ctx: CanvasRenderingContext2D, f: Placed & { color: string }): void {
-  const b = formulaBox(f)
-  drawMathBox(ctx, b, f.x, f.y + b.asc, inkColor(f.color))
-}
-
-const r2 = (v: number): string => (Math.round(v * 100) / 100).toString()
-const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-
-export function mathBoxSvg(b: MathBox, x: number, baseline: number, color: string): string {
-  const parts: string[] = [`<g fill="${esc(color)}" stroke-linecap="round" stroke-linejoin="round">`]
-  for (const t of b.texts) {
-    parts.push(
-      `<text x="${r2(x + t.x)}" y="${r2(baseline + t.y)}" font-size="${r2(t.size)}" font-family='${MATH_FONT}'${t.italic ? ' font-style="italic"' : ''}>${esc(t.s)}</text>`
-    )
-  }
-  for (const l of b.lines) {
-    parts.push(
-      `<path d="M${l.pts.map(([px, py]) => `${r2(x + px)},${r2(baseline + py)}`).join('L')}" fill="none" stroke="${esc(color)}" stroke-width="${r2(l.w)}"/>`
-    )
-  }
-  parts.push('</g>')
-  return parts.join('')
+  paint(ctx, formulaDisplay(f), inkColors)
 }
 
 export function formulaSvg(f: Placed & { color: string }): string {
-  const b = formulaBox(f)
-  return mathBoxSvg(b, f.x, f.y + b.asc, inkColor(f.color))
+  return toSvg(formulaDisplay(f), inkColors)
 }

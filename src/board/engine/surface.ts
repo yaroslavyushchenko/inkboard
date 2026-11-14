@@ -1,4 +1,5 @@
 import type { BackgroundKind, PaperPattern } from '@inkboard/core/types'
+import { PAPER, type ColorMap } from '@inkboard/render/display'
 
 /**
  * Board surfaces: white paper (the classic look) and a dark green lecture chalkboard
@@ -94,6 +95,9 @@ export function inkColor(c: string): string {
 
 /** Paper-coloured details (halo under graph labels, hollow line ends) on the current surface. */
 export const inkPaper = (): string => (chalkInk ? CHALKBOARD_COLOR : PAPER_COLOR)
+
+/** Display-list colours on the current surface (see withInkSurface): ink colours, and PAPER. */
+export const inkColors: ColorMap = (c) => (c === PAPER ? inkPaper() : inkColor(c))
 
 /** Highlighter blending: darken on paper, lighten on the dark board (multiply would vanish there). */
 export const highlightBlend = (): GlobalCompositeOperation => (chalkInk ? 'screen' : 'multiply')

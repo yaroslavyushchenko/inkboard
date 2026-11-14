@@ -1,0 +1,17 @@
+{
+  "name": "@inkboard/render-canvas",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Draws display lists on a Canvas 2D context. The only package that may use the DOM (canvas) types.",
+  "license": "FSL-1.1-MIT",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@inkboard/render": "*"
+  }
+}

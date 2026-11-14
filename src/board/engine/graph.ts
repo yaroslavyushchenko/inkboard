@@ -1,4 +1,6 @@
-import { inkColor, inkPaper } from './surface'
+import { paint } from '@inkboard/render-canvas/paint'
+import { PAPER, toSvg, type GroupPrim, type Prim, type TextPrim } from '@inkboard/render/display'
+import { inkColors } from './surface'
 import { isBlank, type FormulaState, type Row } from '@inkboard/math/formula'
 import { fnHead, isFnLetter, labelRows, parsePlot, parseRows, readPlotRows, rowsToText } from './formulaexpr'
 import { typesetRows } from './formulatype'
@@ -756,87 +758,43 @@ export function graphBBox(g: Pick<GraphItem, keyof GraphParams | 'ox' | 'oy'>): 
 
 const fontFamily = (italic?: boolean, math?: boolean): string =>
   math ? MATH_FONT : italic ? '"Times New Roman", Georgia, serif' : 'system-ui, "Segoe UI", Ubuntu, sans-serif'
-const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-export function drawGraph(ctx: CanvasRenderingContext2D, g: GraphItem): void {
+const displays = new WeakMap<GraphItem, GroupPrim>()
+
+/**
+ * What the graph looks like (display list, @inkboard/render): axes, arrow heads, curves, then the
+ * formulas over them with a paper-coloured halo so they stay readable where curves cross.
+ * Built once per item object; the screen, PNG and SVG exports and the menu previews all draw this.
+ */
+export function graphDisplay(g: GraphItem): GroupPrim {
+  let d = displays.get(g)
+  if (d) return d
   const p = graphPrims(g)
-  ctx.lineCap = 'round'
-  for (const l of p.lines) {
-    ctx.beginPath()
-    ctx.moveTo(l.x1, l.y1)
-    ctx.lineTo(l.x2, l.y2)
-    ctx.lineWidth = l.w
-    ctx.strokeStyle = inkColor(l.color)
-    ctx.stroke()
+  const polyline = (l: GraphPrims['paths'][number]): Prim => ({ kind: 'polyline', pts: l.pts, width: l.w, color: l.color, join: 'round' })
+  const text = (t: GraphPrims['texts'][number]): TextPrim => ({
+    kind: 'text', s: t.s, x: t.x, y: t.y, size: t.size, family: fontFamily(t.italic, t.math),
+    ...(t.italic ? { italic: true } : {}), align: t.align, baseline: t.baseline
+  })
+  d = {
+    kind: 'group',
+    cap: 'round',
+    children: [
+      ...p.lines.map((l): Prim => ({ kind: 'line', x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, width: l.w, color: l.color })),
+      ...p.tris.map((t): Prim => ({ kind: 'polygon', pts: t.pts, color: t.color })),
+      ...p.paths.map(polyline),
+      ...p.texts.filter((t) => t.math).map((t): Prim => ({ ...text(t), halo: { color: PAPER, width: t.size * 0.22 } })),
+      ...p.marks.map(polyline),
+      ...p.texts.map((t): Prim => ({ ...text(t), color: t.color }))
+    ]
   }
-  for (const t of p.tris) {
-    ctx.beginPath()
-    ctx.moveTo(...t.pts[0])
-    ctx.lineTo(...t.pts[1])
-    ctx.lineTo(...t.pts[2])
-    ctx.closePath()
-    ctx.fillStyle = inkColor(t.color)
-    ctx.fill()
-  }
-  ctx.lineJoin = 'round'
-  const polyline = (l: GraphPrims['paths'][number]): void => {
-    ctx.beginPath()
-    ctx.moveTo(l.pts[0][0], l.pts[0][1])
-    for (let i = 1; i < l.pts.length; i++) ctx.lineTo(l.pts[i][0], l.pts[i][1])
-    ctx.lineWidth = l.w
-    ctx.strokeStyle = inkColor(l.color)
-    ctx.stroke()
-  }
-  for (const l of p.paths) polyline(l)
-  const font = (t: GraphPrims['texts'][number]): void => {
-    ctx.font = `${t.italic ? 'italic ' : ''}${t.size}px ${fontFamily(t.italic, t.math)}`
-    ctx.textAlign = t.align
-    ctx.textBaseline = t.baseline
-  }
-  // Paper-coloured outline under formula glyphs keeps them readable where curves cross.
-  ctx.strokeStyle = inkPaper()
-  for (const t of p.texts) {
-    if (!t.math) continue
-    font(t)
-    ctx.lineWidth = t.size * 0.22
-    ctx.strokeText(t.s, t.x, t.y)
-  }
-  for (const l of p.marks) polyline(l)
-  for (const t of p.texts) {
-    font(t)
-    ctx.fillStyle = inkColor(t.color)
-    ctx.fillText(t.s, t.x, t.y)
-  }
+  displays.set(g, d)
+  return d
 }
 
-const r2 = (v: number): string => (Math.round(v * 100) / 100).toString()
+export function drawGraph(ctx: CanvasRenderingContext2D, g: GraphItem): void {
+  paint(ctx, graphDisplay(g), inkColors)
+}
 
 export function graphSvg(g: GraphItem): string {
-  const p = graphPrims(g)
-  const parts: string[] = ['<g stroke-linecap="round">']
-  for (const l of p.lines) {
-    parts.push(`<line x1="${r2(l.x1)}" y1="${r2(l.y1)}" x2="${r2(l.x2)}" y2="${r2(l.y2)}" stroke="${inkColor(l.color)}" stroke-width="${r2(l.w)}"/>`)
-  }
-  for (const t of p.tris) parts.push(`<path d="M${t.pts.map(([x, y]) => `${r2(x)},${r2(y)}`).join('L')}Z" fill="${inkColor(t.color)}"/>`)
-  for (const l of p.paths) {
-    parts.push(`<path d="M${l.pts.map(([x, y]) => `${r2(x)},${r2(y)}`).join('L')}" fill="none" stroke="${inkColor(l.color)}" stroke-width="${r2(l.w)}" stroke-linejoin="round"/>`)
-  }
-  for (const t of p.texts) {
-    if (!t.math) continue
-    parts.push(
-      `<text x="${r2(t.x)}" y="${r2(t.y)}" font-size="${r2(t.size)}" font-family='${MATH_FONT}'${t.italic ? ' font-style="italic"' : ''} fill="none" stroke="${inkPaper()}" stroke-width="${r2(t.size * 0.22)}" stroke-linejoin="round">${esc(t.s)}</text>`
-    )
-  }
-  for (const l of p.marks) {
-    parts.push(`<path d="M${l.pts.map(([x, y]) => `${r2(x)},${r2(y)}`).join('L')}" fill="none" stroke="${inkColor(l.color)}" stroke-width="${r2(l.w)}" stroke-linejoin="round"/>`)
-  }
-  for (const t of p.texts) {
-    const anchor = t.align === 'center' ? 'middle' : t.align === 'right' ? 'end' : 'start'
-    const base = t.baseline === 'top' ? 'hanging' : t.baseline === 'middle' ? 'central' : 'alphabetic'
-    parts.push(
-      `<text x="${r2(t.x)}" y="${r2(t.y)}" font-size="${r2(t.size)}" font-family='${fontFamily(t.italic, t.math)}'${t.italic ? ' font-style="italic"' : ''} text-anchor="${anchor}" dominant-baseline="${base}" fill="${inkColor(t.color)}">${esc(t.s)}</text>`
-    )
-  }
-  parts.push('</g>')
-  return parts.join('')
+  return toSvg(graphDisplay(g), inkColors)
 }
