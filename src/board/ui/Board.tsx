@@ -1405,6 +1405,15 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       void actions[sc.id]()
     }
 
+    // Mouse side buttons: Back = undo, Forward = redo. Never let them navigate the page (web app).
+    const onSideButton = (e: MouseEvent): void => {
+      if (e.button !== 3 && e.button !== 4) return
+      e.preventDefault()
+      if (e.type !== 'mouseup' || !session.getState().active || isTyping(e.target)) return
+      if (e.button === 3) editor.undo()
+      else editor.redo()
+    }
+
     // A Space released while another window had focus never sends keyup: don't stay stuck in pan mode.
     const onBlur = (): void => {
       if (gesture && gesture.kind !== 'pinch') finishGesture()
@@ -1488,6 +1497,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
     overlay.addEventListener('wheel', onWheel, { passive: false })
     overlay.addEventListener('contextmenu', preventMenu)
     window.addEventListener('keydown', onKeyDown)
+    for (const type of ['mousedown', 'mouseup', 'auxclick'] as const) window.addEventListener(type, onSideButton)
     window.addEventListener('keyup', onKeyUp)
     window.addEventListener('blur', onBlur)
     // Releases outside the board (pointer capture lost, pen lifted over a panel) still end the gesture.
@@ -1515,6 +1525,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       overlay.removeEventListener('wheel', onWheel)
       overlay.removeEventListener('contextmenu', preventMenu)
       window.removeEventListener('keydown', onKeyDown)
+      for (const type of ['mousedown', 'mouseup', 'auxclick'] as const) window.removeEventListener(type, onSideButton)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)
       window.removeEventListener('pointerup', onPointerUp)

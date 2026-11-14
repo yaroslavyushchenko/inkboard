@@ -2,14 +2,13 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Pointer
 import { useT, type MessageKey } from '../i18n'
 import { HIGHLIGHTER_COLORS, HIGHLIGHTER_SIZES, PEN_COLORS, PEN_SIZES, type InkSlot, usePrefs, prefsStore } from '../store'
 import { TEXT_SIZES } from '../engine/text'
-import { SHORTCUTS } from '../shortcuts'
+import { shortcutKey, type ShortcutId } from '../shortcuts'
 import { DEFAULT_TOOLBAR, isToolbarDivider, toolbarToolId, type ToolbarToolId, type ToolbarItemId } from '../toolbarLayout'
 import {
-  AxesIcon, BrushSelectIcon, ChevronDownIcon, CompassIcon, EraserIcon, FormulaIcon, HandIcon, ImageIcon, LaserIcon, LassoIcon,
-  MoveIcon, PenIcon, ProtractorIcon, RedoIcon, RulerIcon, SetSquare45Icon, SetSquare60Icon, ShapesIcon,
-  StampIcon, TextIcon, ToolbarSettingsIcon, UndoIcon
+  AxesIcon, BrushSelectIcon, ChevronDownIcon, EraserIcon, FormulaIcon, HandIcon, ImageIcon, LaserIcon, LassoIcon,
+  MoveIcon, PenIcon, RedoIcon, RulerIcon, ShapesIcon, StampIcon, TextIcon, ToolbarSettingsIcon, UndoIcon
 } from './icons'
-import { GraphMenu, ShapesMenu } from './InsertMenus'
+import { GraphMenu, InstrumentsMenu, ShapesMenu } from './InsertMenus'
 import { LineStyleControls, SizeSlider } from './LineStyle'
 import { Popover } from './Popover'
 import { ToolbarCustomizer } from './ToolbarCustomizer'
@@ -30,9 +29,11 @@ interface ToolbarItem {
   menu?: ReactNode
 }
 
-const instrumentShortcuts = new Map<string, string>(SHORTCUTS.filter(({ id }) =>
-  id === 'ruler' || id === 'square45' || id === 'square60' || id === 'protractor' || id === 'compass' || id === 'laser'
-).map(({ id, display }) => [id, display]))
+/** Toolbar buttons that have a keyboard shortcut: the key is written in the button's corner. */
+const TOOL_SHORTCUTS: Partial<Record<ToolbarToolId, ShortcutId>> = {
+  select: 'lasso', brushSelect: 'brushSelect', move: 'move',
+  pen1: 'pen1', pen2: 'pen2', pen3: 'pen3', highlighter: 'highlighter', eraser: 'eraser', laser: 'laser'
+}
 
 /** Eraser popover: whole strokes or only what it touches, and its size. */
 function EraserOptions() {
@@ -143,11 +144,8 @@ function InkOptions({
 
 export function Toolbar({ extraTools, menu, settings }: { extraTools?: ReactNode; menu?: ReactNode; settings: ReactNode }) {
   const editor = useEditor()
-  const { tool, activePen, canUndo, canRedo, formulaEdit, ruler, setSquare, protractor, compass } = useSession(
-    useShallow((s) => ({
-      tool: s.tool, activePen: s.activePen, canUndo: s.canUndo, canRedo: s.canRedo, formulaEdit: s.formulaEdit,
-      ruler: s.ruler, setSquare: s.setSquare, protractor: s.protractor, compass: s.compass
-    }))
+  const { tool, activePen, canUndo, canRedo, formulaEdit } = useSession(
+    useShallow((s) => ({ tool: s.tool, activePen: s.activePen, canUndo: s.canUndo, canRedo: s.canRedo, formulaEdit: s.formulaEdit }))
   )
   const { pens, highlighter, toolbarLayout } = usePrefs(useShallow((s) => ({ pens: s.pens, highlighter: s.highlighter, toolbarLayout: s.toolbarLayout })))
   const { selectPen, setTool } = editor.session.getState()
@@ -373,11 +371,7 @@ export function Toolbar({ extraTools, menu, settings }: { extraTools?: ReactNode
     graph: { label: 'graph.title', icon: <AxesIcon />, menu: <GraphMenu /> },
     templates: { label: 'tpl.title', icon: <StampIcon />, menu: extraTools },
     image: { label: 'toolbar.image', title: 'tool.image', icon: <ImageIcon />, action: () => fileRef.current?.click() },
-    ruler: { label: 'toolbar.ruler', title: 'tool.ruler', icon: <RulerIcon />, active: !!ruler, action: () => editor.toggleRuler() },
-    square45: { label: 'toolbar.square45', title: 'tool.square45', icon: <SetSquare45Icon />, active: setSquare?.kind === 'square45', action: () => editor.toggleSetSquare('square45') },
-    square60: { label: 'toolbar.square60', title: 'tool.square60', icon: <SetSquare60Icon />, active: setSquare?.kind === 'square60', action: () => editor.toggleSetSquare('square60') },
-    protractor: { label: 'instruments.protractor', title: 'tool.protractor', icon: <ProtractorIcon />, active: !!protractor, action: () => editor.toggleProtractor() },
-    compass: { label: 'toolbar.compass', title: 'tool.compass', icon: <CompassIcon />, active: !!compass, action: () => editor.toggleCompass() },
+    instruments: { label: 'toolbar.instruments', icon: <RulerIcon />, menu: <InstrumentsMenu /> },
     undo: { label: 'toolbar.undo', title: 'action.undo', icon: <UndoIcon />, disabled: !canUndo, action: () => editor.undo() },
     redo: { label: 'toolbar.redo', title: 'action.redo', icon: <RedoIcon />, disabled: !canRedo, action: () => editor.redo() }
   }
@@ -418,7 +412,8 @@ export function Toolbar({ extraTools, menu, settings }: { extraTools?: ReactNode
             <div ref={itemsRef} className="toolbar-items" role="group" aria-label={t('toolbar.current')}>
               {layout.map((id, index) => {
                 const { label, title, icon, action, active, disabled, pen, popover, menu } = items[toolbarToolId(id)]
-                const shortcut = instrumentShortcuts.get(id)
+                const shortcutId = TOOL_SHORTCUTS[toolbarToolId(id)]
+                const shortcut = shortcutId && shortcutKey(shortcutId)
                 const tooltip = title ? t(title) : id.startsWith('pen') ? t('tool.pen', { n: id.slice(-1) }) : t(label)
                 const marker = dropAt === index ? 'drop-before' : index === layout.length - 1 && dropAt === layout.length ? 'drop-after' : ''
                 const options = open?.kind === 'pen' && id === `pen${open.index + 1}`
@@ -473,6 +468,7 @@ export function Toolbar({ extraTools, menu, settings }: { extraTools?: ReactNode
                           onClick={action}
                         >
                           {icon}
+                          {shortcut && <kbd className="tool-key" aria-hidden>{shortcut}</kbd>}
                         </button>
                         {options && <Popover onClose={close} className="ink-popover" fit="below" toolbar>{options}</Popover>}
                       </>

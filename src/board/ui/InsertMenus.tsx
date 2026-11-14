@@ -5,7 +5,8 @@ import { MAX_BASE, MIN_BASE, SHAPE_BASES, SHAPES_2D, SHAPES_3D, shapeParts, type
 import type { GraphItem, GraphParams } from '@inkboard/core/types'
 import { useT, type MessageKey } from '../i18n'
 import { usePrefs, prefsStore } from '../store'
-import { AxesIcon, ChevronDownIcon, PolygonIcon, ShapesIcon } from './icons'
+import { AxesIcon, ChevronDownIcon, CompassIcon, PolygonIcon, ProtractorIcon, RulerIcon, SetSquare45Icon, SetSquare60Icon, ShapesIcon } from './icons'
+import { shortcutKey } from '../shortcuts'
 import { Popover } from './Popover'
 import { useEditor, useSession } from '../editorContext'
 
@@ -148,6 +149,47 @@ export function ShapesMenu() {
         />
       )}
       <p className="settings-hint">{t('shapes.hint')}</p>
+    </MenuButton>
+  )
+}
+
+/** Ruler, set squares, protractor and compass in one dropdown; each row shows its key. */
+export function InstrumentsMenu() {
+  const editor = useEditor()
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const ruler = useSession((s) => s.ruler !== null)
+  const square = useSession((s) => s.setSquare?.kind ?? null)
+  const protractor = useSession((s) => s.protractor !== null)
+  const compass = useSession((s) => s.compass !== null)
+  const rows: { id: 'ruler' | 'square45' | 'square60' | 'protractor' | 'compass'; label: MessageKey; icon: ReactNode; on: boolean; toggle: () => void }[] = [
+    { id: 'ruler', label: 'toolbar.ruler', icon: <RulerIcon />, on: ruler, toggle: () => editor.toggleRuler() },
+    { id: 'square45', label: 'toolbar.square45', icon: <SetSquare45Icon />, on: square === 'square45', toggle: () => editor.toggleSetSquare('square45') },
+    { id: 'square60', label: 'toolbar.square60', icon: <SetSquare60Icon />, on: square === 'square60', toggle: () => editor.toggleSetSquare('square60') },
+    { id: 'protractor', label: 'instruments.protractor', icon: <ProtractorIcon />, on: protractor, toggle: () => editor.toggleProtractor() },
+    { id: 'compass', label: 'toolbar.compass', icon: <CompassIcon />, on: compass, toggle: () => editor.toggleCompass() }
+  ]
+  return (
+    <MenuButton icon={<RulerIcon />} title={t('toolbar.instruments')} active={rows.some((r) => r.on)} open={open} setOpen={setOpen}>
+      <div className="popover-title">{t('toolbar.instruments')}</div>
+      <div className="instrument-list">
+        {rows.map((r) => (
+          <button
+            key={r.id}
+            className={`instrument-row ${r.on ? 'active' : ''}`}
+            aria-pressed={r.on}
+            aria-keyshortcuts={shortcutKey(r.id)}
+            onClick={() => {
+              r.toggle()
+              setOpen(false)
+            }}
+          >
+            {r.icon}
+            <span>{t(r.label)}</span>
+            <kbd>{shortcutKey(r.id)}</kbd>
+          </button>
+        ))}
+      </div>
     </MenuButton>
   )
 }

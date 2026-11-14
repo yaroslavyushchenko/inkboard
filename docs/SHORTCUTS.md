@@ -38,6 +38,7 @@ depend on them. New shortcuts: add to `shortcuts.ts`, this file, the test and bo
 |---|---|
 | Ctrl+Z | Undo |
 | Ctrl+Y / Ctrl+Shift+Z | Redo |
+| Mouse Back / Forward button | Undo / redo |
 | Shift (hold while drawing) | Straight line (snaps to 0° / 45° / 90°) |
 | Ctrl+G | Group |
 | Ctrl+Shift+G | Ungroup |

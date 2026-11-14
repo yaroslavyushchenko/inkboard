@@ -147,3 +147,8 @@ export function matchShortcut(e: KeyLike, scope: 'app' | 'board'): Shortcut | nu
   }
   return null
 }
+
+/** How the shortcut of an action is written (its first, non-alias binding), e.g. "R" or "Shift+S". */
+export function shortcutKey(id: ShortcutId): string | undefined {
+  return SHORTCUTS.find((s) => s.id === id && !s.alias)?.display
+}

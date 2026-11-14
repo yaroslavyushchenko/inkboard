@@ -387,6 +387,69 @@ button:disabled {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
+.toolbar-item .pen,
+.toolbar-item .icon-btn {
+  position: relative;
+}
+
+/* The key that picks a tool, in the corner of its toolbar button. */
+.tool-key {
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.instrument-list {
+  display: grid;
+  gap: 2px;
+  min-width: 250px;
+}
+
+.instrument-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: left;
+}
+
+.instrument-row svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  color: var(--icon);
+}
+
+.instrument-row span {
+  flex: 1;
+}
+
+.instrument-row kbd {
+  font: inherit;
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+
+.instrument-row:hover {
+  background: var(--hover);
+}
+
+.instrument-row.active {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+
 .icon-btn.menu-btn {
   width: auto;
   padding: 0 6px 0 8px;

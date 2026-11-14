@@ -24,6 +24,7 @@ export function ShortcutsDialog({ fileActions }: { fileActions: boolean }) {
       return { display: [s.display, ...alt].join(' / '), label: s.label }
     }),
     ...HOLD_KEYS.filter((h) => h.group === g),
+    ...(g === 'editing' ? [{ display: t('shortcuts.mouseBack'), label: 'shortcuts.undo' }, { display: t('shortcuts.mouseForward'), label: 'shortcuts.redo' }] : []),
     ...(CLIPBOARD_KEYS.group === g ? [CLIPBOARD_KEYS] : [])
   ]
   return (
