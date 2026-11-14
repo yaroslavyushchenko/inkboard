@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { panBy, screenToWorld, zoomAt } from '@inkboard/core/camera'
-import { bboxIntersects, bboxOfPoints, circleHitsPolyline, newId } from '@inkboard/core/geometry'
+import { bboxOfPoints, newId } from '@inkboard/core/geometry'
 import { setImageLoadListener } from '../engine/images'
 import {
   BoardRenderer,
@@ -13,7 +13,7 @@ import {
   type LiveStroke
 } from '../engine/renderer'
 import { arcStroke, baseStroke, degText, hitProtractor, rayStroke, scaleAngle, snapDeg, toLocal, toWorld, type ProtractorHit, type ProtractorState } from '../engine/protractor'
-import { buildShapeItems, editableShape, regenerateShape, shapeMembers } from '@inkboard/core/shapeItems'
+import { buildShapeItems, editableShape, regenerateShape } from '@inkboard/core/shapeItems'
 import { DEFAULT_SHAPE_SIZE, isLinear, SHAPE_BASES, shapeBox, shapeParts, snapAngle, type ShapeKind } from '@inkboard/core/shapes'
 import { hitTest, itemsInLasso } from '../engine/transform'
 import type { BBox, Item, Point, ShapeSpec, StrokeItem, TextItem } from '@inkboard/core/types'
@@ -37,8 +37,11 @@ import {
   type StraightState
 } from '../engine/straightedge'
 import { textBBox } from '../engine/text'
-import { splitStroke } from '@inkboard/core/erase'
 import { holdShape, recognizeShape, type Snapped } from '@inkboard/shape-recognition/snapshape'
+import { beginBrushSelect } from '../tools/brushSelect'
+import { beginErase } from '../tools/eraser'
+import { beginLaser, LASER_FADE_MS, LaserTrail } from '../tools/laser'
+import type { Gesture as ToolGesture, Modifiers, Sample, ToolContext } from '../tools/types'
 import { WheelSource } from '../engine/wheel'
 
 type StraightSlot = 'ruler' | 'setSquare'
@@ -105,9 +108,8 @@ type Gesture =
       startX: number
       startY: number
     }
-  | { kind: 'eraser'; pointerId: number; removed: Item[]; added: Item[]; lastX: number; lastY: number }
-  | { kind: 'laser'; pointerId: number }
-  | { kind: 'brush'; pointerId: number; lastX: number; lastY: number; remove: boolean; touched: boolean; moved: boolean; sx: number; sy: number }
+  // Tools moved to tool controllers (src/board/tools): the board only feeds them samples.
+  | { kind: 'eraser' | 'laser' | 'brush'; pointerId: number; tool: ToolGesture }
   | { kind: 'pan'; pointerId: number; lastX: number; lastY: number }
   | { kind: 'pinch'; dist: number; cx: number; cy: number }
   | { kind: 'lasso'; pointerId: number; points: [number, number][]; startX: number; startY: number; moved: boolean }
@@ -137,8 +139,6 @@ interface Hover {
   buttons: number
 }
 
-/** How long a laser pointer trail stays visible (ms). */
-const LASER_FADE_MS = 900
 /** Hold-to-snap: the pen counts as still while it moves less than this (screen px). */
 const HOLD_SLOP = 4
 
@@ -168,8 +168,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
     /** Last press on a text item (for double click / double tap = edit). */
     let lastTap: { id: string; t: number } | null = null
     const touches = new Map<number, { x: number; y: number }>()
-    /** Laser pointer trail: world points with the time they were drawn. */
-    let laser: [number, number, number][] = []
+    const trail = new LaserTrail()
     /** Hold-to-snap timer of the stroke being drawn and where the pen last moved noticeably. */
     let holdTimer = 0
     let holdAt: { x: number; y: number } | null = null
@@ -220,15 +219,14 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
           compass: comp ? { c: comp, color: inkSlot().color, label: radiusLabel(ui.lang, comp.r), state: cs!.state } : null,
           hint: hover && hintText ? { sx: hover.sx, sy: hover.sy, text: hintText } : null,
           angleLabel,
-          laser: laser.length ? { points: laser, now: performance.now(), fade: LASER_FADE_MS } : null
+          laser: trail.points.length ? { points: trail.points, now: performance.now(), fade: LASER_FADE_MS } : null
         })
       }
       baseDirty = false
       overlayDirty = false
       // Keep animating while the laser trail fades out.
-      if (laser.length) {
-        const now = performance.now()
-        laser = laser.filter((pt) => now - pt[2] < LASER_FADE_MS)
+      if (trail.points.length) {
+        trail.prune(performance.now())
         // One more frame after the last point expires clears it from the overlay.
         overlayDirty = true
         raf = requestAnimationFrame(frame)
@@ -241,6 +239,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       if (!raf) raf = requestAnimationFrame(frame)
     }
     const detach = editor.attach(invalidate)
+    const toolContext: ToolContext = { editor, scene, session, prefs: () => prefsStore.getState(), invalidate }
     setImageLoadListener(() => invalidate(true))
 
     // ---------- helpers ----------
@@ -255,6 +254,13 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       const r = overlay.getBoundingClientRect()
       return { x: e.clientX - r.left, y: e.clientY - r.top }
     }
+    /** A pointer event as a tool sample (screen and board position). */
+    const sample = (e: PointerEvent): Sample => {
+      const p = local(e)
+      const w = screenToWorld(editor.camera, p.x, p.y)
+      return { sx: p.x, sy: p.y, x: w.x, y: w.y, pressure: e.pressure || 0.5, time: performance.now() }
+    }
+    const modifiers = (e: PointerEvent): Modifiers => ({ shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey, alt: e.altKey })
 
     const toolEffect = (tool: Tool): Effective =>
       tool === 'eraser'
@@ -599,74 +605,6 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       overlay.style.cursor = c
     }
 
-    const eraseSegment = (x0: number, y0: number, x1: number, y1: number, g: Gesture & { kind: 'eraser' }): void => {
-      const r = prefsStore.getState().eraserRadius / editor.camera.zoom
-      const box = {
-        minX: Math.min(x0, x1) - r,
-        minY: Math.min(y0, y1) - r,
-        maxX: Math.max(x0, x1) + r,
-        maxY: Math.max(y0, y1) + r
-      }
-      // Sample along the eraser movement so fast swipes don't skip strokes.
-      const dist = Math.hypot(x1 - x0, y1 - y0)
-      const steps = Math.max(1, Math.ceil(dist / (r * 0.5)))
-      const hit = new Set<Item>()
-      const items = scene.getItems()
-      if (prefsStore.getState().eraserMode === 'point') {
-        // Point eraser: cut away only what the circle covers; the rest stays as separate strokes.
-        const cut: Item[] = []
-        const pieces: Item[] = []
-        for (const item of items) {
-          if (item.type !== 'stroke' || item.locked || !bboxIntersects(item.bbox, box)) continue
-          const rest = splitStroke(item, x0, y0, x1, y1, r, newId)
-          if (!rest) continue
-          cut.push(item)
-          for (const piece of rest) pieces.push({ ...piece, z: item.z })
-        }
-        if (!cut.length) return
-        scene.remove(cut, false)
-        if (pieces.length) scene.add(pieces, false)
-        // One undo step for the whole swipe: what existed before it, and what is left after it.
-        const fresh = new Set(g.added.map((i) => i.id))
-        for (const c of cut) {
-          if (fresh.has(c.id)) g.added = g.added.filter((i) => i.id !== c.id)
-          else g.removed.push(c)
-        }
-        g.added.push(...pieces)
-        return
-      }
-      for (const item of items) {
-        // Like Whiteboard, the eraser only removes ink, never images. Locked items are skipped.
-        if (item.type !== 'stroke' || item.locked || hit.has(item) || !bboxIntersects(item.bbox, box)) continue
-        const rr = r + item.size / 2
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps
-          if (circleHitsPolyline(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, rr, item.points)) {
-            for (const m of eraseUnit(items, item)) hit.add(m)
-            break
-          }
-        }
-      }
-      if (hit.size) {
-        g.removed.push(...hit)
-        scene.remove([...hit], false)
-      }
-    }
-
-    /**
-     * What one eraser touch removes: a whole shape (every edge of a solid), a group made only of
-     * straight lines (older shapes), otherwise just the stroke. Nothing if any of it is locked.
-     */
-    const eraseUnit = (items: readonly Item[], item: StrokeItem): Item[] => {
-      let unit: Item[] = [item]
-      if (item.shape) unit = shapeMembers(items, item)
-      else if (item.groupId) {
-        const group = items.filter((i) => i.groupId === item.groupId)
-        if (group.every((i) => i.type === 'stroke' && i.geom === 'line')) unit = group
-      }
-      return unit.some((i) => i.locked) ? [] : unit
-    }
-
     /** A copy of a straight line with new end points (shapes are re-generated, e.g. arrow heads). */
     const withEnds = (orig: StrokeItem, a: End, b: End): StrokeItem => {
       if (orig.shape) {
@@ -678,49 +616,6 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         [b[0], b[1], orig.points[1][2]]
       ]
       return { ...orig, points, bbox: bboxOfPoints(points, orig.size * 3) }
-    }
-
-    /**
-     * Brush select: everything the circle touches between two board points is added to the selection
-     * (whole groups), or removed from it with Ctrl / Alt held.
-     */
-    const brushSegment = (x0: number, y0: number, x1: number, y1: number, g: Gesture & { kind: 'brush' }): void => {
-      const r = prefsStore.getState().selectRadius / editor.camera.zoom
-      const box = { minX: Math.min(x0, x1) - r, minY: Math.min(y0, y1) - r, maxX: Math.max(x0, x1) + r, maxY: Math.max(y0, y1) + r }
-      const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (r * 0.5)))
-      const hit: Item[] = []
-      for (const item of scene.getItems()) {
-        if (!bboxIntersects(item.bbox, box)) continue
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps
-          const cx = x0 + (x1 - x0) * t
-          const cy = y0 + (y1 - y0) * t
-          const touches =
-            item.type === 'stroke'
-              ? circleHitsPolyline(cx, cy, r + item.size / 2, item.points)
-              : cx + r >= item.bbox.minX && cx - r <= item.bbox.maxX && cy + r >= item.bbox.minY && cy - r <= item.bbox.maxY
-          if (touches) {
-            hit.push(item)
-            break
-          }
-        }
-      }
-      if (!hit.length) return
-      g.touched = true
-      const current = editor.selectedItems()
-      if (g.remove) {
-        const gone = new Set<string>()
-        for (const h of hit) {
-          if (h.groupId) for (const m of scene.getItems()) if (m.groupId === h.groupId) gone.add(m.id)
-          gone.add(h.id)
-        }
-        const next = current.filter((i) => !gone.has(i.id)).map((i) => i.id)
-        if (next.length !== current.length) session.setState({ selectedIds: next })
-      } else {
-        const have = new Set(current.map((i) => i.id))
-        const fresh = hit.filter((i) => !have.has(i.id))
-        if (fresh.length) editor.setSelection([...current, ...fresh])
-      }
     }
 
     const pointFrom = (e: PointerEvent, pressure: boolean): Point => {
@@ -831,11 +726,8 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
           const groupId = newId()
           scene.add([{ ...stroke, groupId }, { ...label, groupId }])
         } else scene.add([stroke])
-      } else if (g.kind === 'brush') {
-        // A tap that touches nothing clears the selection.
-        if (!g.moved && !g.touched && !g.remove) editor.clearSelection()
-      } else if (g.kind === 'eraser') {
-        if (g.removed.length || g.added.length) scene.record({ added: g.added, removed: g.removed })
+      } else if (g.kind === 'brush' || g.kind === 'eraser' || g.kind === 'laser') {
+        g.tool.end()
       } else if (g.kind === 'lasso') {
         if (!g.moved) {
           // A tap selects the item under the pointer (or clears the selection).
@@ -1068,9 +960,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       } else if (eff === 'pan') {
         gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
       } else if (eff === 'laser') {
-        const w = screenToWorld(editor.camera, p.x, p.y)
-        gesture = { kind: 'laser', pointerId: e.pointerId }
-        laser.push([w.x, w.y, performance.now()])
+        gesture = { kind: 'laser', pointerId: e.pointerId, tool: beginLaser(toolContext, trail, sample(e)) }
       } else if (eff === 'text') {
         // Click on text = edit it; anywhere else = start typing there.
         const w = screenToWorld(editor.camera, p.x, p.y)
@@ -1195,26 +1085,10 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
           const o = (h.corner + 2) % 4
           gesture = { kind: 'scale', pointerId: e.pointerId, ax: xs[o], ay: ys[o], cx: xs[h.corner], cy: ys[h.corner] }
         } else {
-          const w = screenToWorld(editor.camera, p.x, p.y)
-          const g: Gesture = {
-            kind: 'brush',
-            pointerId: e.pointerId,
-            lastX: w.x,
-            lastY: w.y,
-            remove: e.ctrlKey || e.metaKey || e.altKey,
-            touched: false,
-            moved: false,
-            sx: p.x,
-            sy: p.y
-          }
-          gesture = g
-          brushSegment(w.x, w.y, w.x, w.y, g)
+          gesture = { kind: 'brush', pointerId: e.pointerId, tool: beginBrushSelect(toolContext, sample(e), modifiers(e)) }
         }
       } else if (eff === 'eraser') {
-        const w = screenToWorld(editor.camera, p.x, p.y)
-        const g: Gesture = { kind: 'eraser', pointerId: e.pointerId, removed: [], added: [], lastX: w.x, lastY: w.y }
-        gesture = g
-        eraseSegment(w.x, w.y, w.x, w.y, g)
+        gesture = { kind: 'eraser', pointerId: e.pointerId, tool: beginErase(toolContext, sample(e)) }
       } else {
         editor.clearSelection()
         const ui = readUI()
@@ -1481,30 +1355,8 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
             g.by = w.y
             g.keep = e.shiftKey
             if (g.moved) g.live = { ...g.live, parts: shapeParts(g.shape, g.ax, g.ay, w.x, w.y, e.shiftKey, g.live.size, g.base) }
-          } else if (g.kind === 'brush') {
-            if (Math.hypot(p.x - g.sx, p.y - g.sy) > 4) g.moved = true
-            for (const ev of events) {
-              const lp = local(ev)
-              const w = screenToWorld(editor.camera, lp.x, lp.y)
-              brushSegment(g.lastX, g.lastY, w.x, w.y, g)
-              g.lastX = w.x
-              g.lastY = w.y
-            }
-          } else if (g.kind === 'laser') {
-            for (const ev of events) {
-              const lp = local(ev)
-              const w = screenToWorld(editor.camera, lp.x, lp.y)
-              laser.push([w.x, w.y, performance.now()])
-            }
-            invalidate(false)
-          } else if (g.kind === 'eraser') {
-            for (const ev of events) {
-              const lp = local(ev)
-              const w = screenToWorld(editor.camera, lp.x, lp.y)
-              eraseSegment(g.lastX, g.lastY, w.x, w.y, g)
-              g.lastX = w.x
-              g.lastY = w.y
-            }
+          } else if (g.kind === 'brush' || g.kind === 'laser' || g.kind === 'eraser') {
+            g.tool.move(events.map(sample))
           }
         }
       }

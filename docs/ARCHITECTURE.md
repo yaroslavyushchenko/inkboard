@@ -57,6 +57,18 @@ There is no global editor. The app makes one with `createEditor()` and passes it
 `<BoardWorkspace editor={...}>`, which provides it to the board UI (`useEditor()`). The board
 never reads the app store: the app tells it whether it is on screen through `session.active`.
 
+## Tools
+
+Each tool is a controller in `src/board/tools/` (`types.ts` has the interfaces). The board component
+turns DOM pointer events into `Sample`s (screen and board position, pressure, time) and hands them to
+the tool that started the gesture; the tool changes the scene and the session and commits on release.
+Tools never touch the DOM, so they are unit-tested without one (`tests/tools.test.ts`) and a React
+Native board could drive the same ones.
+
+Moved so far: eraser (stroke and point), brush select, laser. Still in `src/board/ui/Board.tsx`:
+pen and highlighter (with hold-to-snap and drawing along instruments), the shape tool, lasso, move
+and scale, line end handles, the drawing instruments, text, and touch pan and pinch.
+
 ## Rules the build checks
 
 `npm run typecheck` fails when a rule is broken:
@@ -111,7 +123,8 @@ Only where there are really two or more ways to do something:
 1. Done: workspace packages for math, core and shape recognition, with the checks above.
 2. Done: `createEditor()` instead of the global `editor`; the UI store split into preferences,
    board session and app state.
-3. Move the tool logic out of `src/board/ui/Board.tsx` into tool controllers in the editor.
+3. In progress: move the tool logic out of `src/board/ui/Board.tsx` into tool controllers
+   (eraser, brush select and laser are done).
 4. Painter: one drawing interface for Canvas 2D and SVG export; rendering moves into a package.
 5. Features as modules with a registry, starting with shape recognition.
 6. A web app with browser storage (IndexedDB) and files through the File System Access API.
