@@ -202,7 +202,6 @@ export function Site({ lang }: { lang: SiteLanguage }) {
               <div className="rv">
                 <p className="eyebrow">{t('ex.kicker')}</p>
                 <h2>{t('ex.title')}</h2>
-                <p className="sub">{t('ex.sub')}</p>
               </div>
               <div className="seg rv d1" id="ex-tabs" role="tablist" aria-label={info.examples} ref={exampleTabs}>
                 <span className="knob" aria-hidden="true"><i ref={exampleProgress} /></span>
@@ -222,7 +221,11 @@ export function Site({ lang }: { lang: SiteLanguage }) {
                       <img src={asset(`img/ex-${image}-${lang}.webp`)} width={2000} height={1250} loading="lazy" alt={lang === 'uk' ? uk : en} />
                     </picture>
                   </div>
-                  <figcaption><h3>{t(title)}</h3><p>{t(caption)}</p></figcaption>
+                  <figcaption>
+                    <span className="ex-num" aria-hidden="true">{String(index + 1).padStart(2, '0')}<small>/{String(examples.length).padStart(2, '0')}</small></span>
+                    <h3>{t(title)}</h3>
+                    <p>{t(caption)}</p>
+                  </figcaption>
                 </figure>
               ))}
 
@@ -310,9 +313,8 @@ export function Site({ lang }: { lang: SiteLanguage }) {
             </div>
             <div className="stats">
               <div className="stat rv"><div className="num"><Count value={5} /><small>{t('s.u1')}</small></div><p>{t('s.d1')}</p></div>
-              <div className="stat rv d1"><div className="num"><Count value={5} /><small>{t('s.u2')}</small></div><p>{t('s.d2')}</p></div>
-              <div className="stat rv d2"><div className="num"><Count value={30} /><small>{t('s.u3')}</small></div><p>{t('s.d3')}</p></div>
-              <div className="stat rv d3"><div className="num"><Count value={0} /></div><p>{t('s.d4')}</p></div>
+              <div className="stat rv d1"><div className="num"><Count value={30} /><small>{t('s.u3')}</small></div><p>{t('s.d3')}</p></div>
+              <div className="stat rv d2"><div className="num"><Count value={0} /></div><p>{t('s.d4')}</p></div>
             </div>
             <p className="plug rv">{t('s.plug')}</p>
           </div>
