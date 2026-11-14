@@ -3,7 +3,10 @@ export type SiteLanguage = 'uk' | 'en'
 const en = {
   'nav.examples': 'Examples',
   'nav.web': 'Open in browser',
-  'hero.browser': 'or in the browser',
+  'web.open': 'Open in browser',
+  'web.meta': 'Nothing to install',
+  'web.title': 'Or right in the browser',
+  'web.text': 'The same app with nothing to install. Boards stay in this browser: save one as an .inkboard file to move it to another computer. After the first visit it works offline too.',
   'nav.features': 'Features',
   'nav.download': 'Download',
   'hero.pill.b': 'FSL-1.1',
@@ -126,7 +129,10 @@ export const downloadNotes = {
 const uk: Record<keyof typeof en, string> = {
   "nav.examples": "Приклади",
   "nav.web": "Відкрити в браузері",
-  "hero.browser": "або в браузері",
+  "web.open": "Відкрити в браузері",
+  "web.meta": "Нічого не треба встановлювати",
+  "web.title": "Або просто в браузері",
+  "web.text": "Та сама програма, нічого не треба встановлювати. Дошки зберігаються в цьому браузері: щоб перенести дошку на інший комп’ютер, збережіть її як файл .inkboard. Після першого відкриття працює й без інтернету.",
   "nav.features": "Можливості",
   "nav.download": "Завантажити",
   "hero.pill.b": "FSL-1.1",
