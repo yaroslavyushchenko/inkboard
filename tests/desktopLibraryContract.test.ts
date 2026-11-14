@@ -7,15 +7,19 @@ import { after } from 'node:test'
 import { Library } from '../src/main/library.ts'
 import { libraryContract } from './libraryContract.ts'
 
-const dirs: string[] = []
+const opened: { dir: string; lib: Library }[] = []
 after(async () => {
-  for (const dir of dirs) await rm(dir, { recursive: true, force: true })
+  // Close every database first: Windows can't delete a file that is still open.
+  for (const { dir, lib } of opened) {
+    lib.close()
+    await rm(dir, { recursive: true, force: true })
+  }
 })
 
 libraryContract('SQLite', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'inkboard-contract-'))
-  dirs.push(dir)
   const lib = new Library(dir)
+  opened.push({ dir, lib })
   await lib.init()
   return lib
 })
