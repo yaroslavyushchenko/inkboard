@@ -71,7 +71,7 @@ function visit(name, path) {
 for (const name of packages.keys()) visit(name, [])
 
 // Apps and the site.
-for (const base of ['src', 'site', 'tests']) {
+for (const base of ['src', 'apps', 'site', 'tests']) {
   for (const file of files(join(ROOT, base))) {
     for (const spec of imports(file)) {
       const where = `${relative(ROOT, file)}: '${spec}'`

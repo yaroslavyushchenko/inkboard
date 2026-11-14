@@ -1,7 +1,11 @@
 import type { FeatureFlags, FeatureId } from './features'
 import type { BoardEntry, ExportKind, LibraryState, Tag, TemplateEntry } from './library'
 
-export interface LibraryApi {
+/**
+ * The board library's storage: boards, thumbnails, tags and templates. Each platform has its own
+ * (SQLite in the Electron main process, IndexedDB in the browser) behind this same interface.
+ */
+export interface BoardStoreApi {
   list(): Promise<LibraryState>
   thumb(id: string): Promise<Uint8Array | null>
   create(title: string, bytes: Uint8Array): Promise<BoardEntry>
@@ -18,14 +22,6 @@ export interface LibraryApi {
   remove(id: string): Promise<void>
   restore(id: string): Promise<void>
   purge(id: string): Promise<void>
-  /** Ask for a path and turn the board into a .inkboard file there. null = cancelled. */
-  saveAsFile(id: string, bytes: Uint8Array, suggestedName: string): Promise<BoardEntry | null>
-  /** Pick an existing .inkboard file and add it to the library. null = cancelled. */
-  importFile(): Promise<BoardEntry | null>
-  locate(id: string): Promise<BoardEntry | null>
-  showInFolder(id: string): Promise<void>
-  /** A board file the app was launched with ("Open with Inkboard"), already imported. */
-  takePendingOpen(): Promise<string | null>
   saveTemplate(name: string, bytes: Uint8Array, thumb: Uint8Array | null): Promise<TemplateEntry>
   replaceTemplate(id: string, bytes: Uint8Array, thumb: Uint8Array | null): Promise<TemplateEntry | null>
   loadTemplate(id: string): Promise<Uint8Array>
@@ -34,8 +30,24 @@ export interface LibraryApi {
   deleteTemplate(id: string): Promise<void>
 }
 
+/** .inkboard files outside the library: native dialogs on the desktop, file pickers or downloads in the browser. */
+export interface BoardFilesApi {
+  /** Ask for a path and turn the board into a .inkboard file there. null = cancelled. */
+  saveAsFile(id: string, bytes: Uint8Array, suggestedName: string): Promise<BoardEntry | null>
+  /** Pick an existing .inkboard file and add it to the library. null = cancelled. */
+  importFile(): Promise<BoardEntry | null>
+  locate(id: string): Promise<BoardEntry | null>
+  showInFolder(id: string): Promise<void>
+  /** A board file the app was launched with ("Open with Inkboard"), already imported. */
+  takePendingOpen(): Promise<string | null>
+}
+
+/** What the app shell sees: the library and the files together (the Electron preload exposes both as one). */
+export type LibraryApi = BoardStoreApi & BoardFilesApi
+
 export interface UpdateState {
-  status: 'idle' | 'dev' | 'store' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'
+  /** 'web': the browser version, which updates itself when the page is reloaded. */
+  status: 'idle' | 'dev' | 'store' | 'web' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error'
   version?: string
   percent?: number
   manual?: boolean

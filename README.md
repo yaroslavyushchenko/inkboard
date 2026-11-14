@@ -156,6 +156,7 @@ Requires Node.js (LTS or newer).
 npm install
 npm run dev        # start the app with hot reload
 npm run dev:x11    # Linux/Wayland: use this if pen pressure doesn't work
+npm run dev:web    # the web version at http://localhost:5174/inkboard/app/
 npm run typecheck
 npm test
 npm run build

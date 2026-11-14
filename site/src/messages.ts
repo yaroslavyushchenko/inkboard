@@ -2,6 +2,8 @@ export type SiteLanguage = 'uk' | 'en'
 
 const en = {
   'nav.examples': 'Examples',
+  'nav.web': 'Open in browser',
+  'hero.browser': 'or in the browser',
   'nav.features': 'Features',
   'nav.download': 'Download',
   'hero.pill.b': 'FSL-1.1',
@@ -123,6 +125,8 @@ export const downloadNotes = {
 
 const uk: Record<keyof typeof en, string> = {
   "nav.examples": "Приклади",
+  "nav.web": "Відкрити в браузері",
+  "hero.browser": "або в браузері",
   "nav.features": "Можливості",
   "nav.download": "Завантажити",
   "hero.pill.b": "FSL-1.1",

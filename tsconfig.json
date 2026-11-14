@@ -14,5 +14,5 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["src", "site", "electron.vite.config.ts", "site.vite.config.mts"]
+  "include": ["src", "site", "apps", "electron.vite.config.ts", "site.vite.config.mts"]
 }

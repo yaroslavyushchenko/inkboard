@@ -15,6 +15,7 @@ your tablet. Screenshots or a short screen recording help a lot.
 npm install
 npm run dev          # the desktop app with hot reload
 npm run dev:site     # the landing page at /inkboard/ (English) and /inkboard/uk/
+npm run dev:web      # the web version at /inkboard/app/ (boards stay in the browser)
 npm run typecheck && npm test && npm run build   # run before every commit
 ```
 

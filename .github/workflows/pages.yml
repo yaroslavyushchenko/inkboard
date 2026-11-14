@@ -1,12 +1,14 @@
-# Publishes the landing page, prerendered to static HTML for each language, to GitHub Pages:
-# https://yaroslavyushchenko.github.io/inkboard/ (English) and .../inkboard/uk/ (Ukrainian).
+# Publishes to GitHub Pages:
+# - the landing page, prerendered to static HTML for each language:
+#   https://yaroslavyushchenko.github.io/inkboard/ (English) and .../inkboard/uk/ (Ukrainian)
+# - the web app (the same app as the desktop one, boards kept in the browser): .../inkboard/app/
 # Download buttons read the latest release from the GitHub API, so a new release needs no redeploy.
 name: Pages
 
 on:
   push:
     branches: [main]
-    paths: ['site/**', 'scripts/prerender-site.mjs', 'site.vite.config.mts', 'package.json', 'package-lock.json', '.github/workflows/pages.yml']
+    paths: ['site/**', 'apps/web/**', 'src/**', 'packages/**', 'scripts/prerender-site.mjs', 'site.vite.config.mts', 'package.json', 'package-lock.json', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -34,6 +36,7 @@ jobs:
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       - run: npm run build:site
+      - run: npm run build:web
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

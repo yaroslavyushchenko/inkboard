@@ -7,7 +7,7 @@ works and ships as before. This file describes where the code is going and what 
 ## Layers
 
 ```
-apps          desktop (Electron, the repository root for now), web, site
+apps          desktop (Electron, the repository root for now), web (apps/web), site
   ↓
 ui-web        React DOM: toolbar, popovers, math keypad, dialogs, <BoardView/>
   ↓
@@ -87,17 +87,17 @@ interfaces (repositories), so the editor and the UI never know which one is used
 
 | Platform | Library (boards, thumbnails, tags, templates) | `.inkboard` files |
 |---|---|---|
-| Desktop | SQLite (`node:sqlite`) in the Electron main process, reached over IPC | native open and save dialogs |
-| Web | IndexedDB in the page, images as Blobs, `navigator.storage.persist()` | File System Access API, or download and upload |
-| Tests | in memory | in memory |
+| Desktop | SQLite (`node:sqlite`) in the Electron main process (`src/main/library.ts`), reached over IPC | native open and save dialogs; a saved file is the board |
+| Web | IndexedDB in the page (`src/renderer/src/web/library.ts`), `navigator.storage.persist()` after the first save | File System Access API, or download and upload (`web/files.ts`); a saved file is a copy |
 
 - **Repositories, not an ORM.** IndexedDB is not SQL, and no ORM covers both well. Each platform
   implements the repository interfaces directly; a cloud sync adapter would be one more.
 - **Files are a separate port.** Opening, saving, "show in folder" and "open with" are about the
-  file system, not the library database, so they don't belong in the library interface
-  (`LibraryApi` in `src/shared/platform.ts` still mixes the two; the web step splits it).
-- **One set of contract tests** runs against every adapter (SQLite, IndexedDB through
-  `fake-indexeddb`, memory), so all of them behave the same.
+  file system, not the library database: `BoardStoreApi` and `BoardFilesApi` in
+  `src/shared/platform.ts`. The app shell sees both together as `LibraryApi`.
+- **One set of contract tests** (`tests/libraryContract.ts`) runs against every store: SQLite
+  (`desktopLibraryContract.test.ts`) and IndexedDB through `fake-indexeddb` (`webLibrary.test.ts`),
+  so both behave the same. A new store (a cloud one, say) gets the same suite.
 - Saving stays power-cut safe on every platform: `writeDurable` and SQLite transactions on the
   desktop, IndexedDB transactions in the browser.
 
@@ -105,9 +105,9 @@ interfaces (repositories), so the editor and the UI never know which one is used
 
 Only where there are really two or more ways to do something:
 
-- **Ports and adapters**: storage, files, updates and the clipboard behind interfaces
-  (`src/shared/platform.ts` today), with an Electron adapter, a browser adapter and an in-memory
-  one for tests.
+- **Ports and adapters**: storage, files and updates behind `PlatformApi`
+  (`src/shared/platform.ts`), with the Electron adapter (preload) and the web one
+  (`src/renderer/src/web/platform.ts`); `src/renderer/src/platform.ts` picks one.
 - **Command**: every change to a board is a plain, serialisable operation. That gives undo and redo
   today and a path to syncing boards later.
 - **State machines for tools**: each tool handles pointer down, move, up and cancel on its own,
@@ -125,6 +125,8 @@ Only where there are really two or more ways to do something:
    board session and app state.
 3. In progress: move the tool logic out of `src/board/ui/Board.tsx` into tool controllers
    (eraser, brush select and laser are done).
-4. Painter: one drawing interface for Canvas 2D and SVG export; rendering moves into a package.
-5. Features as modules with a registry, starting with shape recognition.
-6. A web app with browser storage (IndexedDB) and files through the File System Access API.
+4. Done: the web app (`apps/web`, published at `/inkboard/app/`): the desktop app shell with the web
+   platform, IndexedDB storage, file pickers, print to PDF, and a service worker for offline use.
+5. Painter: one drawing interface for Canvas 2D and SVG export; rendering moves into a package.
+6. Features as modules with a registry, starting with shape recognition.
+7. The remaining tools out of `Board.tsx`.

@@ -6,6 +6,10 @@ All notable changes to Inkboard. Downloads for every version are on the
 ## Unreleased
 
 ### Added
+- Inkboard in the browser at https://yaroslavyushchenko.github.io/inkboard/app/: the same app, with
+  boards kept in the browser (IndexedDB). Save a board as an .inkboard file (Chrome and Edge ask
+  where; other browsers download it), open .inkboard files, export PNG, and PDF through the print
+  dialog. Works offline after the first visit.
 - Point eraser that cuts lines apart (Eraser options: "Only what it touches"), plus an eraser size slider.
 - Laser pointer (L) with a fading red trail that is never saved.
 - Hold-to-snap shapes: keep the pen still at the end of a stroke to turn a rough circle, oval, arc,
