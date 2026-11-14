@@ -587,6 +587,14 @@ button:disabled {
   box-shadow: 0 0 0 2px var(--accent);
 }
 
+/* ---------- shortcuts (bottom left) ---------- */
+.shortcuts-corner {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 10;
+}
+
 /* ---------- zoom (bottom right) ---------- */
 .zoom-controls {
   position: absolute;

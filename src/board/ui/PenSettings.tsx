@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useT, type MessageKey } from '../i18n'
 import { type PenAction, type PenButtons, usePrefs } from '../store'
-import { KeyboardIcon } from './icons'
-import { useEditor } from '../editorContext'
 
 const ACTIONS: PenAction[] = ['eraser', 'select', 'tool']
 const BUTTONS: { key: keyof PenButtons; label: MessageKey }[] = [
@@ -13,7 +11,6 @@ const BUTTONS: { key: keyof PenButtons; label: MessageKey }[] = [
 
 /** Settings section: what each pen button does, plus a live tester. */
 export function PenSettings() {
-  const editor = useEditor()
   const t = useT()
   const penButtons = usePrefs((s) => s.penButtons)
   const setPenButton = usePrefs((s) => s.setPenButton)
@@ -52,9 +49,6 @@ export function PenSettings() {
       >
         {detected ? t('pen.detected', { what: detected }) : t('pen.testHere')}
       </div>
-      <button className="text-btn outline shortcuts-btn" onClick={() => editor.session.setState({ shortcutsOpen: true })}>
-        <KeyboardIcon width={18} height={18} /> {t('shortcuts.open')}
-      </button>
     </>
   )
 }

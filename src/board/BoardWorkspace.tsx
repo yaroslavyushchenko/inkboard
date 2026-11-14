@@ -15,6 +15,7 @@ import { TextEditor } from './ui/TextEditor'
 import { Toolbar } from './ui/Toolbar'
 import { InstrumentTip } from './ui/InstrumentTip'
 import { ZoomControls } from './ui/ZoomControls'
+import { ShortcutsButton } from './ui/ShortcutsButton'
 
 interface BoardWorkspaceProps {
   /** The board's editor, made by the app with createEditor(). */
@@ -57,6 +58,7 @@ export function BoardWorkspace({
         settings={<BackgroundPicker storageSettings={storageSettings} about={about} fixedLanguage={fixedLanguage} surfaceFollowsTheme={surfaceFollowsTheme} />}
       />
       <ZoomControls />
+      <ShortcutsButton />
       <GraphDialog />
       <FunctionPanel />
       <InstrumentPanel />
