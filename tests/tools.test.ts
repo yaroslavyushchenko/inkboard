@@ -1,4 +1,5 @@
-// Tool controllers (src/board/tools): eraser, brush select and laser, without a DOM. Run: npm test
+// Tool controllers (src/board/tools): eraser, brush select, laser, lasso, shapes and pan, without a DOM.
+// Run: npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { Scene } from '@inkboard/core/scene'
@@ -6,6 +7,10 @@ import type { ImageItem, Item, StrokeItem } from '@inkboard/core/types'
 import { itemsTouched } from '../src/board/tools/brushSelect.ts'
 import { beginErase, eraseAlong, eraseUnit, type EraseRecord } from '../src/board/tools/eraser.ts'
 import { LASER_FADE_MS, LaserTrail } from '../src/board/tools/laser.ts'
+import { createSessionStore } from '../src/board/session.ts'
+import { beginLasso } from '../src/board/tools/lasso.ts'
+import { beginPan } from '../src/board/tools/pan.ts'
+import { beginShape } from '../src/board/tools/shapeTool.ts'
 import type { Sample, ToolContext } from '../src/board/tools/types.ts'
 
 /** A straight horizontal stroke from (x0, y) to (x1, y), sampled every 5 units. */
@@ -102,4 +107,65 @@ test('the laser trail fades out', () => {
   assert.equal(trail.prune(LASER_FADE_MS + 1), true)
   assert.equal(trail.points.length, 1)
   assert.equal(trail.prune(500 + LASER_FADE_MS), false)
+})
+
+// ---------------------------------------------------------------- lasso, shapes, pan
+
+
+/** A tool context with a real scene and session and a stand-in editor that records the selection. */
+function fakeContext(sc: Scene) {
+  const editor = {
+    camera: { x: 0, y: 0, zoom: 1 },
+    selected: [] as string[],
+    setSelection(items: Item[]) { this.selected = items.map((i) => i.id) },
+    clearSelection() { this.selected = [] },
+    setCamera(c: { x: number; y: number; zoom: number }) { this.camera = c }
+  }
+  const prefs = { pens: [{ color: '#1e1e1e', size: 3 }], shapeBases: {} }
+  const ctx = { scene: sc, editor, session: createSessionStore(), prefs: () => prefs, invalidate: () => {} } as unknown as ToolContext
+  return { ctx, editor }
+}
+const pt = (x: number, y: number): Sample => ({ sx: x, sy: y, x, y, pressure: 0.5, time: 0 })
+const keys = { shift: false, ctrl: false, alt: false }
+
+test('lasso selects what it goes around; a tap selects the item under it or clears', () => {
+  const sc = new Scene()
+  sc.add([line('in', 40, 60, 50), line('out', 300, 320, 300)])
+  const { ctx, editor } = fakeContext(sc)
+  const loop = beginLasso(ctx, pt(0, 0))
+  loop.move([pt(100, 0), pt(100, 100), pt(0, 100), pt(0, 0)], keys)
+  assert.deepEqual(loop.overlay?.().lasso?.length, 5)
+  loop.end()
+  assert.deepEqual(editor.selected, ['in'])
+  const tap = beginLasso(ctx, pt(310, 300))
+  tap.end()
+  assert.deepEqual(editor.selected, ['out'])
+  const empty = beginLasso(ctx, pt(500, 500))
+  empty.end()
+  assert.deepEqual(editor.selected, [])
+})
+
+test('the shape tool drags out a shape, Shift keeps it regular, a click drops the default size', () => {
+  const sc = new Scene()
+  const { ctx } = fakeContext(sc)
+  ctx.session.setState({ shape: 'rectangle' })
+  const drag = beginShape(ctx, pt(0, 0))
+  drag.move([pt(100, 40)], { ...keys, shift: true })
+  assert.ok(drag.overlay?.().live?.parts?.length, 'a preview is shown while dragging')
+  drag.end()
+  const spec = (sc.getItems()[0] as StrokeItem).shape!
+  assert.equal(spec.kind, 'rectangle')
+  assert.equal(Math.abs(spec.bx - spec.ax), Math.abs(spec.by - spec.ay))
+  const click = beginShape(ctx, pt(500, 500))
+  click.end()
+  const dropped = (sc.getItems().at(-1) as StrokeItem).shape!
+  assert.equal((dropped.ax + dropped.bx) / 2, 500)
+  assert.equal(sc.canUndo, true)
+})
+
+test('pan moves the camera with the pointer', () => {
+  const { ctx, editor } = fakeContext(new Scene())
+  const g = beginPan(ctx, pt(100, 100))
+  g.move([pt(110, 90), pt(130, 80)], keys)
+  assert.deepEqual(editor.camera, { x: -30, y: 20, zoom: 1 })
 })

@@ -14,8 +14,8 @@ import {
 } from '../engine/renderer'
 import { arcStroke, baseStroke, degText, hitProtractor, rayStroke, scaleAngle, snapDeg, toLocal, toWorld, type ProtractorHit, type ProtractorState } from '../engine/protractor'
 import { buildShapeItems, editableShape, regenerateShape } from '@inkboard/core/shapeItems'
-import { DEFAULT_SHAPE_SIZE, isLinear, SHAPE_BASES, shapeBox, shapeParts, snapAngle, type ShapeKind } from '@inkboard/core/shapes'
-import { hitTest, itemsInLasso } from '../engine/transform'
+import { isLinear, snapAngle } from '@inkboard/core/shapes'
+import { hitTest } from '../engine/transform'
 import type { BBox, Item, Point, ShapeSpec, StrokeItem, TextItem } from '@inkboard/core/types'
 import { useEditor } from '../editorContext'
 import type { RecognizedShape } from '../registry'
@@ -41,6 +41,9 @@ import { textBBox } from '../engine/text'
 import { beginBrushSelect } from '../tools/brushSelect'
 import { beginErase } from '../tools/eraser'
 import { beginLaser, LASER_FADE_MS, LaserTrail } from '../tools/laser'
+import { beginLasso } from '../tools/lasso'
+import { beginPan } from '../tools/pan'
+import { beginShape } from '../tools/shapeTool'
 import type { Gesture as ToolGesture, Modifiers, Sample, ToolContext } from '../tools/types'
 import { WheelSource } from '../engine/wheel'
 
@@ -81,21 +84,6 @@ type Gesture =
   | { kind: 'straightRotate'; slot: StraightSlot; pointerId: number }
   | { kind: 'compMove'; pointerId: number; ox: number; oy: number }
   | { kind: 'compRadius'; pointerId: number }
-  | {
-      kind: 'shape'
-      pointerId: number
-      shape: ShapeKind
-      base?: number
-      ax: number
-      ay: number
-      bx: number
-      by: number
-      keep: boolean
-      sx: number
-      sy: number
-      moved: boolean
-      live: LiveStroke
-    }
   | { kind: 'endpoint'; pointerId: number; original: StrokeItem; current: StrokeItem; which: 0 | 1 }
   | {
       kind: 'reshape'
@@ -109,10 +97,8 @@ type Gesture =
       startY: number
     }
   // Tools moved to tool controllers (src/board/tools): the board only feeds them samples.
-  | { kind: 'eraser' | 'laser' | 'brush'; pointerId: number; tool: ToolGesture }
-  | { kind: 'pan'; pointerId: number; lastX: number; lastY: number }
+  | { kind: 'eraser' | 'laser' | 'brush' | 'pan' | 'lasso' | 'shape'; pointerId: number; tool: ToolGesture }
   | { kind: 'pinch'; dist: number; cx: number; cy: number }
-  | { kind: 'lasso'; pointerId: number; points: [number, number][]; startX: number; startY: number; moved: boolean }
   | { kind: 'move'; pointerId: number; startX: number; startY: number }
   | { kind: 'scale'; pointerId: number; ax: number; ay: number; cx: number; cy: number }
 
@@ -192,7 +178,8 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         renderer.renderBase(items, editor.camera, ui.background, editor.preview, ui.selectedIds.length ? new Set(ui.selectedIds) : undefined)
       }
       if (overlayDirty) {
-        const live = gesture?.kind === 'ink' || gesture?.kind === 'shape' ? gesture.live : null
+        const shown = gesture && 'tool' in gesture ? gesture.tool.overlay?.() : undefined
+        const live = gesture?.kind === 'ink' ? gesture.live : (shown?.live ?? null)
         const info = selInfo()
         const hl = !gesture && hoverLine && hoverLine.id !== info?.line?.id ? hoverLine : null
         const comp = ui.compass
@@ -206,7 +193,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         const hintText = cs?.hint || ps?.hint || ss?.hint || rs?.hint
         renderer.renderOverlay(live, cursorState(), editor.camera, {
           box: info?.box ?? null,
-          lasso: gesture?.kind === 'lasso' ? gesture.points : null,
+          lasso: shown?.lasso ?? null,
           hover: gesture ? null : hoverBox,
           locked: info?.locked,
           corners: !info?.line,
@@ -260,6 +247,12 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       const w = screenToWorld(editor.camera, p.x, p.y)
       return { sx: p.x, sy: p.y, x: w.x, y: w.y, pressure: e.pressure || 0.5, time: performance.now() }
     }
+    /** A sample at a screen point (fingers: no pressure). */
+    const sampleAt = (sx: number, sy: number): Sample => {
+      const w = screenToWorld(editor.camera, sx, sy)
+      return { sx, sy, x: w.x, y: w.y, pressure: 0.5, time: performance.now() }
+    }
+    const NO_KEYS: Modifiers = { shift: false, ctrl: false, alt: false }
     const modifiers = (e: PointerEvent): Modifiers => ({ shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey, alt: e.altKey })
 
     const toolEffect = (tool: Tool): Effective =>
@@ -664,24 +657,8 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       holdAt = null
       angleLabel = null
       if (!g) return
-      if (g.kind === 'shape') {
-        let box: [number, number, number, number]
-        if (g.moved) box = shapeBox(g.shape, g.ax, g.ay, g.bx, g.by, g.keep)
-        else {
-          // A plain click drops a default-size shape centred on the click.
-          const d = DEFAULT_SHAPE_SIZE / editor.camera.zoom
-          box = isLinear(g.shape) ? [g.ax - d / 2, g.ay, g.ax + d / 2, g.ay] : [g.ax - d / 2, g.ay - d / 2, g.ax + d / 2, g.ay + d / 2]
-        }
-        const spec: ShapeSpec = { kind: g.shape, ax: box[0], ay: box[1], bx: box[2], by: box[3], ...(g.base ? { base: g.base } : {}) }
-        const { live } = g
-        // Solids are several lines (visible + dashed hidden edges) kept together as one group.
-        scene.add(
-          buildShapeItems(
-            spec,
-            { color: live.color, size: live.size, tool: 'pen', dash: live.dash, startCap: live.startCap, endCap: live.endCap },
-            () => ({ id: newId(), z: scene.allocZ() })
-          )
-        )
+      if ('tool' in g) {
+        g.tool.end()
       } else if (g.kind === 'ink' && g.held?.current.spec) {
         // Snapped to a board primitive: it becomes an ordinary shape (side handles, switch kind…).
         const { live } = g
@@ -726,18 +703,6 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
           const groupId = newId()
           scene.add([{ ...stroke, groupId }, { ...label, groupId }])
         } else scene.add([stroke])
-      } else if (g.kind === 'brush' || g.kind === 'eraser' || g.kind === 'laser') {
-        g.tool.end()
-      } else if (g.kind === 'lasso') {
-        if (!g.moved) {
-          // A tap selects the item under the pointer (or clears the selection).
-          const w = screenToWorld(editor.camera, g.startX, g.startY)
-          const hit = hitTest(scene.getItems(), w.x, w.y, 6 / editor.camera.zoom)
-          if (hit) editor.setSelection([hit])
-          else editor.clearSelection()
-        } else {
-          editor.setSelection(itemsInLasso(scene.getItems(), g.points))
-        }
       } else if (g.kind === 'move' || g.kind === 'scale') {
         editor.commitPreview()
       } else if (g.kind === 'endpoint') {
@@ -795,7 +760,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         const s = session.getState()[shSlot]!
         gesture = { kind: 'straightMove', slot: shSlot, pointerId: e.pointerId, ox: s.x - w.x, oy: s.y - w.y }
       } else if (touches.size === 1) {
-        gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
+        gesture = { kind: 'pan', pointerId: e.pointerId, tool: beginPan(toolContext, sampleAt(p.x, p.y)) }
       } else if (touches.size === 2) {
         const c = touchCentroid()
         gesture = { kind: 'pinch', dist: c.dist, cx: c.cx, cy: c.cy }
@@ -826,9 +791,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         if (s) session.setState({ [gesture.slot]: { ...s, x: w.x + gesture.ox, y: w.y + gesture.oy } })
       } else if (gesture?.kind === 'pan' && gesture.pointerId === e.pointerId) {
         const p = local(e)
-        editor.setCamera(panBy(editor.camera, p.x - gesture.lastX, p.y - gesture.lastY))
-        gesture.lastX = p.x
-        gesture.lastY = p.y
+        gesture.tool.move([sampleAt(p.x, p.y)], NO_KEYS)
       }
     }
 
@@ -844,7 +807,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       if (touches.size === 1 && gesture?.kind === 'pinch') {
         // Continue as a one-finger pan with the remaining finger.
         const [id, p] = [...touches.entries()][0]
-        gesture = { kind: 'pan', pointerId: id, lastX: p.x, lastY: p.y }
+        gesture = { kind: 'pan', pointerId: id, tool: beginPan(toolContext, sampleAt(p.x, p.y)) }
       } else if (touches.size === 0) {
         gesture = null
       }
@@ -958,7 +921,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
         const s = session.getState()[sSlot]!
         gesture = { kind: 'straightMove', slot: sSlot, pointerId: e.pointerId, ox: s.x - w.x, oy: s.y - w.y }
       } else if (eff === 'pan') {
-        gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
+        gesture = { kind: 'pan', pointerId: e.pointerId, tool: beginPan(toolContext, sampleAt(p.x, p.y)) }
       } else if (eff === 'laser') {
         gesture = { kind: 'laser', pointerId: e.pointerId, tool: beginLaser(toolContext, trail, sample(e)) }
       } else if (eff === 'text') {
@@ -1031,7 +994,7 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
             if (!isLocked(target.item)) gesture = { kind: 'move', pointerId: e.pointerId, startX: w.x, startY: w.y }
           } else if (!h) {
             editor.clearSelection()
-            gesture = { kind: 'pan', pointerId: e.pointerId, lastX: p.x, lastY: p.y }
+            gesture = { kind: 'pan', pointerId: e.pointerId, tool: beginPan(toolContext, sampleAt(p.x, p.y)) }
           }
         } else {
           // Pressing on a highlighted item grabs it right away; empty space (or a locked item) starts a lasso.
@@ -1040,42 +1003,12 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
             editor.setSelection([hit])
             gesture = { kind: 'move', pointerId: e.pointerId, startX: w.x, startY: w.y }
           } else {
-            gesture = { kind: 'lasso', pointerId: e.pointerId, points: [[w.x, w.y]], startX: p.x, startY: p.y, moved: false }
+            gesture = { kind: 'lasso', pointerId: e.pointerId, tool: beginLasso(toolContext, sampleAt(p.x, p.y)) }
           }
         }
         hoverBox = null
       } else if (eff === 'shape') {
-        editor.clearSelection()
-        const ui = readUI()
-        const w = screenToWorld(editor.camera, p.x, p.y)
-        const slot = ui.pens[ui.activePen]
-        const base = SHAPE_BASES[ui.shape] ? (ui.shapeBases[ui.shape] ?? SHAPE_BASES[ui.shape]!.def) : undefined
-        gesture = {
-          kind: 'shape',
-          pointerId: e.pointerId,
-          shape: ui.shape,
-          base,
-          ax: w.x,
-          ay: w.y,
-          bx: w.x,
-          by: w.y,
-          keep: false,
-          sx: p.x,
-          sy: p.y,
-          moved: false,
-          live: {
-            tool: 'pen',
-            color: slot.color,
-            size: slot.size,
-            pressure: false,
-            geom: 'line',
-            points: [],
-            ...(slot.dash ? { dash: slot.dash } : {}),
-            // Line ends apply to the Line shape only.
-            ...(ui.shape === 'line' && slot.startCap ? { startCap: slot.startCap } : {}),
-            ...(ui.shape === 'line' && slot.endCap ? { endCap: slot.endCap } : {})
-          }
-        }
+        gesture = { kind: 'shape', pointerId: e.pointerId, tool: beginShape(toolContext, sampleAt(p.x, p.y)) }
       } else if (eff === 'brush') {
         const h = selectionHit(p.x, p.y)
         if (h?.kind === 'handle' && !editor.selectionLocked()) {
@@ -1155,10 +1088,10 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
       if (gesture && 'pointerId' in gesture && gesture.pointerId === e.pointerId && e.buttons === 0) finishGesture()
       const g = gesture
       if (g && 'pointerId' in g && g.pointerId === e.pointerId) {
-        if (g.kind === 'pan') {
-          editor.setCamera(panBy(editor.camera, p.x - g.lastX, p.y - g.lastY))
-          g.lastX = p.x
-          g.lastY = p.y
+        if ('tool' in g) {
+          // Coalesced events give every sample the tablet produced (often 200+ Hz), not just one per frame.
+          const coalesced = e.getCoalescedEvents?.() ?? []
+          g.tool.move((coalesced.length ? coalesced : [e]).map(sample), modifiers(e))
         } else if (g.kind === 'compMove') {
           const w = screenToWorld(editor.camera, p.x, p.y)
           const c = session.getState().compass
@@ -1217,10 +1150,6 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
             const lang = prefsStore.getState().lang
             angleLabel = { sx: p.x, sy: p.y, text: `${deg}° · ${cmText(next.size, translate(lang, 'instruments.cm'), lang === 'uk')}` }
           }
-        } else if (g.kind === 'lasso') {
-          const w = screenToWorld(editor.camera, p.x, p.y)
-          g.points.push([w.x, w.y])
-          if (Math.hypot(p.x - g.startX, p.y - g.startY) > 4) g.moved = true
         } else if (g.kind === 'move') {
           const w = screenToWorld(editor.camera, p.x, p.y)
           editor.setPreview({ s: 1, ax: 0, ay: 0, dx: w.x - g.startX, dy: w.y - g.startY })
@@ -1348,15 +1277,6 @@ export function Board({ fileActions }: { fileActions?: BoardFileActions }) {
             } else {
               for (const ev of events) g.live.points.push(pointFrom(ev, g.live.pressure))
             }
-          } else if (g.kind === 'shape') {
-            const w = screenToWorld(editor.camera, p.x, p.y)
-            if (Math.hypot(p.x - g.sx, p.y - g.sy) > 4) g.moved = true
-            g.bx = w.x
-            g.by = w.y
-            g.keep = e.shiftKey
-            if (g.moved) g.live = { ...g.live, parts: shapeParts(g.shape, g.ax, g.ay, w.x, w.y, e.shiftKey, g.live.size, g.base) }
-          } else if (g.kind === 'brush' || g.kind === 'laser' || g.kind === 'eraser') {
-            g.tool.move(events.map(sample))
           }
         }
       }
